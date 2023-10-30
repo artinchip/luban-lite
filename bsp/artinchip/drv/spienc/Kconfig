@@ -1,0 +1,29 @@
+#-----------------------------
+# devices local parameter
+#-----------------------------
+
+if AIC_USING_SPIENC
+
+config AIC_SPIENC_QSPI0
+    bool "Enc qspi0"
+    default n
+    select AIC_QSPI_DRV
+    depends on AIC_USING_QSPI0
+
+config AIC_SPIENC_QSPI0_TWEAK
+    int "set qspi0 tweak"
+    default 0
+    depends on AIC_SPIENC_QSPI0
+
+config AIC_SPIENC_QSPI1
+    bool "Enc qspi1"
+    default n
+    select AIC_QSPI_DRV
+    depends on AIC_USING_QSPI1
+
+config AIC_SPIENC_QSPI1_TWEAK
+    int "set qspi1 tweak"
+    default 0
+    depends on AIC_SPIENC_QSPI1
+
+endif

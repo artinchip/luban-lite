@@ -1,0 +1,13 @@
+from building import *
+
+cwd        = GetCurrentDir()
+src        = Glob('*.c')
+CPPPATH    = [cwd]
+
+CPPDEFINES = []
+
+CPPDEFINES += ['_SYS__PTHREADTYPES_H_']
+
+group = DefineGroup('POSIX', src, depend = ['RT_USING_PTHREADS'], CPPPATH = CPPPATH ,CPPDEFINES = CPPDEFINES)
+
+Return('group')

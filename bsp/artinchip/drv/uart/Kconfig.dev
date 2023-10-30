@@ -1,0 +1,631 @@
+#-----------------------------
+# uart devices local parameter
+#-----------------------------
+
+# uart0 parameter
+
+menu "Uart0 Parameter"
+    depends on AIC_USING_UART0
+
+    config AIC_CLK_UART0_FREQ
+        int "Uart0 clk frequence"
+        default 48000000
+
+    config AIC_DEV_UART0_BAUDRATE
+        int "Uart0 baudrate"
+        default 115200
+
+    config AIC_DEV_UART0_DATABITS
+        int "Uart0 data bits"
+        range 0 15
+        default 8
+
+    config AIC_DEV_UART0_STOPBITS
+        int "Uart0 stop bits"
+        range 0 3
+        default 1
+
+    config AIC_DEV_UART0_PARITY
+        int "Uart0 parity (0=none, 1=odd, 2=even)"
+        range 0 2
+        default 0
+
+    choice
+        prompt "Uart0 function"
+        default AIC_DEV_UART0_MODE_RS232
+        help
+            Select the package version
+
+        config AIC_DEV_UART0_MODE_RS232
+            bool "rs232"
+
+        config AIC_DEV_UART0_MODE_RS485
+            bool "rs485"
+
+        config AIC_DEV_UART0_MODE_RS485_COMPACT_IO
+            bool "rs485 compact io"
+    endchoice
+
+    config AIC_DEV_UART0_MODE
+       int
+       default 0     if AIC_DEV_UART0_MODE_RS232
+       default 1     if AIC_DEV_UART0_MODE_RS485
+       default 2     if AIC_DEV_UART0_MODE_RS485_COMPACT_IO
+
+    if DRIVER_BARE_DRV_EN
+        choice
+            prompt "Uart0 Rx mode"
+            default AIC_DEV_UART0_RX_MODE_POLL
+            help
+                Select the package version
+
+            config AIC_DEV_UART0_RX_MODE_POLL
+                bool "poll"
+
+            config AIC_DEV_UART0_RX_MODE_INT
+                bool "interrupt"
+        endchoice
+
+        config AIC_DEV_UART0_RX_MODE
+           int
+           default 0     if AIC_DEV_UART0_RX_MODE_POLL
+           default 1     if AIC_DEV_UART0_RX_MODE_INT
+           default 2     if AIC_DEV_UART0_RX_MODE_DMA
+
+        if AIC_DEV_UART0_RX_MODE_INT
+            config AIC_DEV_UART0_RX_BUFSZ
+                int "Uart0 rx buffer size"
+                default 64
+        endif
+    endif
+endmenu
+
+# uart1 parameter
+
+menu "Uart1 Parameter"
+    depends on AIC_USING_UART1
+
+    config AIC_CLK_UART1_FREQ
+        int "Uart1 clk frequence"
+        default 48000000
+
+    config AIC_DEV_UART1_BAUDRATE
+        int "Uart1 baudrate"
+        default 115200
+
+    config AIC_DEV_UART1_DATABITS
+        int "Uart1 data bits"
+        range 0 15
+        default 8
+
+    config AIC_DEV_UART1_STOPBITS
+        int "Uart1 stop bits"
+        range 0 3
+        default 1
+
+    config AIC_DEV_UART1_PARITY
+        int "Uart1 parity (0=none, 1=odd, 2=even)"
+        range 0 2
+        default 0
+
+    choice
+        prompt "Uart1 function"
+        default AIC_DEV_UART1_MODE_RS232
+        help
+            Select the package version
+
+        config AIC_DEV_UART1_MODE_RS232
+            bool "rs232"
+
+        config AIC_DEV_UART1_MODE_RS485
+            bool "rs485"
+
+        config AIC_DEV_UART1_MODE_RS485_COMPACT_IO
+            bool "rs485 compact io"
+    endchoice
+
+    config AIC_DEV_UART1_MODE
+       int
+       default 0     if AIC_DEV_UART1_MODE_RS232
+       default 1     if AIC_DEV_UART1_MODE_RS485
+       default 2     if AIC_DEV_UART1_MODE_RS485_COMPACT_IO
+
+    if DRIVER_BARE_DRV_EN
+        choice
+            prompt "Uart1 Rx mode"
+            default AIC_DEV_UART1_RX_MODE_POLL
+            help
+                Select the package version
+
+            config AIC_DEV_UART1_RX_MODE_POLL
+                bool "poll"
+
+            config AIC_DEV_UART1_RX_MODE_INT
+                bool "interrupt"
+        endchoice
+
+        config AIC_DEV_UART1_RX_MODE
+           int
+           default 0     if AIC_DEV_UART1_RX_MODE_POLL
+           default 1     if AIC_DEV_UART1_RX_MODE_INT
+           default 2     if AIC_DEV_UART1_RX_MODE_DMA
+
+        if AIC_DEV_UART1_RX_MODE_INT
+            config AIC_DEV_UART1_RX_BUFSZ
+                int "Uart1 rx buffer size"
+                default 64
+        endif
+    endif
+endmenu
+
+# uart2 parameter
+
+menu "Uart2 Parameter"
+    depends on AIC_USING_UART2
+
+    config AIC_CLK_UART2_FREQ
+        int "Uart2 clk frequence"
+        default 48000000
+
+    config AIC_DEV_UART2_BAUDRATE
+        int "Uart2 baudrate"
+        default 115200
+
+    config AIC_DEV_UART2_DATABITS
+        int "Uart2 data bits"
+        range 0 15
+        default 8
+
+    config AIC_DEV_UART2_STOPBITS
+        int "Uart2 stop bits"
+        range 0 3
+        default 1
+
+    config AIC_DEV_UART2_PARITY
+        int "Uart2 parity (0=none, 1=odd, 2=even)"
+        range 0 2
+        default 0
+
+    choice
+        prompt "Uart2 function"
+        default AIC_DEV_UART2_MODE_RS232
+        help
+            Select the package version
+
+        config AIC_DEV_UART2_MODE_RS232
+            bool "rs232"
+
+        config AIC_DEV_UART2_MODE_RS485
+            bool "rs485"
+
+        config AIC_DEV_UART2_MODE_RS485_COMPACT_IO
+            bool "rs485 compact io"
+    endchoice
+
+    config AIC_DEV_UART2_MODE
+       int
+       default 0     if AIC_DEV_UART2_MODE_RS232
+       default 1     if AIC_DEV_UART2_MODE_RS485
+       default 2     if AIC_DEV_UART2_MODE_RS485_COMPACT_IO
+
+    if DRIVER_BARE_DRV_EN
+        choice
+            prompt "Uart2 Rx mode"
+            default AIC_DEV_UART2_RX_MODE_POLL
+            help
+                Select the package version
+
+            config AIC_DEV_UART2_RX_MODE_POLL
+                bool "poll"
+
+            config AIC_DEV_UART2_RX_MODE_INT
+                bool "interrupt"
+        endchoice
+
+        config AIC_DEV_UART2_RX_MODE
+           int
+           default 0     if AIC_DEV_UART2_RX_MODE_POLL
+           default 1     if AIC_DEV_UART2_RX_MODE_INT
+           default 2     if AIC_DEV_UART2_RX_MODE_DMA
+
+        if AIC_DEV_UART2_RX_MODE_INT
+            config AIC_DEV_UART2_RX_BUFSZ
+                int "Uart2 rx buffer size"
+                default 64
+        endif
+    endif
+endmenu
+
+# uart3 parameter
+
+menu "Uart3 Parameter"
+    depends on AIC_USING_UART3
+
+    config AIC_CLK_UART3_FREQ
+        int "Uart3 clk frequence"
+        default 48000000
+
+    config AIC_DEV_UART3_BAUDRATE
+        int "Uart3 baudrate"
+        default 115200
+
+    config AIC_DEV_UART3_DATABITS
+        int "Uart3 data bits"
+        range 0 15
+        default 8
+
+    config AIC_DEV_UART3_STOPBITS
+        int "Uart3 stop bits"
+        range 0 3
+        default 1
+
+    config AIC_DEV_UART3_PARITY
+        int "Uart3 parity (0=none, 1=odd, 2=even)"
+        range 0 2
+        default 0
+
+    choice
+        prompt "Uart3 function"
+        default AIC_DEV_UART3_MODE_RS232
+        help
+            Select the package version
+
+        config AIC_DEV_UART3_MODE_RS232
+            bool "rs232"
+
+        config AIC_DEV_UART3_MODE_RS485
+            bool "rs485"
+
+        config AIC_DEV_UART3_MODE_RS485_COMPACT_IO
+            bool "rs485 compact io"
+    endchoice
+
+    config AIC_DEV_UART3_MODE
+       int
+       default 0     if AIC_DEV_UART3_MODE_RS232
+       default 1     if AIC_DEV_UART3_MODE_RS485
+       default 2     if AIC_DEV_UART3_MODE_RS485_COMPACT_IO
+
+    if DRIVER_BARE_DRV_EN
+        choice
+            prompt "Uart3 Rx mode"
+            default AIC_DEV_UART3_RX_MODE_POLL
+            help
+                Select the package version
+
+            config AIC_DEV_UART3_RX_MODE_POLL
+                bool "poll"
+
+            config AIC_DEV_UART3_RX_MODE_INT
+                bool "interrupt"
+        endchoice
+
+        config AIC_DEV_UART3_RX_MODE
+           int
+           default 0     if AIC_DEV_UART3_RX_MODE_POLL
+           default 1     if AIC_DEV_UART3_RX_MODE_INT
+           default 2     if AIC_DEV_UART3_RX_MODE_DMA
+
+        if AIC_DEV_UART3_RX_MODE_INT
+            config AIC_DEV_UART3_RX_BUFSZ
+                int "Uart3 rx buffer size"
+                default 64
+        endif
+    endif
+endmenu
+
+# uart4 parameter
+
+menu "Uart4 Parameter"
+    depends on AIC_USING_UART4
+
+    config AIC_CLK_UART4_FREQ
+        int "Uart4 clk frequence"
+        default 48000000
+
+    config AIC_DEV_UART4_BAUDRATE
+        int "Uart4 baudrate"
+        default 115200
+
+    config AIC_DEV_UART4_DATABITS
+        int "Uart4 data bits"
+        range 0 15
+        default 8
+
+    config AIC_DEV_UART4_STOPBITS
+        int "Uart4 stop bits"
+        range 0 3
+        default 1
+
+    config AIC_DEV_UART4_PARITY
+        int "Uart4 parity (0=none, 1=odd, 2=even)"
+        range 0 2
+        default 0
+
+    choice
+        prompt "Uart4 function"
+        default AIC_DEV_UART4_MODE_RS232
+        help
+            Select the package version
+
+        config AIC_DEV_UART4_MODE_RS232
+            bool "rs232"
+
+        config AIC_DEV_UART4_MODE_RS485
+            bool "rs485"
+
+        config AIC_DEV_UART4_MODE_RS485_COMPACT_IO
+            bool "rs485 compact io"
+    endchoice
+
+    config AIC_DEV_UART4_MODE
+       int
+       default 0     if AIC_DEV_UART4_MODE_RS232
+       default 1     if AIC_DEV_UART4_MODE_RS485
+       default 2     if AIC_DEV_UART4_MODE_RS485_COMPACT_IO
+
+    if DRIVER_BARE_DRV_EN
+        choice
+            prompt "Uart4 Rx mode"
+            default AIC_DEV_UART4_RX_MODE_POLL
+            help
+                Select the package version
+
+            config AIC_DEV_UART4_RX_MODE_POLL
+                bool "poll"
+
+            config AIC_DEV_UART4_RX_MODE_INT
+                bool "interrupt"
+        endchoice
+
+        config AIC_DEV_UART4_RX_MODE
+           int
+           default 0     if AIC_DEV_UART4_RX_MODE_POLL
+           default 1     if AIC_DEV_UART4_RX_MODE_INT
+           default 2     if AIC_DEV_UART4_RX_MODE_DMA
+
+        if AIC_DEV_UART4_RX_MODE_INT
+            config AIC_DEV_UART4_RX_BUFSZ
+                int "Uart4 rx buffer size"
+                default 64
+        endif
+    endif
+endmenu
+
+# uart5 parameter
+
+menu "Uart5 Parameter"
+    depends on AIC_USING_UART5
+
+    config AIC_CLK_UART5_FREQ
+        int "Uart5 clk frequence"
+        default 48000000
+
+    config AIC_DEV_UART5_BAUDRATE
+        int "Uart5 baudrate"
+        default 115200
+
+    config AIC_DEV_UART5_DATABITS
+        int "Uart5 data bits"
+        range 0 15
+        default 8
+
+    config AIC_DEV_UART5_STOPBITS
+        int "Uart5 stop bits"
+        range 0 3
+        default 1
+
+    config AIC_DEV_UART5_PARITY
+        int "Uart5 parity (0=none, 1=odd, 2=even)"
+        range 0 2
+        default 0
+
+    choice
+        prompt "Uart5 function"
+        default AIC_DEV_UART5_MODE_RS232
+        help
+            Select the package version
+
+        config AIC_DEV_UART5_MODE_RS232
+            bool "rs232"
+
+        config AIC_DEV_UART5_MODE_RS485
+            bool "rs485"
+
+        config AIC_DEV_UART5_MODE_RS485_COMPACT_IO
+            bool "rs485 compact io"
+    endchoice
+
+    config AIC_DEV_UART5_MODE
+       int
+       default 0     if AIC_DEV_UART5_MODE_RS232
+       default 1     if AIC_DEV_UART5_MODE_RS485
+       default 2     if AIC_DEV_UART5_MODE_RS485_COMPACT_IO
+
+    if DRIVER_BARE_DRV_EN
+        choice
+            prompt "Uart5 Rx mode"
+            default AIC_DEV_UART5_RX_MODE_POLL
+            help
+                Select the package version
+
+            config AIC_DEV_UART5_RX_MODE_POLL
+                bool "poll"
+
+            config AIC_DEV_UART5_RX_MODE_INT
+                bool "interrupt"
+        endchoice
+
+        config AIC_DEV_UART5_RX_MODE
+           int
+           default 0     if AIC_DEV_UART5_RX_MODE_POLL
+           default 1     if AIC_DEV_UART5_RX_MODE_INT
+           default 2     if AIC_DEV_UART5_RX_MODE_DMA
+
+        if AIC_DEV_UART5_RX_MODE_INT
+            config AIC_DEV_UART5_RX_BUFSZ
+                int "Uart5 rx buffer size"
+                default 64
+        endif
+    endif
+endmenu
+
+# uart6 parameter
+
+menu "Uart6 Parameter"
+    depends on AIC_USING_UART6
+
+    config AIC_CLK_UART6_FREQ
+        int "Uart6 clk frequence"
+        default 48000000
+
+    config AIC_DEV_UART6_BAUDRATE
+        int "Uart6 baudrate"
+        default 115200
+
+    config AIC_DEV_UART6_DATABITS
+        int "Uart6 data bits"
+        range 0 15
+        default 8
+
+    config AIC_DEV_UART6_STOPBITS
+        int "Uart6 stop bits"
+        range 0 3
+        default 1
+
+    config AIC_DEV_UART6_PARITY
+        int "Uart6 parity (0=none, 1=odd, 2=even)"
+        range 0 2
+        default 0
+
+    choice
+        prompt "Uart6 function"
+        default AIC_DEV_UART6_MODE_RS232
+        help
+            Select the package version
+
+        config AIC_DEV_UART6_MODE_RS232
+            bool "rs232"
+
+        config AIC_DEV_UART6_MODE_RS485
+            bool "rs485"
+
+         config AIC_DEV_UART6_MODE_RS485_COMPACT_IO
+            bool "rs485 compact io"
+    endchoice
+
+    config AIC_DEV_UART6_MODE
+       int
+       default 0     if AIC_DEV_UART6_MODE_RS232
+       default 1     if AIC_DEV_UART6_MODE_RS485
+       default 2     if AIC_DEV_UART6_MODE_RS485_COMPACT_IO
+
+    if DRIVER_BARE_DRV_EN
+        choice
+            prompt "Uart6 Rx mode"
+            default AIC_DEV_UART6_RX_MODE_POLL
+            help
+                Select the package version
+
+            config AIC_DEV_UART6_RX_MODE_POLL
+                bool "poll"
+
+            config AIC_DEV_UART6_RX_MODE_INT
+                bool "interrupt"
+        endchoice
+
+        config AIC_DEV_UART6_RX_MODE
+           int
+           default 0     if AIC_DEV_UART6_RX_MODE_POLL
+           default 1     if AIC_DEV_UART6_RX_MODE_INT
+           default 2     if AIC_DEV_UART6_RX_MODE_DMA
+
+        if AIC_DEV_UART6_RX_MODE_INT
+            config AIC_DEV_UART6_RX_BUFSZ
+                int "Uart6 rx buffer size"
+                default 64
+        endif
+    endif
+endmenu
+
+# uart7 parameter
+
+menu "Uart7 Parameter"
+    depends on AIC_USING_UART7
+
+    config AIC_CLK_UART7_FREQ
+        int "Uart7 clk frequence"
+        default 48000000
+
+    config AIC_DEV_UART7_BAUDRATE
+        int "Uart7 baudrate"
+        default 115200
+
+    config AIC_DEV_UART7_DATABITS
+        int "Uart7 data bits"
+        range 0 15
+        default 8
+
+    config AIC_DEV_UART7_STOPBITS
+        int "Uart7 stop bits"
+        range 0 3
+        default 1
+
+    config AIC_DEV_UART7_PARITY
+        int "Uart7 parity (0=none, 1=odd, 2=even)"
+        range 0 2
+        default 0
+
+    choice
+        prompt "Uart7 function"
+        default AIC_DEV_UART7_MODE_RS232
+        help
+            Select the package version
+
+        config AIC_DEV_UART7_MODE_RS232
+            bool "rs232"
+
+        config AIC_DEV_UART7_MODE_RS485
+            bool "rs485"
+
+        config AIC_DEV_UART7_MODE_RS485_COMPACT_IO
+            bool "rs485 compact io"
+
+    endchoice
+
+    config AIC_DEV_UART7_MODE
+       int
+       default 0     if AIC_DEV_UART7_MODE_RS232
+       default 1     if AIC_DEV_UART7_MODE_RS485
+       default 2     if AIC_DEV_UART7_MODE_RS485_COMPACT_IO
+
+    if DRIVER_BARE_DRV_EN
+        choice
+            prompt "Uart7 Rx mode"
+            default AIC_DEV_UART7_RX_MODE_POLL
+            help
+                Select the package version
+
+            config AIC_DEV_UART7_RX_MODE_POLL
+                bool "poll"
+
+            config AIC_DEV_UART7_RX_MODE_INT
+                bool "interrupt"
+        endchoice
+
+        config AIC_DEV_UART7_RX_MODE
+           int
+           default 0     if AIC_DEV_UART7_RX_MODE_POLL
+           default 1     if AIC_DEV_UART7_RX_MODE_INT
+           default 2     if AIC_DEV_UART7_RX_MODE_DMA
+
+        if AIC_DEV_UART7_RX_MODE_INT
+            config AIC_DEV_UART7_RX_BUFSZ
+                int "Uart7 rx buffer size"
+                default 64
+        endif
+    endif
+endmenu
+
+# common parameter
+

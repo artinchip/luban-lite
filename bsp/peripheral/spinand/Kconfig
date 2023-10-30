@@ -1,0 +1,90 @@
+# Kconfig file for package spinand
+config LPKG_USING_SPINAND
+    bool "SPINAND Driver library"
+    default n
+
+if LPKG_USING_SPINAND
+config SPI_NAND_DOSILICON
+	bool "Support Dosilicon SPI NAND"
+    default n
+	help
+        Enable this driver for Dosilicon SPI NAND flash.
+
+config SPI_NAND_ETRON
+	bool "Support Etron SPI NAND"
+    default n
+	help
+        Enable this driver for Etron SPI NAND flash.
+
+config SPI_NAND_MICRON
+	bool "Support Micron SPI NAND"
+    default n
+	help
+        Enable this driver for Micron SPI NAND flash.
+
+config SPI_NAND_MACRONIX
+    bool "Support Macronix SPI NAND"
+    default n
+    help
+        Enable this driver for Macronix SPI NAND flash.
+
+config SPI_NAND_WINBOND
+    bool "Support Winbond SPI NAND"
+    default y
+    help
+        Enable this driver for Winbond SPI NAND flash.
+
+config SPI_NAND_GIGADEVICE
+    bool "Support GigaDevice SPI NAND"
+    default n
+    help
+        Enable this driver for GigaDevice SPI NAND flash.
+
+config SPI_NAND_TOSHIBA
+    bool "Support Toshiba SPI NAND"
+    default n
+    help
+        Enable this driver for Toshiba/Kioxia SPI NAND flash.
+
+config SPI_NAND_FORESEE
+    bool "Support Foresee SPI NAND"
+    default n
+    help
+        Enable this driver for Foresee SPI NAND flash.
+
+config SPI_NAND_XTX
+    bool "Support Xtx SPI NAND"
+    default n
+    help
+        Enable this driver for Xtx SPI NAND flash.
+
+config SPI_NAND_ZETTA
+    bool "Support Zetta SPI NAND"
+    default n
+    help
+        Enable this driver for Zetta SPI NAND flash.
+
+config SPI_NAND_ZBIT
+	bool "Support Zbit SPI NAND"
+	default n
+	help
+	  Enable this driver for Zbit SPI NAND flash.
+
+config SPI_NAND_ESMT
+	bool "Support ESMT SPI NAND"
+	default n
+	help
+	  Enable this driver for ESMT SPI NAND flash.
+
+config SPI_NAND_UMTEK
+	bool "Support UMTEK SPI NAND"
+	default n
+	help
+	  Enable this driver for UnitedMemory SPI NAND flash.
+
+config SPI_NAND_QUANXING
+	bool "Support QUANXING SPI NAND"
+	default n
+	help
+	  Enable this driver for QUANXING SPI NAND flash.
+endif

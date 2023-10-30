@@ -1,0 +1,387 @@
+Import('AIC_ROOT')
+Import('PRJ_KERNEL')
+from building import *
+
+cwd = GetCurrentDir()
+src = Glob('*.c')
+CPPPATH = []
+if GetDepend('DRIVER_DRV_EN'):
+    CPPPATH.append(cwd + '/include/drv')
+if GetDepend('DRIVER_BARE_DRV_EN'):
+    CPPPATH.append(cwd + '/include/drv_bare')
+    CPPPATH.append(cwd + '/include/drv')
+if GetDepend('DRIVER_HAL_EN'):
+    CPPPATH.append(cwd + '/include/hal')
+    CPPPATH.append(cwd + '/include/uapi')
+
+# CMU driver
+if GetDepend('AIC_CMU_DRV'):
+    ver = GetConfigValue('AIC_CMU_DRV_VER')
+    ver = ver.replace('"','')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/cmu/*.c', exclude=['hal/cmu/*def_v*.c'])
+        src += Glob('hal/cmu/*def_v%s.c' % ver)
+
+# GPIO driver
+if GetDepend('AIC_GPIO_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/gpio/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/gpio/*.c')
+
+if GetDepend('AIC_SYSCFG_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/syscfg/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/syscfg/*.c')
+
+if GetDepend('AIC_DMA_DRV'):
+    ver = GetConfigValue('AIC_DMA_DRV_VER')
+    ver = ver.replace('"','')
+    if GetDepend('DRIVER_DRV_EN') or GetDepend('DRIVER_BARE_DRV_EN'):
+        src += Glob('drv/dma/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/dma/*.c', exclude=['hal/dma/*def_v*.c'])
+        src += Glob('hal/dma/*def_v%sx.c' % (ver[0]))
+
+# UART driver
+if GetDepend('AIC_UART_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/uart/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/uart/*.c')
+    if GetDepend('DRIVER_BARE_DRV_EN'):
+        src += Glob('drv_bare/uart/*.c')
+
+# bare Tiny Console driver
+if GetDepend('AIC_CONSOLE_BARE_DRV'):
+    if GetDepend('DRIVER_BARE_DRV_EN'):
+        src += Glob('drv_bare/console/*.c')
+
+# bare Tiny Printf driver
+if GetDepend('AIC_PRINTF_BARE_DRV'):
+    if GetDepend('DRIVER_BARE_DRV_EN'):
+        src += Glob('drv_bare/printf/*.c')
+
+# bare Umm Heap driver
+if GetDepend('AIC_UMM_HEAP_BARE_DRV'):
+    if GetDepend('DRIVER_BARE_DRV_EN'):
+        src += Glob('drv_bare/umm_heap/*.c')
+        CPPPATH.append(cwd + '/drv_bare/umm_heap/')
+
+# bare Tlsf Heap driver
+if GetDepend('TLSF_MEM_HEAP'):
+    if GetDepend('DRIVER_BARE_DRV_EN'):
+        src += Glob('drv_bare/tlsf_heap/*.c')
+        CPPPATH.append(cwd + '/drv_bare/tlsf_heap/')
+
+# I2C driver
+if GetDepend('AIC_I2C_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/i2c/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/i2c/*.c')
+
+# QSPI driver
+if GetDepend('AIC_QSPI_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/qspi/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/qspi/*.c')
+
+# XSPI driver
+if GetDepend('AIC_XSPI_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/xspi/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/xspi/*.c')
+    if GetDepend('DRIVER_BARE_DRV_EN'):
+        src += Glob('drv_bare/psram/*.c')
+
+# AXICFG driver
+if GetDepend('AIC_AXICFG_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/axicfg/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/axicfg/*.c')
+    if GetDepend('DRIVER_BARE_DRV_EN'):
+        src += Glob('drv_bare/axicfg/*.c')
+
+if GetDepend('AIC_WRI_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/wri/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/wri/*.c')
+
+if GetDepend('AIC_RTC_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/rtc/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/rtc/*.c')
+
+if GetDepend('AIC_WDT_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/wdt/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/wdt/*.c')
+    if GetDepend('DRIVER_BARE_DRV_EN'):
+        src += Glob('drv_bare/wdt/*.c')
+
+# mtop
+if GetDepend('AIC_MTOP_DRV'):
+    ver = GetConfigValue('AIC_MTOP_DRV_VER')
+    ver = ver.replace('"','')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('drv/mtop/*.c')
+        src += Glob('hal/mtop/*.c', exclude=['hal/mtop/*def_v*.c'])
+        src += Glob('hal/mtop/*def_v%s.c' % ver)
+
+# SPINAND driver
+if GetDepend('AIC_SPINAND_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/spinand/*.c')
+    if GetDepend('DRIVER_BARE_DRV_EN'):
+        src += Glob('drv_bare/spinand/*.c')
+
+if GetDepend('AIC_SPINOR_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/spinor/*.c')
+    if GetDepend('DRIVER_BARE_DRV_EN'):
+        src += Glob('drv_bare/spinor/*.c')
+        CPPPATH.append(cwd + '/drv_bare/spinor/inc')
+
+if GetDepend('AIC_SPIENC_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/spienc/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/spienc/*.c')
+
+if GetDepend('AIC_SDMC_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/sdmc/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/sdmc/*.c')
+    if GetDepend('DRIVER_BARE_DRV_EN'):
+        src += Glob('drv_bare/sdmc/*.c')
+
+# bare MTD driver
+if GetDepend('AIC_MTD_BARE_DRV'):
+    if GetDepend('DRIVER_BARE_DRV_EN'):
+        src += Glob('drv_bare/mtd/*.c')
+
+if GetDepend('AIC_BOOT_USB_DRV'):
+    if GetDepend('DRIVER_BARE_DRV_EN'):
+        src += Glob('drv_bare/boot_usb/*.c')
+        CPPPATH.append(cwd + '/drv_bare/boot_usb')
+
+if GetDepend('AIC_BOOT_USBH_DRV'):
+    if GetDepend('DRIVER_BARE_DRV_EN'):
+        src += Glob('drv_bare/boot_usbh/*.c')
+        CPPPATH.append(cwd + '/drv_bare/boot_usbh')
+
+if GetDepend('AIC_AUDIO_DRV'):
+    if GetDepend('DRIVER_BARE_DRV_EN'):
+        src += Glob('drv_bare/ringbuffer/*.c')
+
+# Display driver
+if GetDepend('AIC_DISPLAY_DRV'):
+    src += Glob('drv/display/drv_fb.c')
+
+# RGB interface driver
+if GetDepend('AIC_DISP_RGB'):
+    src += Glob('drv/display/drv_rgb.c')
+
+# LVDS interface driver
+if GetDepend('AIC_DISP_LVDS'):
+    src += Glob('drv/display/drv_lvds.c')
+
+# MIPI-DSI interface driver
+if GetDepend('AIC_DISP_MIPI_DSI'):
+    src += Glob('drv/display/drv_dsi.c')
+    src += Glob('hal/display/aic_hal_dsi.c')
+
+# MIPI-DBI-SPI interface driver
+if GetDepend('AIC_DISP_MIPI_DBI'):
+    src += Glob('drv/display/drv_dbi.c')
+    src += Glob('hal/display/aic_hal_dbi.c')
+
+# Display Engine driver
+if GetDepend('AIC_DISP_DE_DRV'):
+    src += Glob('drv/display/drv_de.c')
+    src += Glob('hal/display/aic_hal_de.c')
+
+# Panel driver
+if GetDepend('AIC_DISPLAY_DRV'):
+    src += Glob('drv/display/panel/panel_com.c')
+
+if GetDepend('AIC_DISP_MIPI_DSI'):
+    src += Glob('drv/display/panel/panel_dsi.c')
+
+if GetDepend('AIC_DISP_MIPI_DBI'):
+    src += Glob('drv/display/panel/panel_dbi.c')
+
+if GetDepend('AIC_SIMPLE_PANEL'):
+    src += Glob('drv/display/panel/panel_simple.c')
+
+if GetDepend('AIC_PANEL_DSI_XM91080'):
+    src += Glob('drv/display/panel/panel_dsi_xm91080.c')
+
+if GetDepend('AIC_PANEL_DSI_ST7797'):
+    src += Glob('drv/display/panel/panel_dsi_st7797.c')
+
+if GetDepend('AIC_PANEL_DBI_ILI9488'):
+    src += Glob('drv/display/panel/panel_dbi_ili9488.c')
+
+if GetDepend('AIC_PANEL_DBI_ILI9341'):
+    src += Glob('drv/display/panel/panel_dbi_ili9341.c')
+
+if GetDepend('AIC_PANEL_DBI_ST77903'):
+    src += Glob('drv/display/panel/panel_dbi_st77903.c')
+
+if GetDepend('AIC_PANEL_DBI_ILI9486L'):
+    src += Glob('drv/display/panel/panel_dbi_ili9486l.c')
+
+if GetDepend('AIC_PANEL_SRGB_HX8238'):
+    src += Glob('drv/display/panel/panel_srgb_hx8238.c')
+
+# GE driver
+if GetDepend('AIC_GE_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/ge/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        if GetDepend('AIC_GE_NORMAL'):
+            src += Glob('hal/ge/hal_ge_normal.c')
+            src += Glob('hal/ge/hal_ge_hw.c')
+        elif GetDepend('AIC_GE_CMDQ'):
+            src += Glob('hal/ge/hal_ge_cmdq.c')
+    if GetDepend('DRIVER_BARE_DRV_EN'):
+            src += Glob('drv/ge/*.c')
+
+# ve driver
+if GetDepend('AIC_VE_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/ve/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/ve/*.c')
+    if GetDepend('DRIVER_BARE_DRV_EN'):
+        src += Glob('drv/ve/*.c')
+        CPPPATH.append(cwd + '/include/drv')
+
+if GetDepend('AIC_DVP_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/dvp/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/dvp/*.c')
+
+if GetDepend('AIC_ADCIM_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/adcim/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/adcim/*.c')
+
+if GetDepend('AIC_RTP_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/rtp/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/rtp/*.c')
+
+if GetDepend('AIC_TSEN_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/tsen/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/tsen/*.c')
+
+if GetDepend('AIC_GPAI_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/gpai/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/gpai/*.c')
+
+if GetDepend('AIC_PWM_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/pwm/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/pwm/*.c')
+
+if GetDepend('AIC_HRTIMER_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/hrtimer/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/pwmcs/hal_cap.c')
+
+# CAN driver
+if GetDepend('AIC_CAN_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/can/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/can/*.c')
+
+if GetDepend('AIC_SID_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/efuse/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/efuse/*.c')
+    if GetDepend('DRIVER_BARE_DRV_EN'):
+            src += Glob('drv_bare/efuse/*.c')
+
+if GetDepend('AIC_CIR_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/cir/drv_cir.c')
+        src += Glob('drv/cir/ir_raw.c')
+        if GetDepend('AIC_CIR_NEC'):
+            src += Glob('drv/cir/nec_decoder.c')
+        if GetDepend('AIC_CIR_RC5'):
+            src += Glob('drv/cir/rc5_decoder.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/cir/*.c')
+# CE driver
+if GetDepend('AIC_CE_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/ce/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/ce/*.c')
+
+if GetDepend('AIC_LPCE_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/lpce/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/lpce/*.c')
+
+if GetDepend('AIC_I2S_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/i2s/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/i2s/*.c')
+
+if GetDepend('AIC_AUDIO_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        if GetDepend('AIC_AUDIO_PLAYBACK'):
+            src += Glob('drv/audio/drv_audio.c')
+        if GetDepend('AIC_AUDIO_DMIC'):
+            src += Glob('drv/audio/drv_dmic.c')
+        if GetDepend('AIC_AUDIO_AMIC'):
+            src += Glob('drv/audio/drv_amic.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/audio/*.c')
+
+if GetDepend('AIC_PM_DRV'):
+    ver = GetConfigValue('AIC_PM_DRV_VER')
+    ver = ver.replace('"', '')
+    src += Glob('drv/pm/drv_pm_v%s.c' % ver)
+    if GetDepend('AIC_PM_POWER_KEY'):
+        src += Glob('drv/pm/pm_key.c')
+    if GetDepend('AIC_PM_POWER_TOUCH_WAKEUP'):
+        src += Glob('drv/pm/pm_touch_timer.c')
+
+if GetDepend('AIC_PSADC_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/psadc/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/psadc/*.c')
+
+LOCAL_CCFLAGS = ''
+# LOCAL_CCFLAGS += ' -O0'
+
+group = DefineGroup('aic_osal', src, depend=[''], CPPPATH=CPPPATH, LOCAL_CCFLAGS=LOCAL_CCFLAGS)
+
+Return('group')

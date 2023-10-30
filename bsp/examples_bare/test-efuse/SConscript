@@ -1,0 +1,14 @@
+Import('AIC_ROOT')
+Import('PRJ_KERNEL')
+from building import *
+
+cwd = GetCurrentDir()
+CPPPATH = []
+src = []
+
+if GetDepend('KERNEL_BAREMETAL') and GetDepend('AIC_SID_BARE_TEST'):
+    src += Glob('efuse_cmds.c')
+
+group = DefineGroup('test-efuse', src, depend = [''], CPPPATH = CPPPATH)
+
+Return('group')

@@ -1,0 +1,8 @@
+
+menuconfig LPKG_USING_LINPACK
+    bool "LINPACK : a benchmark that measures the floating point computation performance."
+    default n
+
+if LPKG_USING_LINPACK
+
+endif

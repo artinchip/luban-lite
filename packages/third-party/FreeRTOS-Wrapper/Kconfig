@@ -1,0 +1,14 @@
+
+# Kconfig file for package FreeRTOS_Wrapper
+menuconfig LPKG_USING_FREERTOS_WRAPPER
+    bool "FreeRTOS Application Compatibility Layer for RT-Thread"
+    default n
+
+if LPKG_USING_FREERTOS_WRAPPER
+
+    config LPKG_FREERTOS_WRAPPER_TEST
+        bool "Include FreeRTOS_Wrapper test suit"
+        default n
+
+endif
+

@@ -1,0 +1,25 @@
+menu "Rt-Thread options"
+
+config KERNEL_RTTHREAD
+    bool
+    default y
+
+config DRIVER_HAL_EN
+    bool
+    default y
+
+config DRIVER_DRV_EN
+    bool
+    default y
+
+config RTT_DIR
+    string
+    option env="RTT_ROOT"
+    default "kernel/rt-thread"
+
+source "$RTT_DIR/src/Kconfig"
+source "$RTT_DIR/libcpu/Kconfig"
+source "$RTT_DIR/components/Kconfig"
+source "$RTT_DIR/examples/utest/testcases/Kconfig"
+
+endmenu

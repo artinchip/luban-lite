@@ -1,0 +1,37 @@
+#-----------------------------
+# devices local parameter
+#-----------------------------
+
+menu "Graphics Engine Parameter"
+depends on AIC_GE_DRV
+
+choice
+    prompt "Select Graphics Engine Mode"
+    default AIC_GE_NORMAL
+    depends on AIC_GE_DRV
+
+config AIC_GE_CMDQ
+    bool "CMD queue mode"
+    help
+      Enable CMA queue
+
+config AIC_GE_NORMAL
+    bool "normal mode"
+    help
+      Disable CMD Queue
+endchoice
+
+config AIC_GE_DITHER
+    depends on AIC_GE_DRV
+    bool "Dither function"
+    default y
+    help
+        Turning off the Dither function can save memory about 16K bytes.
+
+config AIC_GE_CMDQ_BUF_LENGTH
+    depends on AIC_GE_CMDQ
+    int "CMDQ queue buffer"
+    range 1024 16384
+    default 2048
+
+endmenu

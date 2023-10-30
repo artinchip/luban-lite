@@ -1,0 +1,66 @@
+#-----------------------------
+# AXICFG devices local parameter
+#-----------------------------
+
+menu "AXICFG Priority setting"
+    depends on AIC_AXICFG_DRV
+
+
+    config AIC_AXICFG_PORT_CPU_EN
+        bool "CPU Enable"
+    if AIC_AXICFG_PORT_CPU_EN
+        config AIC_AXICFG_PORT_CPU_PRIO
+            int "CPU priority"
+            default 8
+    endif
+
+    config AIC_AXICFG_PORT_AHB_EN
+        bool "AHB Enable"
+    if AIC_AXICFG_PORT_AHB_EN
+        config AIC_AXICFG_PORT_AHB_PRIO
+            int "AHB priority"
+            default 10
+    endif
+
+    config AIC_AXICFG_PORT_DE_EN
+        bool "DE Enable"
+    if AIC_AXICFG_PORT_DE_EN
+        config AIC_AXICFG_PORT_DE_PRIO
+            int "DE priority"
+            default 13
+    endif
+
+    config AIC_AXICFG_PORT_GE_EN
+        bool "GE Enable"
+    if AIC_AXICFG_PORT_GE_EN
+        config AIC_AXICFG_PORT_GE_PRIO
+            int "GE priority"
+            default 4
+    endif
+
+    config AIC_AXICFG_PORT_VE_EN
+        bool "VE Enable"
+    if AIC_AXICFG_PORT_VE_EN
+        config AIC_AXICFG_PORT_VE_PRIO
+            int "VE priority"
+            default 5
+    endif
+
+    config AIC_AXICFG_PORT_DVP_EN
+        bool "DVP Enable"
+    if AIC_AXICFG_PORT_DVP_EN
+        config AIC_AXICFG_PORT_DVP_PRIO
+            int "DVP priority"
+            default 11
+    endif
+
+    config AIC_AXICFG_PORT_CE_EN
+        bool "CE Enable"
+    if AIC_AXICFG_PORT_CE_EN
+        config AIC_AXICFG_PORT_CE_PRIO
+            int "CE priority"
+            default 4
+    endif
+endmenu
+
+

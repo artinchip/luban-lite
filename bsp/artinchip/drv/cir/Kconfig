@@ -1,0 +1,14 @@
+#-----------------------------
+# devices local parameter
+#-----------------------------
+
+menu "CIR protocol select"
+    depends on AIC_USING_CIR
+
+    config AIC_CIR_NEC
+        bool "NEC protocol"
+        default y
+
+    config AIC_CIR_RC5
+        bool "RC5 protocol"
+endmenu

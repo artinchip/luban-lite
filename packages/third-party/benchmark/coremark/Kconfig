@@ -1,0 +1,24 @@
+
+menuconfig LPKG_USING_COREMARK
+    bool "COREMARK : a benchmark that measures the performance of MCUs and CPUs."
+    default n
+
+if LPKG_USING_COREMARK
+
+    config COREMARK_USE_FLOAT
+        select RT_USING_LIBC if RT_VER_NUM < 0x40100
+        bool "Show benchmark result in float number"
+        help
+            Show benchmark result in float number.
+        default n
+
+    config COREMARK_ITERATIONS
+        int "Run the benchmark for a specified number of iterations."
+        default "36000"
+    comment "You may ajust this number to make sure the benchmark runs for at least 10s"
+
+    config CORE_MARK_HAS_FLOAT
+        int
+        default 1 if COREMARK_USE_FLOAT
+        default 0
+endif

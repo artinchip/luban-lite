@@ -1,0 +1,2 @@
+env_abs_dir=$(cd "$(dirname ${BASH_SOURCE[0]})";pwd)
+python ${env_abs_dir}/env.py package $*

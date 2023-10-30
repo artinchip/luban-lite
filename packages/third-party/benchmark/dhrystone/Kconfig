@@ -1,0 +1,13 @@
+
+menuconfig LPKG_USING_DHRYSTONE
+    bool "DHRYSTONE: a benchmark that measures the performance of MCUs and CPUs."
+    default n
+
+if LPKG_USING_DHRYSTONE
+
+    config DHRY_ITERS
+        int "Run the benchmark for a specified number of iterations."
+        default "32000000"
+    comment "You may ajust this number to make sure the benchmark runs long enough"
+
+endif

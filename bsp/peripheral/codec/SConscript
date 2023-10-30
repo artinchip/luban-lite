@@ -1,0 +1,19 @@
+Import('AIC_ROOT')
+Import('PRJ_KERNEL')
+from building import *
+
+cwd = GetCurrentDir()
+src = Glob('*.c')
+CPPPATH = []
+
+if GetDepend('AIC_I2S_CODEC_SELECT'):
+    CPPPATH.append(cwd)
+    src += Glob('*.c')
+
+if GetDepend('AIC_I2S_CODEC_ES8388'):
+    CPPPATH.append(cwd + 'es8388/')
+    src += Glob('es8388/*.c')
+
+group = DefineGroup('codec', src, depend = [''], CPPPATH = CPPPATH)
+
+Return('group')

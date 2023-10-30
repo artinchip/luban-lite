@@ -1,0 +1,20 @@
+#-----------------------------
+# PSRAM devices local parameter
+#-----------------------------
+menu "PSRAM Parameter"
+    depends on AIC_BOOTLOADER_PSRAM_EN
+    config AIC_XSPI_PSRAM_CS0_PINS
+    	hex "XSPI CS0 data PIN remap"
+	default 0x0
+
+    config AIC_XSPI_PSRAM_CS1_PINS
+        hex "XSPI CS1 data PIN remap"
+        default 0x0
+
+    config AIC_XSPI_PSRAM_CLK
+        int "XSPI CLK config, range 50MHz-250MHz"
+        range 49500000 222750000
+        default 198000000
+endmenu
+
+source "bsp/artinchip/hal/axicfg/Kconfig.dev"

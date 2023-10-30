@@ -1,0 +1,20 @@
+# RT-Thread building script for component
+
+from building import *
+
+cwd = GetCurrentDir()
+src = Glob('*.c')
+CPPPATH = [cwd]
+
+if GetDepend('AIC_SDMC_DRV'):
+    src += Glob('sdmc_disk/*.c')
+
+if GetDepend('AIC_USB_DRV'):
+    src += Glob('usb_disk/*.c')
+
+if GetDepend('AIC_SPINAND_DRV'):
+    src += Glob('spinand_disk/*.c')
+
+group = DefineGroup('Filesystem', src, depend = ['LPKG_USING_DFS', 'LPKG_USING_DFS_ELMFAT'], CPPPATH = CPPPATH)
+
+Return('group')

@@ -1,0 +1,8 @@
+#-----------------------------
+# driver local parameter
+#-----------------------------
+
+config AIC_GPIO_IRQ_DRV_EN
+    bool "support gpio irq register"
+    default n
+    depends on AIC_GPIO_DRV

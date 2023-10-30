@@ -1,0 +1,264 @@
+# Kconfig file for package CherryUSB
+menuconfig LPKG_USING_CHERRYUSB
+    bool "CherryUSB: tiny and portable USB host/device stack for embedded system with USB IP"
+    default n
+    select RT_USING_LIBC
+
+if LPKG_USING_CHERRYUSB
+
+    menuconfig LPKG_CHERRYUSB_DEVICE
+        bool "Enable usb device mode"
+        default n
+        depends on AIC_USB_DEVICE_DRV
+
+    if LPKG_CHERRYUSB_DEVICE
+        choice
+            prompt "Select usb device speed"
+            default LPKG_CHERRYUSB_DEVICE_HS
+            config LPKG_CHERRYUSB_DEVICE_FS
+                bool "FS"
+            config LPKG_CHERRYUSB_DEVICE_HS
+                bool "HS"
+        endchoice
+
+        choice
+            prompt "Select usb device ip"
+            default LPKG_CHERRYUSB_DEVICE_AIC
+            config LPKG_CHERRYUSB_DEVICE_AIC
+                bool "AIC"
+        endchoice
+
+        if LPKG_CHERRYUSB_DEVICE_AIC
+            choice
+                prompt "Select aic device mode"
+                default LPKG_CHERRYUSB_DEVICE_AIC_DMA
+                config LPKG_CHERRYUSB_DEVICE_AIC_DMA
+                    bool "DMA"
+                config LPKG_CHERRYUSB_DEVICE_AIC_CPU
+                    bool "CPU"
+            endchoice
+        endif
+
+        if LPKG_CHERRYUSB_DEVICE_CH32
+            choice
+                prompt "Select chip with ch32 usb ip to set usb base and irq name,if not set,use default setting"
+                default LPKG_CHERRYUSB_DEVICE_CH32_CH32V307
+                config LPKG_CHERRYUSB_DEVICE_CH32_CH32V307
+                    bool "CH32V307"
+            endchoice
+
+        endif
+
+        if LPKG_CHERRYUSB_DEVICE_FSDEV
+            choice
+                prompt "Select chip with fsdev usb ip to set usb base and irq name,if not set,use default setting"
+                default LPKG_CHERRYUSB_DEVICE_FSDEV_STM32
+                config LPKG_CHERRYUSB_DEVICE_FSDEV_STM32
+                    bool "STM32"
+            endchoice
+
+        endif
+
+        if LPKG_CHERRYUSB_DEVICE_MUSB
+            choice
+                prompt "Select chip with musb usb ip to set usb base and irq name,if not set,use default setting"
+                default LPKG_CHERRYUSB_DEVICE_MUSB_MSP432
+                config LPKG_CHERRYUSB_DEVICE_MUSB_MSP432
+                    bool "MSP432"
+                config LPKG_CHERRYUSB_DEVICE_MUSB_ES32F3
+                    bool "ES32F3"
+                config LPKG_CHERRYUSB_DEVICE_MUSB_SUNXI
+                    bool "SUNXI"
+            endchoice
+
+        endif
+
+        if LPKG_CHERRYUSB_DEVICE_DWC2
+            choice
+                prompt "Select chip with dwc2 usb ip to set usb base and irq name,if not set,use default setting"
+                default LPKG_CHERRYUSB_DEVICE_DWC2_STM32
+                config LPKG_CHERRYUSB_DEVICE_DWC2_STM32
+                    bool "STM32"
+            endchoice
+            choice
+                prompt "Select dwc2 port"
+                default LPKG_CHERRYUSB_DEVICE_DWC2_PORT_FS
+                config LPKG_CHERRYUSB_DEVICE_DWC2_PORT_FS
+                    bool "FS_PORT"
+                config LPKG_CHERRYUSB_DEVICE_DWC2_PORT_HS
+                    bool "HS_PORT"
+            endchoice
+        endif
+
+        menuconfig LPKG_CHERRYUSB_DEVICE_CDC
+            bool
+            prompt "Enable usb cdc acm device"
+            default n
+
+        if LPKG_CHERRYUSB_DEVICE_CDC
+            config LPKG_CHERRYUSB_DEVICE_CDC_TEMPLATE
+                bool
+                prompt "Use cdc acm template"
+                default n
+        endif
+
+        menuconfig LPKG_CHERRYUSB_DEVICE_HID
+            bool
+            prompt "Enable usb hid device"
+            default n
+
+        if LPKG_CHERRYUSB_DEVICE_HID
+            choice
+                prompt "Use hid template"
+                default LPKG_CHERRYUSB_DEVICE_HID_MOUSE_TEMPLATE
+                config LPKG_CHERRYUSB_DEVICE_HID_MOUSE_TEMPLATE
+                    bool "mouse"
+                config LPKG_CHERRYUSB_DEVICE_HID_KEYBOARD_TEMPLATE
+                    bool "keyboard"
+            endchoice
+        endif
+
+        menuconfig LPKG_CHERRYUSB_DEVICE_MSC
+            bool
+            prompt "Enable usb msc device"
+            default n
+
+        if LPKG_CHERRYUSB_DEVICE_MSC
+            config LPKG_CHERRYUSB_DEVICE_MSC_TEMPLATE
+                bool
+                prompt "Use msc ram template"
+                default n
+        endif
+
+        menuconfig LPKG_CHERRYUSB_DEVICE_AUDIO
+            bool
+            prompt "Enable usb audio device"
+            default n
+
+        if LPKG_CHERRYUSB_DEVICE_AUDIO
+            choice
+                prompt "Use audio speaker&mic template"
+                default LPKG_CHERRYUSB_DEVICE_AUDIO_V1_TEMPLATE
+                config LPKG_CHERRYUSB_DEVICE_AUDIO_V1_TEMPLATE
+                    bool "UAC1.0"
+                config LPKG_CHERRYUSB_DEVICE_AUDIO_V2_TEMPLATE
+                    bool "UAC2.0"
+            endchoice
+        endif
+
+        menuconfig LPKG_CHERRYUSB_DEVICE_VIDEO
+            bool
+            prompt "Enable usb video device"
+            default n
+
+        if LPKG_CHERRYUSB_DEVICE_VIDEO
+            config LPKG_CHERRYUSB_DEVICE_VIDEO_TEMPLATE
+                bool
+                prompt "Use video static mjpeg template"
+                default n
+        endif
+
+        menuconfig LPKG_CHERRYUSB_DEVICE_RNDIS
+            bool
+            prompt "Enable usb rndis device"
+            default n
+
+        if LPKG_CHERRYUSB_DEVICE_RNDIS
+            config LPKG_CHERRYUSB_DEVICE_RNDIS_TEMPLATE
+                bool
+                prompt "Use rndis template"
+                default n
+        endif
+
+        menuconfig LPKG_CHERRYUSB_DEVICE_DFU
+            bool
+            prompt "Enable usb dfu device"
+            default n
+
+        if LPKG_CHERRYUSB_DEVICE_DFU
+            config LPKG_CHERRYUSB_DEVICE_DFU_TEMPLATE
+                bool
+                prompt "Use dfu template"
+                default n
+        endif
+
+    endif
+
+    menuconfig LPKG_CHERRYUSB_HOST
+        bool "Enable usb host mode"
+        default n
+        depends on AIC_USB_HOST_EHCI_DRV
+
+    if LPKG_CHERRYUSB_HOST
+        choice
+            prompt "Select usb host ip"
+            default LPKG_CHERRYUSB_HOST_EHCI
+            config LPKG_CHERRYUSB_HOST_EHCI
+                bool "EHCI"
+            #config LPKG_CHERRYUSB_HOST_XHCI
+            #    bool "XHCI"
+        endchoice
+
+        if LPKG_CHERRYUSB_HOST_MUSB
+            choice
+                prompt "Select chip with musb usb ip to set usb base and irq name,if not set,use default setting"
+                default LPKG_CHERRYUSB_HOST_MUSB_ES32F3
+                config LPKG_CHERRYUSB_HOST_MUSB_MSP432
+                    bool "MSP432"
+                config LPKG_CHERRYUSB_HOST_MUSB_ES32F3
+                    bool "ES32F3"
+                config LPKG_CHERRYUSB_HOST_MUSB_SUNXI
+                    bool "SUNXI"
+            endchoice
+        endif
+
+        if LPKG_CHERRYUSB_HOST_DWC2
+            choice
+                prompt "Select chip with dwc2 usb ip to set usb base and irq name,if not set,use default setting.Only support hs usb ip"
+                default LPKG_CHERRYUSB_HOST_DWC2_STM32
+                config LPKG_CHERRYUSB_HOST_DWC2_STM32
+                    bool "STM32"
+            endchoice
+        endif
+
+        if LPKG_CHERRYUSB_HOST_EHCI
+            choice
+                prompt "Select chip with EHCI usb ip to set usb base and irq name,if not set,use default setting.Only support hs usb ip"
+                default LPKG_CHERRYUSB_HOST_EHCI_AIC
+                config LPKG_CHERRYUSB_HOST_EHCI_AIC
+                    bool "AIC"
+            endchoice
+        endif
+
+        config LPKG_CHERRYUSB_HOST_CDC
+            bool
+            prompt "Enable usb cdc acm driver"
+            default n
+
+        config LPKG_CHERRYUSB_HOST_HID
+            bool
+            prompt "Enable usb hid driver"
+            default n
+
+        config LPKG_CHERRYUSB_HOST_MSC
+            bool
+            prompt "Enable usb msc driver"
+            default n
+
+        config LPKG_CHERRYUSB_HOST_RNDIS
+            bool
+            prompt "Enable usb rndis driver"
+            default n
+
+        config LPKG_CHERRYUSB_HOST_TEMPLATE
+            bool
+            prompt "Use usb host template"
+            default n
+    endif
+
+    config LPKG_CHERRYUSB_EXMAPLE
+        bool
+        prompt "Enable usb example"
+        default n
+
+endif

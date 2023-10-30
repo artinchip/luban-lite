@@ -1,0 +1,24 @@
+menu "Gt911 touch panel options"
+
+config AIC_TOUCH_PANEL_GT911
+    bool "Using touch panel gt911"
+    default n
+    select AIC_I2C_DRV
+
+config AIC_TOUCH_PANEL_GT911_I2C_CHA
+    string "gt911 using i2c channel index"
+    default "i2c3"
+    depends on AIC_TOUCH_PANEL_GT911
+
+config AIC_TOUCH_PANEL_GT911_RST_PIN
+    string "gt911 reset pin"
+    default "PA.8"
+    depends on AIC_TOUCH_PANEL_GT911
+
+config AIC_TOUCH_PANEL_GT911_INT_PIN
+    string "gt911 irq pin"
+    default "PA.9"
+    depends on AIC_TOUCH_PANEL_GT911
+
+endmenu
+

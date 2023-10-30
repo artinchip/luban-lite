@@ -1,0 +1,34 @@
+# RT-Thread building script for component
+
+from building import *
+
+Import('rtconfig')
+
+cwd     = GetCurrentDir()
+src     = Glob('run.c')
+src     += Glob('reset.c')
+src     += Glob('aicupg.c')
+src     += Glob('ram_boot.c')
+if GetDepend('AIC_BOOTLOADER_CMD_PROGRESS_BAR'):
+    src     += Glob('progress_bar.c')
+if GetDepend('AIC_BOOTLOADER_CMD_MEM'):
+	src     += Glob('mem.c')
+if GetDepend('AIC_BOOTLOADER_CMD_NOR_BOOT') and GetDepend('LPKG_USING_FDTLIB'):
+	src     += Glob('nor_boot.c')
+if GetDepend('AIC_BOOTLOADER_CMD_NOR_BOOT') and not GetDepend('LPKG_USING_FDTLIB'):
+	src     += Glob('nor_boot_no_fitimage.c')
+if GetDepend('AIC_BOOTLOADER_CMD_NAND_BOOT'):
+	src     += Glob('nand_boot.c')
+if GetDepend('AIC_BOOTLOADER_CMD_MMC_BOOT'):
+	src     += Glob('mmc_boot.c')
+if GetDepend('AIC_BOOTLOADER_CMD_PSRAM_TEST'):
+	src     += Glob('psram_test.c')
+if GetDepend('AIC_BOOTLOADER_CMD_XIP_BOOT'):
+	src     += Glob('xip_boot.c')
+
+CPPPATH = [cwd]
+ASFLAGS = ''
+
+group = DefineGroup('BLCMD', src, depend = [''], CPPPATH = CPPPATH, ASFLAGS = ASFLAGS)
+
+Return('group')

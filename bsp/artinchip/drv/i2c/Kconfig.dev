@@ -1,0 +1,123 @@
+#-----------------------------
+# i2c devices local parameter
+#-----------------------------
+
+# i2c0 parameter
+
+menu "I2c0 Parameter"
+    depends on AIC_USING_I2C0
+
+    choice
+        prompt "I2c0 Master && Slave "
+        default AIC_DEV_I2C0_MASTER
+        help
+            Select i2c0 Master or Slave
+
+        config AIC_DEV_I2C0_MASTER
+            bool "Master"
+
+        config AIC_DEV_I2C0_SLAVE
+            bool "Slave"
+    endchoice
+
+
+endmenu
+
+# i2c1 parameter
+
+menu "I2c1 Parameter"
+    depends on AIC_USING_I2C1
+
+    choice
+        prompt "I2c1 Master && Slave "
+        default AIC_DEV_I2C1_MASTER
+        help
+            Select i2c1 Master or Slave
+
+        config AIC_DEV_I2C1_MASTER
+            bool "Master"
+
+        config AIC_DEV_I2C1_SLAVE
+            bool "Slave"
+    endchoice
+
+endmenu
+
+# i2c2 parameter
+
+menu "I2c2 Parameter"
+    depends on AIC_USING_I2C2
+
+    choice
+        prompt "I2c2 Master && Slave "
+        default AIC_DEV_I2C2_MASTER
+        help
+            Select i2c2 Master or Slave
+
+        config AIC_DEV_I2C2_MASTER
+            bool "Master"
+
+        config AIC_DEV_I2C2_SLAVE
+            bool "Slave"
+    endchoice
+
+endmenu
+
+# i2c3 parameter
+
+menu "I2c3 Parameter"
+    depends on AIC_USING_I2C3
+
+    choice
+        prompt "I2c3 Master && Slave "
+        default AIC_DEV_I2C3_MASTER
+        help
+            Select i2c3 Master or Slave
+
+        config AIC_DEV_I2C3_MASTER
+            bool "Master"
+
+        config AIC_DEV_I2C3_SLAVE
+            bool "Slave"
+    endchoice
+
+endmenu
+
+menu "I2c4 Parameter"
+    depends on AIC_USING_I2C4
+
+    choice
+        prompt "I2c4 Master && Slave "
+        default AIC_DEV_I2C4_MASTER
+        help
+            Select i2c4 Master or Slave
+
+        config AIC_DEV_I2C4_MASTER
+            bool "Master"
+
+        config AIC_DEV_I2C4_SLAVE
+            bool "Slave"
+    endchoice
+
+endmenu
+
+menu "SP_I2c Parameter"
+    depends on AIC_USING_SP_I2C
+
+    choice
+        prompt "SP_I2c Master && Slave "
+        default AIC_DEV_SP_I2C_MASTER
+        help
+            Select sp_i2c Master or Slave
+
+        config AIC_DEV_SP_I2C_MASTER
+            bool "Master"
+
+        config AIC_DEV_SP_I2C_SLAVE
+            bool "Slave"
+    endchoice
+
+endmenu
+
+# common parameter
+

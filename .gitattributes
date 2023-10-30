@@ -1,0 +1,4 @@
+tools/toolchain/Xuantie-900-gcc-elf-newlib-mingw-V2.6.1-20220906.tar.gz filter=lfs diff=lfs merge=lfs -text
+tools/toolchain/Xuantie-900-gcc-elf-newlib-x86_64-V2.6.1-20220906.tar.gz filter=lfs diff=lfs merge=lfs -text
+tools/toolchain/csky-elf-noneabiv2-tools-mingw-newlib-20230301.tar.gz filter=lfs diff=lfs merge=lfs -text
+is filter=lfs diff=lfs merge=lfs -text

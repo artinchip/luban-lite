@@ -1,0 +1,14 @@
+Import('PRJ_KERNEL')
+from building import *
+
+CPPPATH = []
+src = []
+if GetDepend('LPKG_USING_BONNIE') and GetDepend('RT_USING_FINSH'):
+    src = Glob('*.c')
+
+LOCAL_CCFLAGS = ''
+#LOCAL_CCFLAGS += '-DNO_FORK'
+
+group = DefineGroup('bonnie', src, depend=[''], CPPPATH=CPPPATH, LOCAL_CCFLAGS=LOCAL_CCFLAGS)
+
+Return('group')

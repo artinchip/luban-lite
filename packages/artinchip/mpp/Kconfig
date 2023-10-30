@@ -1,0 +1,25 @@
+menuconfig LPKG_MPP
+    bool "aic-mpp"
+    default y
+
+config AIC_MPP_PLAYER_INTERFACE
+    bool "Enable player interface and demo"
+    default n
+    depends on LPKG_MPP
+    select LPKG_USING_MAD
+    select AIC_AUDIO_DRV
+
+config AIC_MPP_VIN
+    bool "Enable Video Input interface"
+    default n
+    depends on LPKG_MPP
+
+config AIC_MPP_VIN_BUF_SIZE
+    int "Size of Video Input buffer"
+    default 1843264
+    depends on AIC_MPP_VIN
+
+config AIC_MPP_FB_TEST
+    bool "Install MPP FB test programs"
+    default n
+    depends on LPKG_MPP

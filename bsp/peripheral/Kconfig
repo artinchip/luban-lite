@@ -1,0 +1,28 @@
+
+source "bsp/peripheral/spinand/Kconfig"
+source "bsp/peripheral/spinor_sfud/Kconfig"
+
+config AIC_WIRELESS_LAN
+       bool "Wireless Lan"
+       default n
+
+if AIC_WIRELESS_LAN
+source "bsp/peripheral/wireless/Kconfig"
+endif
+
+
+#--------------------------------------------
+# touch panel driver global option
+#--------------------------------------------
+
+menu "Touch Panel Support"
+source "bsp/peripheral/touch/gt911/Kconfig"
+endmenu
+
+#--------------------------------------------
+# Audio Codec driver option
+#--------------------------------------------
+
+menu "External Audio Codec Support"
+source "bsp/peripheral/codec/Kconfig"
+endmenu

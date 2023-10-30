@@ -1,0 +1,116 @@
+#-----------------------------
+# gmac devices local parameter
+#-----------------------------
+
+# gmac0 parameter
+
+menu "gmac0 parameter"
+    depends on AIC_USING_GMAC0
+
+    config AIC_DEV_GMAC0_PHYRST_GPIO
+        string "gmac0 phy reset gpio"
+
+    choice
+        prompt "Select gmac0 bus"
+        default AIC_DEV_GMAC0_RMII
+        config AIC_DEV_GMAC0_RMII
+            bool "RMII"
+        config AIC_DEV_GMAC0_RGMII
+            bool "RGMII"
+    endchoice
+
+    if AIC_DEV_GMAC0_RMII
+        choice
+            prompt "Select phy clk"
+            default AIC_DEV_GMAC0_PHY_EXTCLK
+            config AIC_DEV_GMAC0_PHY_EXTCLK
+                bool "external clk"
+            config AIC_DEV_GMAC0_PHY_INTCLK
+                bool "internal clk"
+        endchoice
+    endif
+
+    config AIC_DEV_GMAC0_RXDELAY
+        int "gmac0 rx delay"
+        default 0
+        range 0 31
+
+    config AIC_DEV_GMAC0_TXDELAY
+        int "gmac0 tx delay"
+        default 0
+        range 0 31
+
+    config AIC_DEV_GMAC0_IPADDR
+        string "gmac0 ip addr"
+        default "192.168.1.200"
+
+    config AIC_DEV_GMAC0_GW
+        string "gmac0 gateway addr"
+        default "192.168.1.1"
+
+    config AIC_DEV_GMAC0_NETMASK
+        string "gmac0 netmask"
+        default "255.255.255.0"
+
+    config AIC_DEV_GMAC0_MACADDR
+        string "gmac0 mac addr"
+        default "002244887766"
+
+    config AIC_DEV_GMAC0_PHYADDR
+        int "gmac0 phy mdio addr"
+        default 1
+        range 0 31
+
+endmenu
+
+# gmac1 parameter
+
+menu "gmac1 parameter"
+    depends on AIC_USING_GMAC1
+
+    config AIC_DEV_GMAC1_PHYRST_GPIO
+        string "gmac1 phy reset gpio"
+
+    choice
+        prompt "Select gmac1 bus"
+        default AIC_DEV_GMAC1_RMII
+        config AIC_DEV_GMAC1_RMII
+            bool "RMII"
+        config AIC_DEV_GMAC1_RGMII
+            bool "RGMII"
+    endchoice
+
+    if AIC_DEV_GMAC1_RMII
+        choice
+            prompt "Select phy clk"
+            default AIC_DEV_GMAC1_PHY_EXTCLK
+            config AIC_DEV_GMAC1_PHY_EXTCLK
+                bool "external clk"
+            config AIC_DEV_GMAC1_PHY_INTCLK
+                bool "internal clk"
+        endchoice
+    endif
+
+    config AIC_DEV_GMAC1_RXDELAY
+        int "gmac1 rx delay"
+        default 0
+        range 0 31
+
+    config AIC_DEV_GMAC1_TXDELAY
+        int "gmac1 tx delay"
+        default 0
+        range 0 31
+
+    config AIC_DEV_GMAC1_MACADDR
+        string "gmac1 mac addr"
+        default "003344557799"
+
+    config AIC_DEV_GMAC1_PHYADDR
+        int "gmac1 phy mdio addr"
+        default 1
+        range 0 31
+
+endmenu
+
+# common parameter
+

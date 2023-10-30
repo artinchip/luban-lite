@@ -1,0 +1,79 @@
+#-----------------------------
+# spinand local parameter
+#-----------------------------
+
+menuconfig AIC_QSPI0_DEVICE_SPINAND
+    bool "QSPI0 Devices: SPINAND"
+    depends on AIC_USING_QSPI0
+    select LPKG_USING_SPINAND
+    select AIC_SPINAND_DRV
+    default n
+
+if AIC_QSPI0_DEVICE_SPINAND
+    config AIC_QSPI0_DEVICE_SPINAND_FREQ
+        int "SPINAND bus frequency(Hz)"
+	default 100000000
+
+    config AIC_QSPI0_DEVICE_SPINAND_CONT_READ
+        bool "Continuous Read Mode Enable"
+	select AIC_SPINAND_CONT_READ
+	default n
+endif
+
+menuconfig AIC_QSPI1_DEVICE_SPINAND
+    bool "QSPI1 Devices: SPINAND"
+    depends on AIC_USING_QSPI1
+    select LPKG_USING_SPINAND
+    select AIC_SPINAND_DRV
+    default n
+
+if AIC_QSPI1_DEVICE_SPINAND
+    config AIC_QSPI1_DEVICE_SPINAND_FREQ
+        int "SPINAND bus frequency(Hz)"
+	default 100000000
+
+    config AIC_QSPI0_DEVICE_SPINAND_CONT_READ
+        bool "Continuous Read Mode Enable"
+	select AIC_SPINAND_CONT_READ
+	default n
+
+endif
+
+menuconfig AIC_QSPI2_DEVICE_SPINAND
+    bool "QSPI2 Devices: SPINAND"
+    depends on AIC_USING_QSPI2
+    select LPKG_USING_SPINAND
+    select AIC_SPINAND_DRV
+    default n
+
+if AIC_QSPI2_DEVICE_SPINAND
+    config AIC_QSPI2_DEVICE_SPINAND_FREQ
+        int "SPINAND bus frequency(Hz)"
+	default 100000000
+
+    config AIC_QSPI0_DEVICE_SPINAND_CONT_READ
+        bool "Continuous Read Mode Enable"
+	select AIC_SPINAND_CONT_READ
+	default n
+
+endif
+
+menuconfig AIC_QSPI3_DEVICE_SPINAND
+    bool "QSPI3 Devices: SPINAND"
+    depends on AIC_USING_QSPI3
+    select LPKG_USING_SPINAND
+    select AIC_SPINAND_DRV
+    default n
+
+if AIC_QSPI3_DEVICE_SPINAND
+    config AIC_QSPI3_DEVICE_SPINAND_FREQ
+        int "SPINAND bus frequency(Hz)"
+	default 100000000
+
+    config AIC_QSPI0_DEVICE_SPINAND_CONT_READ
+        bool "Continuous Read Mode Enable"
+	select AIC_SPINAND_CONT_READ
+	default n
+
+endif
+

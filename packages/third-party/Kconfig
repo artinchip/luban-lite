@@ -1,0 +1,25 @@
+menu "Third-party packages options"
+
+source "packages/third-party/bonnie/Kconfig"
+source "packages/third-party/cpu_usage/Kconfig"
+source "packages/third-party/ramdisk/Kconfig"
+source "packages/third-party/cherryusb/Kconfig"
+source "packages/third-party/lvgl/Kconfig"
+source "packages/third-party/awtk/Kconfig"
+source "packages/third-party/lwip/Kconfig"
+source "packages/third-party/uffs/Kconfig"
+source "packages/third-party/littlefs/Kconfig"
+source "packages/third-party/benchmark/Kconfig"
+source "packages/third-party/FreeRTOS-Wrapper/Kconfig"
+source "packages/third-party/i2c-tools/Kconfig"
+source "packages/third-party/beep/Kconfig"
+source "packages/third-party/memleak/Kconfig"
+source "packages/third-party/webclient/Kconfig"
+source "packages/third-party/ota_downloader/Kconfig"
+
+# for baremetal mode
+source "packages/third-party/dfs/Kconfig"
+source "packages/third-party/libmad/Kconfig"
+source "packages/third-party/fdtlib/Kconfig"
+
+endmenu

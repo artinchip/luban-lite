@@ -1,0 +1,122 @@
+#-----------------------------
+# rgb devices local parameter
+#-----------------------------
+
+menu "RGB interface options"
+    depends on AIC_DISP_RGB
+
+choice
+    prompt "rgb mode"
+    default PRGB
+    depends on AIC_DISP_RGB
+
+config PRGB_MODE
+    bool "PRGB"
+
+endchoice
+
+config AIC_RGB_MODE
+    int
+    default 0 if PRGB_MODE
+
+choice
+    prompt "interface format"
+    default AIC_PRGB_16BIT_LD if AIC_DISP_RGB_DRV_V10
+    default AIC_PRGB_24BIT if AIC_DISP_RGB_DRV_V11
+    depends on AIC_DISP_RGB
+
+config AIC_PRGB_24BIT
+    bool "PRGB 24 BIT"
+
+config AIC_PRGB_18BIT_LD
+    bool "PRGB 18 BIT LD"
+
+config AIC_PRGB_18BIT_HD
+    bool "PRGB 18 BIT HD"
+
+config AIC_PRGB_16BIT_LD
+    bool "PRGB 16 BIT LD"
+
+config AIC_PRGB_16BIT_HD
+    bool "PRGB 16 BIT HD"
+
+endchoice
+
+config AIC_RGB_FORMAT
+    int
+    default 0 if AIC_PRGB_24BIT
+    default 1 if AIC_PRGB_18BIT_LD
+    default 2 if AIC_PRGB_18BIT_HD
+    default 3 if AIC_PRGB_16BIT_LD
+    default 4 if AIC_PRGB_16BIT_HD
+
+choice
+    prompt "data order"
+    default DATA_ORDER_RGB
+    depends on AIC_DISP_RGB
+
+config DATA_ORDER_RGB
+    bool "RGB"
+
+config DATA_ORDER_RBG
+    bool "RBG"
+
+config DATA_ORDER_BGR
+    bool "BGR"
+
+config DATA_ORDER_BRG
+    bool "BRG"
+
+config DATA_ORDER_GRB
+    bool "GRB"
+
+config DATA_ORDER_GBR
+    bool "GBR"
+
+endchoice
+
+config AIC_RGB_DATA_ORDER
+    hex
+    default 0x02100210     if DATA_ORDER_RGB
+    default 0x02010201     if DATA_ORDER_RBG
+    default 0x00120012     if DATA_ORDER_BGR
+    default 0x00210021     if DATA_ORDER_BRG
+    default 0x01200120     if DATA_ORDER_GRB
+    default 0x01020102     if DATA_ORDER_GBR
+
+choice
+    prompt "clock phase select"
+    default DEGREE_0
+    depends on AIC_DISP_RGB
+
+config AIC_DEGREE_0
+    bool "0 degree"
+
+config AIC_DEGREE_90
+    bool "90 degree"
+
+config AIC_DEGREE_180
+    bool "180 degree"
+
+config AIC_DEGREE_270
+    bool "270 degree"
+
+endchoice
+
+config AIC_RGB_CLK_CTL
+   int
+   default 0 if AIC_DEGREE_0
+   default 1 if AIC_DEGREE_90
+   default 2 if AIC_DEGREE_180
+   default 3 if AIC_DEGREE_270
+
+config RGB_DATA_MIRROT
+    bool "data mirror"
+    default y if AIC_DISP_RGB_DRV_V11
+
+config AIC_RGB_DATA_MIRROR
+    int
+    default 0 if !RGB_DATA_MIRROT
+    default 1 if RGB_DATA_MIRROT
+
+endmenu

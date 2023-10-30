@@ -1,0 +1,8 @@
+
+# Kconfig file for package FDTLIB
+config LPKG_USING_FDTLIB
+    bool "fdtlib: fdt parse lib"
+    depends on AIC_BOOTLOADER
+    default y
+
+

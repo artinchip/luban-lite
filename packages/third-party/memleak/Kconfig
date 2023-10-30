@@ -1,0 +1,12 @@
+
+menuconfig LPKG_USING_MEMLEAK_CHECK
+    bool "memleak : memory leak check tool"
+    default n
+
+if LPKG_USING_MEMLEAK_CHECK
+
+    config LPKG_USING_MEMLEAK_CHECK_EXAMPLE
+        bool "memleak : memory leak check example"
+        default n
+
+endif

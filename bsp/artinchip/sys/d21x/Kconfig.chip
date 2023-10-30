@@ -1,0 +1,662 @@
+menu "Chip options"
+
+config SOC_THEAD_SMART
+    bool
+    select RT_USING_COMPONENTS_INIT
+    select RT_USING_USER_MAIN
+    select ARCH_RISCV64
+    select ARCH_64BIT
+    select ARCH_RISCV_FPU_D
+    default y
+
+config QEMU_RUN
+    bool "Run in QEMU environment"
+    default n
+
+config PRJ_CUSTOM_LDS
+    string "Custom link script path (relative path in sdk)"
+    default ""
+
+config AIC_CHIP_D21X
+    bool
+    default y
+
+config CACHE_LINE_SIZE
+    int
+    default 64
+    depends on AIC_CHIP_D21X
+
+config CPU_BASE
+    hex
+    default 0x20000000 if !QEMU_RUN
+    default 0x4000000000 if QEMU_RUN
+    depends on AIC_CHIP_D21X
+
+#--------------------------------------------
+# cmu driver global option
+#--------------------------------------------
+
+config AIC_CMU_DRV
+    bool
+    default y
+
+config AIC_CMU_DRV_V10
+    bool
+    default y if AIC_CMU_DRV
+
+config AIC_CMU_DRV_VER
+    string
+    default "10" if AIC_CMU_DRV_V10
+
+#--------------------------------------------
+# gpio driver global option
+#--------------------------------------------
+
+config AIC_GPIO_DRV
+    bool
+    default y
+
+config AIC_GPIO_DRV_V10
+    bool
+    default y if AIC_GPIO_DRV
+
+config AIC_GPIO_DRV_VER
+    string
+    default "10" if AIC_GPIO_DRV_V10
+
+#--------------------------------------------
+# Syscfg driver global option
+#--------------------------------------------
+
+config AIC_SYSCFG_DRV
+    bool
+    default y
+
+config AIC_SYSCFG_DRV_V10
+    bool
+    default y if AIC_SYSCFG_DRV
+
+config AIC_SYSCFG_DRV_VER
+    string
+    default "10" if AIC_SYSCFG_DRV_V10
+
+#--------------------------------------------
+# DMA driver global option
+#--------------------------------------------
+
+config AIC_DMA_DRV
+    bool
+    default n
+
+config AIC_DMA_DRV_V10
+    bool
+    default y if AIC_DMA_DRV
+
+config AIC_DMA_DRV_VER
+    string
+    default "10" if AIC_DMA_DRV_V10
+
+config AIC_DMA_CH_NUM
+    int
+    default "8" if AIC_DMA_DRV_V10
+
+config AIC_DMA_ALIGN_SIZE
+    int
+    default "8" if AIC_DMA_DRV_V10
+
+#--------------------------------------------
+# uart driver global option
+#--------------------------------------------
+
+config AIC_UART_DRV
+    bool
+    default n
+    select RT_USING_SERIAL if DRIVER_DRV_EN
+
+config AIC_UART_DRV_V10
+    bool
+    default y if AIC_UART_DRV
+
+config AIC_UART_DRV_VER
+    string
+    default "10" if AIC_UART_DRV_V10
+
+config AIC_UART_DEV_NUM
+    int
+    default 8 if AIC_UART_DRV
+
+#--------------------------------------------
+# i2c driver global option
+#--------------------------------------------
+
+config AIC_I2C_DRV
+    bool
+    default n
+    select RT_USING_I2C if DRIVER_DRV_EN
+
+config AIC_I2C_DRV_V10
+    bool
+    default y if AIC_I2C_DRV
+
+config AIC_I2C_DRV_VER
+    string
+    default "10" if AIC_I2C_DRV_V10
+
+config AIC_I2C_CH_NUM
+    int
+    default 4 if AIC_I2C_DRV
+
+#--------------------------------------------
+# qspi driver global option
+#--------------------------------------------
+
+config AIC_QSPI_DRV
+    bool
+    default n
+    select RT_USING_QSPI if DRIVER_DRV_EN
+    select RT_USING_SPI  if DRIVER_DRV_EN
+
+config AIC_QSPI_DRV_V10
+    bool
+    default y if AIC_QSPI_DRV
+
+config AIC_QSPI_DRV_VER
+    string
+    default "10" if AIC_QSPI_DRV_V10
+
+#--------------------------------------------
+# WRI driver global option
+#--------------------------------------------
+
+config AIC_WRI_DRV
+    bool
+    default n
+
+config AIC_WRI_DRV_V10
+    bool
+    default y if AIC_WRI_DRV
+
+config AIC_WRI_DRV_VER
+    string
+    default "10" if AIC_WRI_DRV_V10
+
+#--------------------------------------------
+# RTC driver global option
+#--------------------------------------------
+
+config AIC_RTC_DRV
+    bool
+    default n
+    select AIC_WRI_DRV
+    select RT_USING_RTC   if DRIVER_DRV_EN
+    select RT_USING_ALARM if DRIVER_DRV_EN
+
+config AIC_RTC_DRV_V10
+    bool
+    default y if AIC_RTC_DRV
+
+config AIC_RTC_DRV_VER
+    string
+    default "10" if AIC_RTC_DRV_V10
+
+#--------------------------------------------
+# WDT driver global option
+#--------------------------------------------
+
+config AIC_WDT_DRV
+    bool
+    default n
+    select RT_USING_WDT if DRIVER_DRV_EN
+
+config AIC_WDT_DRV_V10
+    bool
+    default y if AIC_WDT_DRV
+
+config AIC_WDT_DRV_VER
+    string
+    default "10" if AIC_WDT_DRV_V10
+
+#--------------------------------------------
+# SPIENC driver global option
+#--------------------------------------------
+
+config AIC_SPIENC_DRV
+    bool
+    default n
+
+config AIC_SPIENC_DRV_V10
+    bool
+    default y if AIC_SPIENC_DRV
+
+config AIC_SPIENC_DRV_VER
+    string
+    default "10" if AIC_SPIENC_DRV_V10
+
+#--------------------------------------------
+# SDMC driver global option
+#--------------------------------------------
+
+config AIC_SDMC_DRV
+    bool
+    default n
+    select RT_USING_SDIO if DRIVER_DRV_EN
+
+config AIC_SDMC_DRV_V10
+    bool
+    default y if AIC_SDMC_DRV
+
+config AIC_SDMC_DRV_VER
+    string
+    default "10" if AIC_SDMC_DRV_V10
+
+#--------------------------------------------
+# DE driver global option
+#--------------------------------------------
+
+config AIC_DE_DRV
+    bool
+    default n
+
+config AIC_DE_DRV_V10
+    bool
+    default y if AIC_DE_DRV
+
+config AIC_DE_DRV_VER
+    string
+    default "10" if AIC_DE_DRV_V10
+
+#--------------------------------------------
+# Display interface driver global option
+#--------------------------------------------
+
+config AIC_DISP_RGB_DRV_V10
+    bool
+    default AIC_DISP_RGB
+
+config AIC_DISP_RGB_DRV_VER
+    string
+    default "10" if AIC_DISP_RGB
+
+#---------------------------
+# GE driver global option
+#---------------------------
+
+config AIC_GE_DRV
+    bool
+    default n
+
+config AIC_GE_DRV_V10
+    bool
+    default y if AIC_GE_DRV
+
+config AIC_GE_DRV_VER
+    string
+    default "10" if AIC_GE_DRV_V10
+
+#--------------------------------------------
+# VE driver global option
+#--------------------------------------------
+
+config AIC_VE_DRV
+    bool
+    default n
+
+config AIC_VE_DRV_V10
+    bool
+    default y if AIC_VE_DRV
+
+config AIC_VE_DRV_VER
+    string
+    default "10" if AIC_VE_DRV_V10
+
+#--------------------------------------------
+# DVP driver global option
+#--------------------------------------------
+
+config AIC_DVP_DRV
+    bool
+    default n
+
+config AIC_DVP_DRV_V10
+    bool
+    default y if AIC_DVP_DRV
+
+config AIC_DVP_DRV_VER
+    string
+    default "10" if AIC_DVP_DRV_V10
+
+#--------------------------------------------
+# usb device driver global option
+#--------------------------------------------
+
+config AIC_USB_DEVICE_DRV
+    bool
+    default n
+
+config AIC_USB_DEVICE_DRV_V10
+    bool
+    default y if AIC_USB_DEVICE_DRV
+
+config AIC_USB_DEVICE_DRV_VER
+    string
+    default "10" if AIC_USB_DEVICE_DRV_V10
+
+config AIC_USB_DEVICE_DEV_NUM
+    int
+    default 1 if AIC_USB_DEVICE_DRV
+
+#--------------------------------------------
+# usb ehci host driver global option
+#--------------------------------------------
+
+config AIC_USB_HOST_EHCI_DRV
+    bool
+    default n
+
+config AIC_USB_HOST_EHCI_DRV_V10
+    bool
+    default y if AIC_USB_HOST_EHCI_DRV
+
+config AIC_USB_HOST_EHCI_DRV_VER
+    string
+    default "10" if AIC_USB_HOST_EHCI_DRV_V10
+
+config AIC_USB_HOST_EHCI_DEV_NUM
+    int
+    default 2 if AIC_USB_HOST_EHCI_DRV
+
+#--------------------------------------------
+# Gmac driver global option
+#--------------------------------------------
+
+config AIC_GMAC_DRV
+    bool
+    default n
+
+config AIC_GMAC_DRV_V10
+    bool
+    default y if AIC_GMAC_DRV
+
+config AIC_GMAC_DRV_VER
+    string
+    default "10" if AIC_GMAC_DRV_V10
+
+config AIC_GMAC_DEV_NUM
+    int
+    default 2 if AIC_GMAC_DRV
+
+#--------------------------------------------
+# ADCIM driver global option
+#--------------------------------------------
+
+config AIC_ADCIM_DRV
+    bool
+    default n
+
+config AIC_ADCIM_DRV_V10
+    bool
+    default y if AIC_ADCIM_DRV
+
+config AIC_ADCIM_DRV_VER
+    string
+    default "10" if AIC_ADCIM_DRV_V10
+
+#--------------------------------------------
+# RTP driver global option
+#--------------------------------------------
+
+config AIC_RTP_DRV
+    bool
+    default n
+    select AIC_ADCIM_DRV
+    select RT_USING_TOUCH if DRIVER_DRV_EN
+
+config AIC_RTP_DRV_V10
+    bool
+    default y if AIC_RTP_DRV
+
+config AIC_RTP_DRV_VER
+    string
+    default "10" if AIC_RTP_DRV_V10
+
+#--------------------------------------------
+# TSEN driver global option
+#--------------------------------------------
+
+config AIC_TSEN_DRV
+    bool
+    default n
+    select AIC_ADCIM_DRV
+    select RT_USING_SENSOR if DRIVER_DRV_EN
+
+config AIC_TSEN_DRV_V10
+    bool
+    default y if AIC_TSEN_DRV
+
+config AIC_TSEN_DRV_VER
+    string
+    default "10" if AIC_TSEN_DRV_V10
+
+config AIC_TSEN_CH_NUM
+    int
+    default 1 if AIC_TSEN_DRV_V10
+
+#--------------------------------------------
+# GPAI driver global option
+#--------------------------------------------
+
+config AIC_GPAI_DRV
+    bool
+    default n
+    select AIC_ADCIM_DRV
+    select RT_USING_ADC if DRIVER_DRV_EN
+
+config AIC_GPAI_DRV_V10
+    bool
+    default y if AIC_GPAI_DRV
+
+config AIC_GPAI_DRV_VER
+    string
+    default "10" if AIC_GPAI_DRV_V10
+
+config AIC_GPAI_CH_NUM
+    int
+    default 8 if AIC_GPAI_DRV_V10
+
+#--------------------------------------------
+# PWM driver global option
+#--------------------------------------------
+
+config AIC_PWM_DRV
+    bool
+    default n
+    select RT_USING_PWM if DRIVER_DRV_EN
+
+config AIC_PWM_DRV_V10
+    bool
+    default y if AIC_PWM_DRV
+
+config AIC_PWM_DRV_VER
+    string
+    default "10" if AIC_PWM_DRV_V10
+
+config AIC_PWM_CH_NUM
+    int
+    default 4 if AIC_PWM_DRV_V10
+
+#--------------------------------------------
+# HRTimer driver global option
+#--------------------------------------------
+
+config AIC_HRTIMER_DRV
+    bool
+    default n
+    select RT_USING_HWTIMER if DRIVER_DRV_EN
+
+config AIC_HRTIMER_DRV_V10
+    bool
+    default y if AIC_HRTIMER_DRV
+
+config AIC_HRTIMER_DRV_VER
+    string
+    default "10" if AIC_HRTIMER_DRV_V10
+
+config AIC_HRTIMER_CH_NUM
+    int
+    default 3 if AIC_HRTIMER_DRV_V10
+
+#--------------------------------------------
+# sid driver global option
+#--------------------------------------------
+
+config AIC_SID_DRV
+    bool
+    default n
+
+config AIC_SID_DRV_V10
+    bool
+    default y if AIC_SID_DRV
+
+config AIC_SID_DRV_VER
+    string
+    default "10" if AIC_SID_DRV_V10
+
+#--------------------------------------------
+# ce driver global option
+#--------------------------------------------
+
+config AIC_CE_DRV
+    bool
+    default n
+
+config AIC_CE_DRV_V10
+    bool
+    default y if AIC_CE_DRV
+
+config AIC_CE_DRV_VER
+    string
+    default "10" if AIC_CE_DRV_V10
+
+#--------------------------------------------
+# mtop driver global option
+#--------------------------------------------
+
+config AIC_MTOP_DRV
+    bool
+    default n
+
+config AIC_MTOP_DRV_V10
+    bool
+    default y if AIC_MTOP_DRV
+
+config AIC_MTOP_DRV_VER
+    string
+    default "10" if AIC_MTOP_DRV_V10
+
+#--------------------------------------------
+# CAN driver global option
+#--------------------------------------------
+
+config AIC_CAN_DRV
+    bool
+    default n
+
+config AIC_CAN_DRV_V10
+    bool
+    default y if AIC_CAN_DRV
+
+config AIC_CAN_DRV_VER
+    string
+    default "10" if AIC_CAN_DRV_V10
+
+#--------------------------------------------
+# CIR driver global option
+#--------------------------------------------
+
+config AIC_CIR_DRV
+    bool
+    default n
+
+config AIC_CIR_DRV_V10
+    bool
+    default y if AIC_CIR_DRV
+
+config AIC_CIR_DRV_VER
+    string
+    default "10" if AIC_CIR_DRV_V10
+
+#--------------------------------------------
+# I2S driver global option
+#--------------------------------------------
+
+config AIC_I2S_DRV
+    bool
+    default n
+    select RT_USING_AUDIO
+    select RT_USING_MEMPOOL
+
+#--------------------------------------------
+# AUDIO driver global option
+#--------------------------------------------
+
+config AIC_AUDIO_DRV
+    bool
+    default n
+    select RT_USING_AUDIO
+    select RT_USING_MEMPOOL
+
+config AIC_AUDIO_DRV_V10
+    bool
+    default y if AIC_AUDIO_DRV
+
+config AIC_AUDIO_DRV_VER
+    string
+    default "10" if AIC_AUDIO_DRV_V10
+
+#--------------------------------------------
+# PM driver global option
+#--------------------------------------------
+
+config AIC_PM_DRV
+    bool
+    default n
+    select RT_USING_PM
+    select PM_USING_CUSTOM_CONFIG
+    select PM_ENABLE_SUSPEND_SLEEP_MODE
+    select PM_ENABLE_THRESHOLD_SLEEP_MODE
+
+config AIC_PM_DRV_V10
+    bool
+    default y if AIC_PM_DRV
+
+config AIC_PM_DRV_VER
+    string
+    default "10" if AIC_PM_DRV_V10
+
+#--------------------------------------------
+# PSADC driver global option
+#--------------------------------------------
+
+config AIC_PSADC_DRV
+    bool
+    default n
+    select RT_USING_ADC if DRIVER_DRV_EN
+
+config AIC_PSADC_DRV_V10
+    bool
+    default y if AIC_PSADC_DRV
+
+config AIC_PSADC_DRV_VER
+    string
+    default "10" if AIC_PSADC_DRV_V10
+
+config AIC_PSADC_CH_NUM
+    int
+    default 12 if AIC_PSADC_DRV_V10
+
+#--------------------------------------------
+# xxx driver global option
+#--------------------------------------------
+
+
+endmenu

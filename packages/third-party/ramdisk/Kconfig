@@ -1,0 +1,37 @@
+
+# Kconfig file for package ramdisk
+menuconfig LPKG_USING_RAMDISK
+    bool "ramdisk: A RAM memory block device."
+    default n
+
+if LPKG_USING_RAMDISK
+
+    choice
+        prompt "RAMDISK type"
+        default LPKG_RAMDISK_INIT_DEVICE_NAME
+
+    config LPKG_RAMDISK_TYPE_EMPTY
+        bool "Create empty RAMDISK"
+
+    config LPKG_RAMDISK_TYPE_INITDATA
+        bool "Create RAMDISK from initial data"
+endchoice
+
+if LPKG_RAMDISK_TYPE_EMPTY
+    config LPKG_RAMDISK_BLK_SIZE
+        int "Ramdisk block size"
+        default 512
+
+    config LPKG_RAMDISK_NUM_BLK
+        int "Ramdisk number block"
+        default 6144
+endif
+
+if LPKG_RAMDISK_TYPE_INITDATA
+    config LPKG_RAMDISK_INIT_DEVICE_NAME
+        string "RAMDISK initial device name"
+        default "rodata"
+endif
+
+endif
+

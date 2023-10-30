@@ -1,0 +1,14 @@
+Import('AIC_ROOT')
+Import('PRJ_KERNEL')
+from building import *
+
+cwd = GetCurrentDir()
+CPPPATH = []
+src = []
+if GetDepend('RT_USING_FINSH') and GetDepend('AIC_PM_DRV_TEST'):
+    src = Glob('*.c')
+
+group = DefineGroup('test-pm', src, depend = [''], CPPPATH = CPPPATH)
+
+Return('group')
+

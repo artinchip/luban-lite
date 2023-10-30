@@ -1,0 +1,19 @@
+#-----------------------------
+# RTC devices local parameter
+#-----------------------------
+
+menu "RTC Parameter"
+    depends on AIC_USING_RTC
+
+    config AIC_RTC_CLK_RATE
+        int "The actual rate of 32K clock"
+        default 3276800
+
+    config AIC_RTC_ALARM_IO_OUTPUT
+        bool "Enable the alarm IO output"
+        default n
+
+    config AIC_RTC_32K_IO_OUTPUT
+        bool "Enable the 32K clock output"
+        default n
+endmenu

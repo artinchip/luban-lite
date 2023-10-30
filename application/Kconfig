@@ -1,0 +1,152 @@
+menu "Application options"
+
+#============================================
+# Filesystem related:
+#============================================
+
+comment "Filesystem related"
+
+menuconfig AIC_USING_FS_IMAGE_0
+    bool "Using File System Image 0"
+    default n
+
+if AIC_USING_FS_IMAGE_0
+choice
+    prompt "Select File System Type"
+    default AIC_USING_FS_IMAGE_TYPE_LITTLEFS_FOR_0
+    config AIC_USING_FS_IMAGE_TYPE_FATFS_FOR_0
+        bool "FATFS"
+    config AIC_USING_FS_IMAGE_TYPE_UFFS_FOR_0
+        bool "UFFS"
+    config AIC_USING_FS_IMAGE_TYPE_LITTLEFS_FOR_0
+        bool "LittleFS"
+endchoice
+
+config AIC_FS_IMAGE_DIR_0
+    string "Data Directory"
+    default "packages/artinchip/lvgl-apps/base_demo/lvgl_src/"
+
+config AIC_FS_IMAGE_NAME_0
+    string "Image Name"
+    default "app.lfs"
+
+if AIC_USING_FS_IMAGE_TYPE_FATFS_FOR_0
+config AIC_FATFS_AUTO_SIZE_FOR_0
+    bool "auto calcuate image size"
+    default y
+config AIC_FATFS_SECTOR_SIZE_FOR_0
+    int "sector size"
+    depends on !AIC_FATFS_AUTO_SIZE_FOR_0
+    default 512
+
+config AIC_FATFS_SECTOR_COUNT_FOR_0
+    int "sector count"
+    depends on !AIC_FATFS_AUTO_SIZE_FOR_0
+    default 2048
+endif
+
+# Parameters for LittleFS
+if AIC_USING_FS_IMAGE_TYPE_LITTLEFS_FOR_0
+config AIC_LITTLEFS_BLOCK_SIZE_FOR_0
+    int "Erase block size"
+    default 4096
+config AIC_LITTLEFS_PAGE_SIZE_FOR_0
+    int "Page size"
+    default 256
+endif
+
+endif
+
+menuconfig AIC_USING_FS_IMAGE_1
+    bool "Using File System Image 1"
+    default n
+
+if AIC_USING_FS_IMAGE_1
+choice
+    prompt "Select File System Type"
+    default AIC_USING_FS_IMAGE_TYPE_LITTLEFS_FOR_1
+    config AIC_USING_FS_IMAGE_TYPE_FATFS_FOR_1
+        bool "FATFS"
+    config AIC_USING_FS_IMAGE_TYPE_UFFS_FOR_1
+        bool "UFFS"
+    config AIC_USING_FS_IMAGE_TYPE_LITTLEFS_FOR_1
+        bool "LittleFS"
+endchoice
+
+config AIC_FS_IMAGE_DIR_1
+    string "Data Directory"
+    default "fs_user"
+
+config AIC_FS_IMAGE_NAME_1
+    string "Image Name"
+    default "user"
+
+if AIC_USING_FS_IMAGE_TYPE_FATFS_FOR_1
+config AIC_FATFS_AUTO_SIZE_FOR_1
+    bool "auto calcuate image size"
+    default y
+config AIC_FATFS_SECTOR_SIZE_FOR_1
+    int "sector size"
+    depends on !AIC_FATFS_AUTO_SIZE_FOR_1
+    default 512
+
+config AIC_FATFS_SECTOR_COUNT_FOR_1
+    int "sector count"
+    depends on !AIC_FATFS_AUTO_SIZE_FOR_1
+    default 2048
+endif
+
+# Parameters for LittleFS
+if AIC_USING_FS_IMAGE_TYPE_LITTLEFS_FOR_1
+config AIC_LITTLEFS_BLOCK_SIZE_FOR_1
+    int "Erase block size"
+    default 4096
+config AIC_LITTLEFS_PAGE_SIZE_FOR_1
+    int "Page size"
+    default 256
+endif
+
+endif
+
+if AIC_USING_FS_IMAGE_TYPE_FATFS_FOR_0 || AIC_USING_FS_IMAGE_TYPE_FATFS_FOR_1
+    config AIC_USING_FS_IMAGE_TYPE_FATFS_CLUSTER_SIZE
+        int "size of cluster in fatfs image"
+        default 8
+endif
+
+comment "lvgl demo select related"
+
+menuconfig AIC_LVGL_DEMO
+    tristate "ArtInChip lvgl demo"
+    select LPKG_USING_LVGL
+    default n
+
+if AIC_LVGL_DEMO
+choice
+    prompt "select lvgl demo"
+    default AIC_LVGL_BASE_DEMO
+    depends on AIC_LVGL_DEMO
+
+config AIC_LVGL_BASE_DEMO
+    bool "lvgl demo with basic function"
+
+config AIC_LVGL_METER_DEMO
+    bool "lvgl demo of meter"
+
+config AIC_LVGL_MUSIC_DEMO
+    bool "lvgl music demo"
+    select LPKG_USING_LV_MUSIC_DEMO
+endchoice
+
+config LV_COLOR_DEPTH
+    int "lvgl color depth(32/16)"
+    default 32
+    depends on LPKG_USING_LVGL
+config CACHE_IMG_NUM
+    int "image cached number"
+    default 15
+    depends on LPKG_USING_LVGL
+endif
+
+endmenu
+

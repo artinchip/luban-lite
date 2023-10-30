@@ -1,0 +1,14 @@
+Import('RTT_ROOT')
+Import('rtconfig')
+from building import *
+
+cwd     = GetCurrentDir()
+
+# add the board drivers.
+src     = Glob("*.c") + Glob("*.cpp") + Glob("*.S")
+
+LOCAL_CPPPATH = [cwd]
+CPPPATH = [cwd + '/include']
+group   = DefineGroup('Board', src, depend = [''], LOCAL_CPPPATH = LOCAL_CPPPATH, CPPPATH = CPPPATH)
+
+Return('group')

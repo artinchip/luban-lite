@@ -1,0 +1,70 @@
+#-----------------------------
+# devices local parameter
+#-----------------------------
+
+menu "Audio Parameter"
+    depends on AIC_USING_AUDIO
+
+    config AIC_AUDIO_PLAYBACK
+        bool "Using Playback"
+        default y
+
+    config AIC_AUDIO_PA_ENABLE_GPIO
+    string "PA enable pin"
+    default "PA.7"
+    depends on AIC_AUDIO_PLAYBACK
+
+    if AIC_AUDIO_PLAYBACK
+        choice
+            prompt "Select PA enable level"
+            default AIC_AUDIO_EN_PIN_HIGH
+
+            config  AIC_AUDIO_EN_PIN_HIGH
+                bool "high level Active"
+
+            config  AIC_AUDIO_EN_PIN_LOW
+                bool "low level Active"
+        endchoice
+
+        choice
+            prompt "Select SPK channel"
+            default AIC_AUDIO_SPK_0_1
+
+            config AIC_AUDIO_SPK_0
+                bool "Using SPK0"
+
+            config AIC_AUDIO_SPK_1
+                bool "Using SPK1"
+
+            config AIC_AUDIO_SPK_0_1
+                bool "Using SPK0 and SPK1"
+        endchoice
+
+        if AIC_AUDIO_SPK_0_1
+        choice
+            prompt "Select SPK output mode"
+            default AIC_AUDIO_SPK_OUTPUT_SINGLE
+
+            config AIC_AUDIO_SPK_OUTPUT_SINGLE
+                bool "single output"
+
+            config AIC_AUDIO_SPK0_OUTPUT_DIFFERENTIAL
+                bool "SPK0 differential output"
+
+            config AIC_AUDIO_SPK1_OUTPUT_DIFFERENTIAL
+                bool "SPK1 differential output"
+        endchoice
+        endif
+    endif
+
+    config AIC_AUDIO_DMIC
+        bool "Using DMIC"
+        default y
+
+    if AIC_AUDIO_DRV_V10
+        config AIC_AUDIO_AMIC
+            bool "Using AMIC"
+            default n
+    endif
+
+endmenu

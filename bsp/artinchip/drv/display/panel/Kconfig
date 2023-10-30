@@ -1,0 +1,45 @@
+
+menu "Display Panels"
+
+    choice
+        prompt "ArtInChip Panel Drivers"
+        default AIC_SIMPLE_PANEL
+
+    config AIC_SIMPLE_PANEL
+        bool "ArtInChip simple panel"
+        depends on AIC_DISP_RGB || AIC_DISP_LVDS
+
+    config AIC_PANEL_DSI_XM91080
+        bool "ArtInChip MIPI DSI xm91080 panel"
+        depends on AIC_DISP_MIPI_DSI
+
+    config AIC_PANEL_DSI_ST7797
+        bool "ArtInChip MIPI DSI st7797 panel"
+        depends on AIC_DISP_MIPI_DSI
+
+    config AIC_PANEL_DBI_ILI9488
+        bool "ArtInChip MIPI DBI ili9488 panel"
+        depends on AIC_DISP_MIPI_DBI
+
+    config AIC_PANEL_DBI_ILI9341
+        bool "ArtInChip MIPI DBI ili9341 panel"
+        depends on AIC_DISP_MIPI_DBI
+
+    config AIC_PANEL_DBI_ST77903
+        bool "ArtInChip MIPI DBI st77903 panel"
+        depends on AIC_DISP_MIPI_DBI
+
+    config AIC_PANEL_DBI_ILI9486L
+        bool "ArtInChip MIPI DBI ili9486l panel"
+        depends on AIC_DISP_MIPI_DBI
+
+    config AIC_PANEL_SRGB_HX8238
+        bool "ArtInChip srgb hx8238 panel"
+        depends on AIC_DISP_RGB
+    endchoice
+
+if AIC_SIMPLE_PANEL
+source "bsp/artinchip/drv/display/panel/Kconfig.timing"
+endif
+
+endmenu

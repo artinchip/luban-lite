@@ -1,0 +1,12 @@
+
+menuconfig LPKG_USING_WHETSTONE
+    bool "WHETSTONE : a benchmark primarily measures the floating-point arithmetic performance."
+    default n
+
+if LPKG_USING_WHETSTONE
+
+    config WHETSTONE_ITERATIONS
+        int "Run the benchmark for a specified number of iterations."
+        default "1000000"
+
+endif

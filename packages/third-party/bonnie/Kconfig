@@ -1,0 +1,5 @@
+
+config LPKG_USING_BONNIE
+    bool "bonnie: File system benchmark"
+    default n
+    depends on RT_USING_FINSH && LPKG_USING_CPU_USAGE

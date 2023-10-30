@@ -1,0 +1,56 @@
+
+# Kconfig file for package littlefs
+menuconfig LPKG_USING_MAD
+    bool "MAD: mp3 decoder"
+    default n
+
+if LPKG_USING_MAD
+
+    #$config LPKG_USING_MAD_HAVE_ASSERT_H
+    #    bool
+    #   default y
+    config LPKG_USING_MAD_CONFIG_H
+    bool
+    default y
+
+    choice
+        prompt "libmad version"
+        default LPKG_USING_MAD_0151b
+        help
+            Select the lwIP version
+
+        config LPKG_USING_MAD_0151b
+            bool "libmad-0.15.1b"
+    endchoice
+
+    choice
+        prompt "Fixed-point format"
+        default LPKG_USING_MAD_FPM_DEFAULT
+        help
+            Select the package version
+
+        config LPKG_USING_MAD_FPM_64BIT
+            bool "64bit"
+
+        config LPKG_USING_MAD_FPM_INTEL
+            bool "intel"
+
+        config LPKG_USING_MAD_FPM_ARM
+            bool "arm"
+
+        config LPKG_USING_MAD_FPM_MIPS
+            bool "mips"
+
+        config LPKG_USING_MAD_FPM_SPARC
+            bool "sparc"
+
+        config LPKG_USING_MAD_FPM_PPC
+            bool "ppc"
+
+        config LPKG_USING_MAD_FPM_DEFAULT
+            bool "default"
+
+    endchoice
+
+endif
+

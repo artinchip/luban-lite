@@ -1,0 +1,47 @@
+Import('AIC_ROOT')
+Import('PRJ_KERNEL')
+Import('rtconfig')
+from building import *
+
+cwd = GetCurrentDir()
+src = Glob('*.c')
+CPPPATH = []
+
+CPPPATH.append(cwd + '/../../../../kernel/freertos/include/')
+CPPPATH.append(cwd + '/../../../../packages/third-party/lwip/src/include/')
+CPPPATH.append(cwd + '/../../../../packages/third-party/lwip/')
+CPPPATH.append(cwd + '/../../../../packages/third-party/lwip/contrib/ports/rt-thread/include')
+CPPPATH.append(cwd + '/include/')
+CPPPATH.append(cwd + '/api/')
+CPPPATH.append(cwd + '/os/customer_rtos/')
+CPPPATH.append(cwd + '/os/os_dep/include/')
+CPPPATH.append(cwd + '/os/wlan_lwip/')
+CPPPATH.append(cwd + '/platform/include/')
+CPPPATH.append(cwd + '/platform/rtwlan_bsp/')
+
+if GetDepend('RTL8733_WLAN_INTF_SDIO'):
+    CPPPATH.append(cwd + '/platform/sdio/include/')
+    CPPPATH.append(cwd + '/platform/sdio/')
+
+src += Glob('api/*.c')
+src += Glob('api/wifi/*.c')
+
+src += Glob('os/customer_rtos/customer_rtt_service.c')
+src += Glob('os/os_dep/*.c')
+src += Glob('os/wlan_lwip/*.c')
+
+src += Glob('platform/rtwlan_bsp/*.c')
+if GetDepend('RTL8733_WLAN_INTF_SDIO'):
+    src += Glob('platform/sdio/*.c')
+    src += Glob('platform/sdio/core/*.c')
+
+if GetDepend('RTL8733_WLAN_INTF_USB'):
+    src += Glob('platform/usb /*.c')
+
+lib_name = 'wlan_' + rtconfig.CPUNAME
+LIBS = [lib_name]
+LIBPATH = [cwd + "/wlan_lib/"]
+
+group = DefineGroup('rtl8733', src, depend = ['RTL8733_WLAN_DRV'], CPPPATH = CPPPATH, LIBS=LIBS, LIBPATH=LIBPATH)
+
+Return('group')

@@ -1,0 +1,52 @@
+menu "Baremetal options"
+
+config KERNEL_BAREMETAL
+    bool
+    default y
+
+config DRIVER_HAL_EN
+    bool
+    default y
+
+config DRIVER_BARE_DRV_EN
+    bool
+    default y
+
+config AIC_NORMALSTACK_SIZE
+    int "Main loop stack"
+    default 8092
+
+if ! AIC_BOOTLOADER
+    config AIC_BAREMETAL_CONSOLE_UART
+        int "Baremetal console UART ID"
+        range 0 8
+        default 0
+endif
+
+config ARCH_RISCV
+    bool
+
+config ARCH_RISCV_FPU
+    bool
+
+config ARCH_RISCV_FPU_S
+    select ARCH_RISCV_FPU
+    bool
+
+config ARCH_RISCV_FPU_D
+    select ARCH_RISCV_FPU
+    bool
+
+config ARCH_RISCV32
+    select ARCH_RISCV
+    bool
+
+config ARCH_RISCV64
+    select ARCH_RISCV
+    select ARCH_CPU_64BIT
+    bool
+
+config ARCH_CSKY
+    bool
+
+endmenu

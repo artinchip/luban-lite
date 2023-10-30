@@ -1,0 +1,7 @@
+config WLAN_REALTEK
+       bool "RealTek"
+       default n
+
+if WLAN_REALTEK
+source "bsp/peripheral/wireless/rtl8733/Kconfig"
+endif #WLAN_REALTEK

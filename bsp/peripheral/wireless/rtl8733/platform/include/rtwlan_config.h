@@ -1,0 +1,20 @@
+#define CONFIG_PLATFOMR_CUSTOMER_RTOS
+#define DRV_NAME "RTL8733BS"
+#define DRIVERVERSION "57999b1af4f228855793e1801ce9bbea4565e7a8"
+
+#define CONFIG_DEBUG	1
+
+#define CONFIG_MP_INCLUDED                  1
+#define CONFIG_MP_NORMAL_IWPRIV_SUPPORT     1
+
+
+#define CONFIG_NO_REFERENCE_FOR_COMPILER    1
+#define MAX_TX_SKB_DATA_NUM	    100
+
+
+#ifndef CONFIG_WLAN
+#define CONFIG_WLAN 1
+#endif
+
+#define IN
+#define OUT

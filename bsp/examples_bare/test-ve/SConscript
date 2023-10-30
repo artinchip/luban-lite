@@ -1,0 +1,19 @@
+Import('AIC_ROOT')
+Import('PRJ_KERNEL')
+from building import *
+
+cwd = GetCurrentDir()
+CPPPATH = [cwd, ]
+src = []
+
+if GetDepend('KERNEL_BAREMETAL') and GetDepend('LPKG_MPP') and GetDepend('AIC_VE_TEST'):
+    src += Glob('pic_dec_test.c')
+    src += Glob('test_pic1.c')
+    src += Glob('test_pic2.c')
+    src += Glob('test_pic3.c')
+
+CFLAGS = ' -c -ffunction-sections'
+
+group = DefineGroup('test-ve', src, depend = [''], CPPPATH = CPPPATH)
+
+Return('group')

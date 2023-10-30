@@ -1,0 +1,13 @@
+import os
+from building import *
+
+cwd = GetCurrentDir()
+src	= Glob('*.c')
+src += Glob(os.path.join("portable", "rt-thread", "*.c"))
+src += Glob(os.path.join("portable", "MemMang", "heap_3.c"))
+
+CPPPATH = [os.path.join(cwd, "include", "freertos"), os.path.join(cwd, "portable", "rt-thread")]
+
+group = DefineGroup('FreeRTOS', src, depend = ['LPKG_USING_FREERTOS_WRAPPER'], CPPPATH = CPPPATH)
+
+Return('group')

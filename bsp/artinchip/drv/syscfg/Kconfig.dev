@@ -1,0 +1,64 @@
+#-----------------------------
+# syscfg local parameter
+#-----------------------------
+
+# syscfg parameter
+
+menu "Syscfg Parameter"
+    depends on AIC_USING_SYSCFG
+
+        menuconfig AIC_SYSCFG_SIP_FLASH_ENABLE
+            bool "SiP Flash Enable"
+	    default n
+
+	if AIC_SYSCFG_SIP_FLASH_ENABLE
+		config AIC_SIP_FLASH_ACCESS_QSPI_ID
+		    int "QSPI controller used by SiP Flash"
+		    range 0 1
+		    default 0
+	endif
+
+	menuconfig AIC_SYSCFG_LDO1X_ENABLE
+        bool "SYSCFG LDO1X enable"
+		default n
+		if AIC_SYSCFG_LDO1X_ENABLE
+			config AIC_SYSCFG_LDO1X_VOL_VAL
+				int "LDO1X voltage value level <0-15>"
+				default 6
+				help
+				    LDO1X_VAL_0_90V = 0,
+					LDO1X_VAL_0_95V = 1,
+					LDO1X_VAL_1_00V = 2,
+					LDO1X_VAL_1_05V = 3,
+					LDO1X_VAL_1_10V = 4,
+					LDO1X_VAL_1_15V = 5,
+					LDO1X_VAL_1_20V = 6,
+					LDO1X_VAL_1_25V = 7,
+					LDO1X_VAL_1_30V = 8,
+					LDO1X_VAL_1_35V = 9,
+					LDO1X_VAL_1_40V = 10,
+					LDO1X_VAL_1_50V = 11,
+					LDO1X_VAL_1_60V = 12,
+					LDO1X_VAL_1_70V = 13,
+					LDO1X_VAL_1_80V = 14,
+					LDO1X_VAL_1_90V = 15
+		endif
+
+	menuconfig AIC_SYSCFG_LDO18_ENABLE
+        bool "SYSCFG LDO18 enable"
+		default y
+		if AIC_SYSCFG_LDO18_ENABLE
+			config AIC_SYSCFG_LDO18_VOL_VAL
+				int "LDO18 voltage value level <0-7>"
+				default 7
+				help
+					LDO18_VAL_1_71V = 0,
+					LDO18_VAL_1_74V = 1,
+					LDO18_VAL_1_77V = 2,
+					LDO18_VAL_1_80V = 3,
+					LDO18_VAL_1_83V = 4,
+					LDO18_VAL_1_86V = 5,
+					LDO18_VAL_1_89V = 6,
+					LDO18_VAL_1_92V = 7
+		endif
+endmenu

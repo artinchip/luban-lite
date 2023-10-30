@@ -1,0 +1,21 @@
+# RT-Thread building script for bridge
+
+import os
+from building import *
+
+Import('rtconfig')
+
+cwd     = GetCurrentDir()
+CPPPATH = [cwd, ]
+
+group   = []
+
+lst  = os.listdir(cwd)
+
+for item in lst:
+    ipath = '{}/SConscript'.format(item)
+    if os.path.isfile(cwd + '/' + ipath) == False:
+        continue
+    group = group + SConscript(ipath)
+
+Return('group')

@@ -1,0 +1,15 @@
+Import('AIC_ROOT')
+Import('PRJ_KERNEL')
+from building import *
+
+if GetDepend('KERNEL_RTTHREAD') == True:
+    src = Glob('*.c')
+else:
+    src = []
+
+cwd = GetCurrentDir()
+CPPPATH = [cwd + '/../include/', ]
+
+group = DefineGroup('aic_debug', src, depend = [''], CPPPATH = CPPPATH)
+
+Return('group')

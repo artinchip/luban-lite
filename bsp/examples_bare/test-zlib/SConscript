@@ -1,0 +1,16 @@
+Import('AIC_ROOT')
+Import('PRJ_KERNEL')
+from building import *
+
+cwd = GetCurrentDir()
+CPPPATH = [cwd, ]
+src = []
+
+if GetDepend('KERNEL_BAREMETAL') and GetDepend('LPKG_MPP') and GetDepend('AIC_ZLIB_TEST'):
+    src += Glob('test_zlib.c')
+
+CFLAGS = ' -c -ffunction-sections'
+
+group = DefineGroup('test_zlib', src, depend = [''], CPPPATH = CPPPATH)
+
+Return('group')

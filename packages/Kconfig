@@ -1,0 +1,6 @@
+menu "Local packages options"
+
+source "packages/third-party/Kconfig"
+source "packages/artinchip/Kconfig"
+
+endmenu

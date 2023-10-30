@@ -1,0 +1,13 @@
+Import('AIC_ROOT')
+Import('PRJ_KERNEL')
+from building import *
+
+cwd = GetCurrentDir()
+CPPPATH = []
+src = []
+if GetDepend('KERNEL_BAREMETAL') and GetDepend('AIC_AUDIO_DRV_TEST'):
+    src += Glob('../test-audio/*.c')
+
+group = DefineGroup('test-audio', src, depend = [''], CPPPATH = CPPPATH)
+
+Return('group')

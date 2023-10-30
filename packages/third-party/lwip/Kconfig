@@ -1,0 +1,340 @@
+menuconfig LPKG_USING_LWIP
+    bool "LwIP: light weight TCP/IP stack"
+    #select RT_USING_DEVICE
+    #select RT_USING_DEVICE_IPC
+    #select SAL_USING_LWIP if RT_USING_SAL
+    default n
+
+if LPKG_USING_LWIP
+
+    choice
+        prompt "lwIP version"
+        default LPKG_USING_LWIP213
+        help
+            Select the lwIP version
+
+        #config LPKG_USING_LWIP141
+        #    bool "lwIP v1.4.1"
+        #
+        #config LPKG_USING_LWIP203
+        #    bool "lwIP v2.0.3"
+        #
+        #config LPKG_USING_LWIP212
+        #    bool "lwIP v2.1.2"
+
+        config LPKG_USING_LWIP213
+            bool "lwIP v2.1.3"
+    endchoice
+
+    config LPKG_USING_LWIP_VER_NUM
+        hex
+        default 0x99999    if LPKG_USING_LWIP_LATEST
+        default 0x20103    if LPKG_USING_LWIP213
+        default 0x20102    if LPKG_USING_LWIP212
+        default 0x20003    if LPKG_USING_LWIP203
+        default 0x10401    if LPKG_USING_LWIP141
+
+    if (LPKG_USING_LWIP_VER_NUM >= 0x20000)
+        config LPKG_USING_LWIP_IPV6
+            bool "IPV6 protocol"
+            default n
+            #select NETDEV_USING_IPV6
+            #select NETDEV_IPV6_SCOPES if LPKG_USING_LWIP213
+    endif
+
+    menuconfig LPKG_LWIP_EXAMPLES
+        bool "LwIP Examples"
+        default n
+
+    if LPKG_LWIP_EXAMPLES
+        config LPKG_LWIP_EXAMPLES_TEST
+            bool "example test"
+            default n
+    endif
+
+    config LPKG_LWIP_IGMP
+        bool "IGMP protocol"
+        default n
+
+    config LPKG_LWIP_ICMP
+        bool "ICMP protocol"
+        default y
+
+    config LPKG_LWIP_SNMP
+        bool "SNMP protocol"
+        select LPKG_LWIP_STATS
+        default n
+
+    config LPKG_LWIP_DNS
+        bool "Enble DNS for name resolution"
+        select LPKG_LWIP_UDP
+        default n
+
+    config LPKG_LWIP_DHCP
+        bool "Enable alloc ip address through DHCP"
+        select LPKG_LWIP_UDP
+        default n
+
+        if LPKG_LWIP_DHCP
+            config LPKG_IP_SOF_BROADCAST
+                int "SOF broadcast"
+                default 1
+
+            config LPKG_IP_SOF_BROADCAST_RECV
+                int "SOF broadcast recv"
+                default 1
+        endif
+
+    config LPKG_LWIP_UDP
+        bool "UDP protocol"
+        default y
+
+    config LPKG_LWIP_TCP
+        bool "TCP protocol"
+        default y
+
+    config LPKG_LWIP_RAW
+        bool "RAW protocol"
+        default n
+
+    config LPKG_LWIP_PPP
+        bool "PPP protocol"
+        default n
+
+    if LPKG_LWIP_PPP
+        config LPKG_LWIP_PPPOE
+            bool "PPPoE protocol"
+            default n
+
+        config LPKG_LWIP_PPPOS
+            bool "PPPoS protocol"
+            default n
+    endif
+
+    config LPKG_LWIP_PBUF_NUM
+        int "the number of PBUF"
+        default 16
+
+    config LPKG_LWIP_MEM_SIZE
+        int "the size of LwIP's dynamic memory"
+        default 15360
+
+    config LPKG_LWIP_RAW_PCB_NUM
+        int "the number of raw connection"
+        default 4
+
+    config LPKG_LWIP_TCP_SEG_NUM
+        int "the number of TCP segment"
+        default 40
+
+    config LPKG_LWIP_TCP_SND_BUF
+        int "the size of send buffer"
+        default 8196
+
+    config LPKG_LWIP_TCP_WND
+        int "the size of TCP send window"
+        default 8196
+
+    config LPKG_LWIP_REASSEMBLY_FRAG
+        bool "Enable IP reassembly and frag"
+        default n
+
+    config LPKG_LWIP_STATS
+        bool "Enable lwIP statistics"
+        default n
+
+    config LPKG_LWIP_USING_TX_HW_CHECKSUM
+        bool "Enable tx hardware generate checksum"
+        default n
+
+    config LPKG_LWIP_USING_RX_HW_CHECKSUM
+        bool "Enable rx hardware check checksum"
+        default n
+
+    if !DRIVER_BARE_DRV_EN
+
+        config LPKG_MEMP_NUM_NETCONN
+            int "the number of struct netconns"
+            default 8
+
+        config LPKG_LWIP_UDP_PCB_NUM
+            int "the number of UDP socket"
+            default 8 if RT_USING_DFS_NFS
+            default 4
+
+        if LPKG_LWIP_TCP
+        config LPKG_LWIP_TCP_PCB_NUM
+            int "the number of TCP socket"
+            default 4
+
+        config LPKG_LWIP_TCPTHREAD_PRIORITY
+            int "the priority level value of lwIP thread"
+            default 10
+
+        config LPKG_LWIP_TCPTHREAD_MBOX_SIZE
+            int "the number of mail in the lwIP thread mailbox"
+            default 8
+
+        config LPKG_LWIP_TCPTHREAD_STACKSIZE
+            int "the stack size of lwIP thread"
+            default 3072 if ARCH_CPU_64BIT
+            default 2048
+
+        menuconfig LPKG_LWIP_USING_PING
+            bool "Enable ping features"
+            default n
+            select NETDEV_USING_PING
+            select LPKG_LWIP_ICMP
+            select LPKG_LWIP_RAW
+
+        if LPKG_LWIP_USING_PING
+            config LPKG_PING_USING_SOCKET
+                bool "Using socket interface during ping requests"
+                default y
+
+            if LPKG_PING_USING_SOCKET
+                config LPKG_PING_THREAD_PRIORITY
+                int "the priority level value of ping thread "
+                default 20
+            endif
+        endif
+
+        endif
+
+    endif
+
+    if DRIVER_BARE_DRV_EN
+        config LPKG_LWIP_USING_PING
+            bool "Enable ping features"
+            default n
+            select NETDEV_USING_PING
+            select LPKG_LWIP_ICMP
+            select LPKG_LWIP_RAW
+    endif
+
+    config LPKG_LWIP_USING_MQTT
+        bool "Using MQTT protocol"
+        default n
+        select LPKG_LWIP_TCP
+
+    menuconfig LPKG_LWIP_DEBUG
+        bool "Enable lwIP Debugging Options"
+        default n
+
+    if LPKG_LWIP_DEBUG
+
+        config LPKG_LWIP_SYS_DEBUG
+            bool "Enable Debugging of sys.c"
+            default n
+
+        config LPKG_LWIP_ETHARP_DEBUG
+            bool "Enable Debugging of etharp.c"
+            default n
+
+        config LPKG_LWIP_PPP_DEBUG
+            bool "Enable Debugging of PPP"
+            default n
+
+        config LPKG_LWIP_MEM_DEBUG
+            bool "Enable Debugging of mem.c"
+            default n
+
+        config LPKG_LWIP_MEMP_DEBUG
+            bool "Enable Debugging of memp.c"
+            default n
+
+        config LPKG_LWIP_PBUF_DEBUG
+            bool "Enable Debugging of pbuf.c"
+            default n
+
+        config LPKG_LWIP_API_LIB_DEBUG
+            bool "Enable Debugging of api_lib.c"
+            default n
+
+        config LPKG_LWIP_API_MSG_DEBUG
+            bool "Enable Debugging of api_msg.c"
+            default n
+
+        config LPKG_LWIP_TCPIP_DEBUG
+            bool "Enable Debugging of tcpip.c"
+            default n
+
+        config LPKG_LWIP_NETIF_DEBUG
+            bool "Enable Debugging of netif.c"
+            default n
+
+        config LPKG_LWIP_SOCKETS_DEBUG
+            bool "Enable Debugging of sockets.c"
+            default n
+
+        config LPKG_LWIP_DNS_DEBUG
+            bool "Enable Debugging of DNS"
+            default n
+
+        config LPKG_LWIP_AUTOIP_DEBUG
+            bool "Enable Debugging of autoip.c"
+            default n
+
+        config LPKG_LWIP_DHCP_DEBUG
+            bool "Enable Debugging of dhcp.c"
+            default n
+
+        config LPKG_LWIP_IP_DEBUG
+            bool "Enable Debugging of IP"
+            default n
+
+        config LPKG_LWIP_IP_REASS_DEBUG
+            bool "Enable debugging in ip_frag.c for both frag & reass"
+            default n
+
+        config LPKG_LWIP_ICMP_DEBUG
+            bool "Enable Debugging of icmp.c"
+            default n
+
+        config LPKG_LWIP_IGMP_DEBUG
+            bool "Enable Debugging of igmp.c"
+            default n
+
+        config LPKG_LWIP_UDP_DEBUG
+            bool "Enable Debugging of UDP"
+            default n
+
+        config LPKG_LWIP_TCP_DEBUG
+            bool "Enable Debugging of TCP"
+            default n
+
+        config LPKG_LWIP_TCP_INPUT_DEBUG
+            bool "Enable Debugging of tcp_in.c"
+            default n
+
+        config LPKG_LWIP_TCP_OUTPUT_DEBUG
+            bool "Enable Debugging of tcp_out.c"
+            default n
+
+        config LPKG_LWIP_TCP_RTO_DEBUG
+            bool "Enable debugging in TCP for retransmit"
+            default n
+
+        config LPKG_LWIP_TCP_CWND_DEBUG
+            bool "Enable debugging for TCP congestion window"
+            default n
+
+        config LPKG_LWIP_TCP_WND_DEBUG
+            bool "Enable debugging in tcp_in.c for window updating"
+            default n
+
+        config LPKG_LWIP_TCP_FR_DEBUG
+            bool "Enable debugging in tcp_in.c for fast retransmit"
+            default n
+
+        config LPKG_LWIP_TCP_QLEN_DEBUG
+            bool "Enable debugging for TCP queue lengths"
+            default n
+
+        config LPKG_LWIP_TCP_RST_DEBUG
+            bool "Enable debugging for TCP with the RST message"
+            default n
+
+    endif
+
+endif

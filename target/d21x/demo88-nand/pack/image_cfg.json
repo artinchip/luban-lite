@@ -1,0 +1,104 @@
+{
+    "spi-nand": { // Device, The name should be the same with string in image:info:media:type
+        "size": "128m", // Size of SPI NAND
+        "partitions": {
+            "spl":      { "size": "1m" },
+            "env":      { "size": "256k" },
+            "env_r":    { "size": "256k" },
+            "os":       { "size": "2m" },
+            "os_r":     { "size": "2m" },
+            "rodata":   { "size": "6m" },
+            "rodata_r": { "size": "6m" },
+            "data":     { "size": "35m" },
+        },
+    },
+    "image": {
+        "info": { // Header information about image
+            "platform": "d21x",
+            "product": "demo88_nand",
+            "version": "1.0.0",
+            "media": {
+                "type": "spi-nand",
+                "device_id": 0,
+                "array_organization": [
+                    { "page": "2k", "block": "128k", "oob": "64" },
+            //        { "page": "4k", "block": "256k", "oob": "128" },
+                ],
+            }
+        },
+        "updater": { // Image writer which is downloaded to RAM by USB
+            "ddr": {
+                "file": "usbupg-ddr-init.aic",
+                "attr": ["required", "run"],
+                "ram": "0x00103000"
+            },
+            "spl": {
+                "file": "bootloader.aic",
+                "attr": ["required", "run"],
+                "ram": "0x41000000"
+            },
+        },
+        "target": { // Image components which will be burn to device's partitions
+            "spl": {
+                "file": "bootloader.aic",
+                "attr": ["mtd", "required"],
+                "part": ["spl"]
+            },
+            "env": {
+                "file": "env.bin",
+                "attr": ["mtd", "optional"],
+                "part": ["env","env_r"]
+            },
+            "os": {
+                "file": "d21x_os.itb",
+                "attr": ["mtd", "required"],
+                "part": ["os"]
+            },
+            "res": {
+                "file": "app.fatfs",
+                "attr": ["mtd", "optional"],
+                "part": ["rodata"]
+            },
+            "app": {
+                "file": "page_2k_block_128k_oob_64_data.uffs",
+                "attr": ["uffs", "optional"],
+                "part": ["data"]
+            },
+        },
+    },
+    "temporary": { // Pre-proccess to generate image components from raw data
+        "aicboot": {
+            "usbupg-ddr-init.aic": { // No loader, only PreBootProgram to initialize DDR
+                "head_ver": "0x00010001",
+                "resource": {
+                    "private": "ddr_init.bin",
+                    "pbp": "d21x.pbp",
+                },
+            },
+            "bootloader.aic": {
+                "head_ver": "0x00010001",
+                "loader": {
+                    "file": "bootloader.bin",
+                    "load address": "0x42000000",
+                     "entry point":  "0x42000100",
+                },
+                "resource": {
+                    "private": "ddr_init.bin",
+                    "pbp": "d21x.pbp",
+                },
+            },
+        },
+        "uboot_env": {
+            "env.bin": {
+                "file": "env.txt",
+                "size": "4096",
+                "redundant": "enable",
+            },
+        },
+        "itb": {
+            "d21x_os.itb": {
+                "its": "d21x_os.its"
+            },
+        },
+    },
+}

@@ -1,0 +1,22 @@
+#-----------------------------
+# qspi driver local parameter
+#-----------------------------
+
+config AIC_SPINAND_DRV
+    bool
+    select AIC_QSPI_DRV
+    select RT_USING_MTD_NAND if DRIVER_DRV_EN
+    default n
+
+
+config AIC_SPINAND_CONT_READ
+	bool
+	default n
+	help
+	Enable this func for SPI NAND flash to speed up
+	the start-up.if the device supports continuous read mode
+	and the read length is greater then one page size,the device
+	will enter the continuous read mode.this mode helps avoiding
+	issuing a page read command and read from cache command again,
+	and improves the performance of reading continuous pages.
+

@@ -1,0 +1,66 @@
+#-----------------------------
+# spinor driver local parameter
+#-----------------------------
+
+menuconfig AIC_QSPI0_DEVICE_SPINOR
+    bool "QSPI0 Devices: SPINOR"
+    depends on AIC_USING_QSPI0
+    select AIC_SPINOR_DRV
+    default n
+
+if AIC_QSPI0_DEVICE_SPINOR
+    config AIC_QSPI0_DEVICE_SPINOR_FREQ
+        int "SPINOR bus frequency(Hz)"
+	default 100000000
+
+endif
+
+menuconfig AIC_QSPI1_DEVICE_SPINOR
+    bool "QSPI1 Devices: SPINOR"
+    depends on AIC_USING_QSPI1
+    default n
+
+if AIC_QSPI1_DEVICE_SPINOR
+    config AIC_QSPI1_DEVICE_SPINOR_FREQ
+        int "SPINOR bus frequency(Hz)"
+	default 100000000
+
+endif
+
+menuconfig AIC_QSPI2_DEVICE_SPINOR
+    bool "QSPI2 Devices: SPINOR"
+    depends on AIC_USING_QSPI2
+    default n
+
+if AIC_QSPI2_DEVICE_SPINOR
+    config AIC_QSPI2_DEVICE_SPINOR_FREQ
+        int "SPINOR bus frequency(Hz)"
+	default 100000000
+
+endif
+
+menuconfig AIC_QSPI3_DEVICE_SPINOR
+    bool "QSPI3 Devices: SPINOR"
+    depends on AIC_USING_QSPI3
+    default n
+
+if AIC_QSPI3_DEVICE_SPINOR
+    config AIC_QSPI3_DEVICE_SPINOR_FREQ
+        int "SPINOR bus frequency(Hz)"
+	default 100000000
+
+endif
+
+menuconfig AIC_SE_SPI_DEVICE_SPINOR
+    bool "SE_SPI Devices: SPINOR"
+    depends on AIC_USING_SE_SPI
+    select AIC_SPINOR_DRV
+    default n
+
+if AIC_SE_SPI_DEVICE_SPINOR
+    config AIC_SE_SPI_DEVICE_SPINOR_FREQ
+        int "SPINOR bus frequency(Hz)"
+	default 50000000
+
+endif
+

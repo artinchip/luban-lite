@@ -1,0 +1,99 @@
+Import('AIC_ROOT')
+Import('PRJ_KERNEL')
+from building import *
+
+cwd = GetCurrentDir()
+path = [cwd + '/include']
+path += [cwd + '/base/include']
+path += [cwd + '/ge/include']
+
+path += [cwd + '/ve/include']
+path += [cwd + '../../../bsp/artinchip/include/uapi']
+path += [cwd + '/mpp_test']
+
+if GetDepend(['AIC_MPP_PLAYER_INTERFACE']):
+    #audio decoder
+    path += [cwd + '/middle_media/audio_decoder/include']
+    path += [cwd + '/middle_media/audio_decoder/decoder']
+
+    #base
+    path += [cwd + '/middle_media/base/include']
+    path += [cwd + '/middle_media/base/parser/mov']
+    path += [cwd + '/middle_media/base/parser/rawdata']
+    path += [cwd + '/middle_media/base/stream/file']
+
+    #openmax
+    path += [cwd + '/middle_media/openmax/component']
+    path += [cwd + '/middle_media/openmax/include']
+
+    #player
+    path += [cwd + '/middle_media/player/include']
+
+src = []
+
+CPPDEFINES = []
+
+# mpp
+if GetDepend(['LPKG_MPP']):
+    src += Glob('./base/memory/*.c')
+    src += Glob('./ge/*.c')
+    src += Glob('./fb/*.c')
+    src += Glob('ve/decoder/*.c')
+    src += Glob('ve/common/*.c')
+    src += Glob('ve/decoder/jpeg/*.c')
+    src += Glob('ve/decoder/png/*.c')
+    src += Glob('ve/decoder/h264/*.c')
+    src += Glob('ve/decoder/zlib/*.c')
+
+
+if GetDepend(['KERNEL_RTTHREAD']) and GetDepend(['LPKG_MPP']):
+    src += Glob('./mpp_test/pic_dec_test.c')
+    src += Glob('./mpp_test/mpp_dec_test.c')
+    src += Glob('./mpp_test/bit_stream_parser.c')
+    src += Glob('./mpp_test/pic_crop_test.c')
+    src += Glob('./mpp_test/ge_test/public/*.c')
+    src += Glob('./mpp_test/ge_test/*.c')
+    src += Glob('./ge/*.c')
+
+if GetDepend(['LPKG_MPP']) and GetDepend(['AIC_MPP_FB_TEST']) :
+    src += Glob('./mpp_test/mpp_fb/*.c')
+
+if GetDepend(['AIC_MPP_PLAYER_INTERFACE']):
+    #audio decoder
+    src += Glob('middle_media/audio_decoder/decoder/*.c')
+    src += Glob('middle_media/audio_decoder/decoder/mp3/mp3_decoder.c')
+
+    # base
+    src += Glob('middle_media/base/message/aic_message.c')
+    src += Glob('middle_media/base/parser/aic_parser.c')
+    src += Glob('middle_media/base/parser/mov/aic_mov_parser.c')
+    src += Glob('middle_media/base/parser/mov/mov_tags.c')
+    src += Glob('middle_media/base/parser/mov/mov.c')
+    src += Glob('middle_media/base/parser/rawdata/aic_raw_parser.c')
+    src += Glob('middle_media/base/render/aic_video_render.c')
+    src += Glob('middle_media/base/render/aic_audio_render.c')
+    src += Glob('middle_media/base/stream/aic_stream.c')
+    src += Glob('middle_media/base/stream/file/aic_file_stream.c')
+
+    #openmax
+    src += Glob('middle_media/openmax/component/*.c')
+    src += Glob('middle_media/openmax/OMX_Core.c')
+
+    #player
+    src += Glob('middle_media/player/aic_player.c')
+    src += Glob('middle_media/player/player_demo.c')
+
+if GetDepend(['AIC_MPP_VIN']):
+    src += Glob('vin/mpp_vin_vb.c')
+    src += Glob('vin/mpp_vin.c')
+
+if GetDepend(['AIC_MPP_VIN_DEV']):
+    src += Glob('vin/mpp_vin_vb.c')
+    src += Glob('vin/mpp_vin_dev.c')
+
+LOCAL_CCFLAGS = ''
+# LOCAL_CCFLAGS += ' -O0'
+
+group = DefineGroup('mpp', src, depend = [''], CPPPATH = path, CPPDEFINES = CPPDEFINES, LOCAL_CCFLAGS=LOCAL_CCFLAGS)
+
+Return('group')

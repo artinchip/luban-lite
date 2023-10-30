@@ -1,0 +1,81 @@
+#-----------------------------
+# SDMC devices local parameter
+#-----------------------------
+
+config AIC_SDMC_IRQ_MODE
+    bool "Enable the interrupt of SDMC"
+    default n
+    depends on AIC_USING_SDMC0 || AIC_USING_SDMC1 || AIC_USING_SDMC2
+
+# SDMC0 parameter
+
+menu "SDMC0 Parameter"
+    depends on AIC_USING_SDMC0
+
+    config AIC_SDMC0_BUSWIDTH8
+        bool "SDMC0 support 8 buswidth"
+        default y
+        depends on AIC_SDMC_DRV_V10
+
+    config AIC_SDMC0_DRV_PHASE
+        int "SDMC0 driver phase"
+        range 0 3
+        default 3
+
+    config AIC_SDMC0_SMP_PHASE
+        int "SDMC0 sample phase"
+        range 0 3
+        default 0
+
+endmenu
+
+# SDMC1 parameter
+
+menu "SDMC1 Parameter"
+    depends on AIC_USING_SDMC1
+
+    config AIC_SD_USING_HOTPLUG
+        bool "Using SDcard hotplug detection"
+        default n
+
+    config AIC_SDMC1_IS_SDIO
+        bool "SDMC1 connect to a SDIO device"
+        select AIC_SDMC_IRQ_MODE
+        default n
+
+    config AIC_SDMC1_DRV_PHASE
+        int "SDMC1 driver phase"
+        range 0 3
+        default 3
+
+    config AIC_SDMC1_SMP_PHASE
+        int "SDMC1 sample phase"
+        range 0 3
+        default 0
+
+endmenu
+
+# SDMC2 parameter
+
+menu "SDMC2 Parameter"
+    depends on AIC_USING_SDMC2
+
+    config AIC_SDMC2_IS_SDIO
+        bool "SDMC2 connect to a SDIO device"
+        select AIC_SDMC_IRQ_MODE
+        default n
+
+    config AIC_SDMC2_DRV_PHASE
+        int "SDMC2 driver phase"
+        range 0 3
+        default 3
+
+    config AIC_SDMC2_SMP_PHASE
+        int "SDMC2 sample phase"
+        range 0 3
+        default 0
+
+endmenu
+
+# common parameter
+

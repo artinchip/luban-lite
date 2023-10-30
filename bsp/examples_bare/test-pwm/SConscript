@@ -1,0 +1,13 @@
+Import('AIC_ROOT')
+Import('PRJ_KERNEL')
+from building import *
+
+cwd = GetCurrentDir()
+CPPPATH = []
+src = []
+if GetDepend('KERNEL_BAREMETAL') and GetDepend('AIC_PWM_TEST'):
+    src += Glob('test_pwm.c')
+
+group = DefineGroup('test-pwm', src, depend = [''], CPPPATH = CPPPATH)
+
+Return('group')

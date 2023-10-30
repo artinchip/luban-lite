@@ -1,0 +1,7 @@
+
+# Kconfig file for package cpu_usage
+config LPKG_USING_CPU_USAGE
+    bool "CPUU: Rt-Thread CPU usage statistics tool."
+    default n
+
+

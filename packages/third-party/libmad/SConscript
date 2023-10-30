@@ -1,0 +1,59 @@
+Import('AIC_ROOT')
+Import('PRJ_KERNEL')
+from building import *
+
+cwd = GetCurrentDir()
+path = [cwd]
+
+
+
+src = []
+
+CPPDEFINES = []
+
+
+if GetDepend(['LPKG_USING_MAD']):
+    src += Glob('./bit.c')
+    src += Glob('./decoder.c')
+    src += Glob('./fixed.c')
+    src += Glob('./frame.c')
+    src += Glob('./huffman.c')
+    src += Glob('./layer3.c')
+    src += Glob('./layer12.c')
+    src += Glob('./stream.c')
+    src += Glob('./synth.c')
+    src += Glob('./timer.c')
+    src += Glob('./version.c')
+
+
+
+if GetDepend(['LPKG_USING_MAD_FPM_64BIT']):
+    CPPDEFINES += ['FPM_64BIT']
+
+if GetDepend(['LPKG_USING_MAD_FPM_INTEL']):
+    CPPDEFINES += ['FPM_INTEL']
+
+if GetDepend(['LPKG_USING_MAD_FPM_ARM']):
+    CPPDEFINES += ['FPM_ARM']
+
+if GetDepend(['LPKG_USING_MAD_FPM_MIPS']):
+    CPPDEFINES += ['FPM_MIPS']
+
+if GetDepend(['LPKG_USING_MAD_FPM_SPARC']):
+    CPPDEFINES += ['FPM_SPARC']
+
+if GetDepend(['LPKG_USING_MAD_FPM_PPC']):
+    CPPDEFINES += ['FPM_PPC']
+
+if GetDepend(['LPKG_USING_MAD_FPM_DEFAULT']):
+    CPPDEFINES += ['FPM_DEFAULT']
+
+if GetDepend(['LPKG_USING_MAD_CONFIG_H']):
+    CPPDEFINES += ['HAVE_CONFIG_H']
+
+LOCAL_CCFLAGS = ''
+# LOCAL_CCFLAGS += ' -O0'
+
+group = DefineGroup('libmad', src, depend = [''], CPPPATH = path, CPPDEFINES = CPPDEFINES, LOCAL_CCFLAGS=LOCAL_CCFLAGS)
+
+Return('group')

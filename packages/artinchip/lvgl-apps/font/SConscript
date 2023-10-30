@@ -1,0 +1,21 @@
+from building import *
+import os
+
+cwd = GetCurrentDir()
+group = []
+src = []
+CPPPATH = [cwd]
+
+# base ui
+if GetDepend(['AIC_LVGL_BASE_DEMO']):
+    src += Glob('./ui_font_Big.c')
+    src += Glob('./ui_font_H1.c')
+    src += Glob('./ui_font_Title.c')
+
+# meter ui
+if GetDepend(['AIC_LVGL_METER_DEMO']):
+    src += Glob('./ui_font_Title.c')
+
+group = group + DefineGroup('LVGL-port', src, depend = ['AIC_LVGL_DEMO'], CPPPATH = CPPPATH)
+
+Return('group')

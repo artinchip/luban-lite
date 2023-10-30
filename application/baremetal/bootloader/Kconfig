@@ -1,0 +1,184 @@
+menu "Bootloader options"
+
+config AIC_BOOTLOADER
+    bool
+    default y
+    select AIC_CONSOLE_BARE_DRV
+    select AIC_PRINTF_BARE_DRV
+    select AIC_USING_UMM_HEAP
+
+menu "Console"
+    config AIC_BOOTLOADER_CONSOLE_UART
+        int "Console UART ID"
+        range 0 8
+        default 0
+endmenu
+
+menu "Drivers"
+    config AIC_BOOTLOADER_MMC_SUPPORT
+        bool "MMC boot support"
+        default n
+        select AIC_SDMC_DRV_TEST
+
+    config AIC_BOOTLOADER_SPINOR_SUPPORT
+        bool "SPI NOR boot support"
+        default y
+        select AIC_SPINOR_DRV_TEST
+
+    config AIC_BOOTLOADER_SPINAND_SUPPORT
+        bool "SPI NAND boot support"
+        default y
+        select AIC_SPINAND_DRV_TEST
+
+    config AIC_BOOTLOADER_PSRAM_EN
+        bool "PSRAM support"
+        default n
+        select AIC_XSPI_DRV
+        source bsp/artinchip/drv_bare/psram/Kconfig.dev
+
+    config AIC_BOOT_USB_DRV
+        bool "USB device driver support"
+        default n
+
+    config AIC_BOOT_USBH_DRV
+        bool "USB Uost driver support"
+        default n
+
+    config AIC_BOOTLOADER_UDISK_SUPPORT
+        bool "UDISK support"
+        default n
+        select AIC_BOOT_USBH_DRV
+
+endmenu # "Drivers"
+
+menu "Components"
+    config AIC_BOOTLOADER_FATFS_SUPPORT
+        bool "Fatfs for bootloader"
+        default n
+
+endmenu # "Components"
+
+menu "Upgrading"
+    config AIC_BOOTLOADER_UPGBOOT_PIN
+        string "PIN to enter upgrading mode"
+        default "PA.0"
+
+    config AICUPG_UART_ENABLE
+        bool "Upgrading by UART"
+        default n
+        select AIC_UART_DRV
+
+    config AICUPG_USB_ENABLE
+        bool "Upgrading by USB"
+        default y
+        select AIC_BOOT_USB_DRV
+
+    config AICUPG_USB_DMA_ENABLE
+        bool "DMA enable for USB device"
+        depends on AICUPG_USB_ENABLE
+        default n
+
+    config AICUPG_SDCARD_ENABLE
+        bool "Upgrading by SD Card"
+        default n
+        select AIC_BOOTLOADER_MMC_SUPPORT
+        select AIC_BOOTLOADER_FATFS_SUPPORT
+
+    config AICUPG_SDCARD_CONTROLLER_ID
+        int  "SDMC controller id for SD Card"
+        default 1
+        depends on AICUPG_SDCARD_ENABLE
+
+    config AICUPG_UDISK_ENABLE
+        bool "Upgrading by UDISK"
+        default n
+        select AIC_BOOTLOADER_UDISK_SUPPORT
+        select AIC_BOOTLOADER_FATFS_SUPPORT
+
+    config AICUPG_USB_CONTROLLER_MAX_NUM
+        int  "USB Host controller count"
+        default 1
+        depends on AICUPG_UDISK_ENABLE
+
+    config AICUPG_MMC_ARTINCHIP
+        bool "Write to MMC support"
+        default y
+        depends on AIC_BOOTLOADER_MMC_SUPPORT
+
+    config AICUPG_NAND_ARTINCHIP
+        bool "Write to NAND support"
+        default y
+        depends on AIC_BOOTLOADER_SPINAND_SUPPORT
+
+    config AICUPG_NOR_ARTINCHIP
+        bool "Write to NOR support"
+        default y
+        depends on AIC_BOOTLOADER_SPINOR_SUPPORT
+endmenu # "Upgrading settings"
+
+menu "Commands"
+    config AIC_BOOTLOADER_CMD_NOR_BOOT
+        bool "nor boot"
+        default y
+        depends on AIC_BOOTLOADER_SPINOR_SUPPORT
+
+    config AIC_BOOTLOADER_CMD_XIP_BOOT
+        bool "xip boot"
+        default n
+        depends on AIC_BOOTLOADER_SPINOR_SUPPORT
+
+    config AIC_BOOTLOADER_CMD_NAND_BOOT
+        bool "nand boot"
+        default y
+        depends on AIC_BOOTLOADER_SPINAND_SUPPORT
+
+    config AIC_BOOTLOADER_CMD_MMC_BOOT
+        bool "mmc boot"
+        default n
+
+    config AIC_BOOTLOADER_CMD_SPI_NOR
+        bool "spinor"
+        default y
+        depends on AIC_BOOTLOADER_SPINOR_SUPPORT
+
+    config AIC_BOOTLOADER_CMD_SPI_NAND
+        bool "spinand"
+        default y
+        depends on AIC_BOOTLOADER_SPINAND_SUPPORT
+
+    config AIC_BOOTLOADER_CMD_MTD
+        bool "mtd read/write"
+        default y
+        depends on AIC_BOOTLOADER_SPINAND_SUPPORT || AIC_BOOTLOADER_SPINOR_SUPPORT
+        select AIC_MTD_BARE_TEST
+
+    config AIC_BOOTLOADER_CMD_MEM
+        bool "mem"
+        default y
+
+    config AIC_BOOTLOADER_CMD_PROGRESS_BAR
+        bool "boot progress bar"
+        default n
+
+    config AIC_BOOTLOADER_CMD_PSRAM_TEST
+        bool "psram memory test"
+        depends on AIC_XSPI_DRV
+        default n
+endmenu # "Commands"
+
+menu "Debug"
+    config AICUPG_DEBUG
+        bool "aicupg debug log"
+        default n
+
+    config AICUPG_UART_DEBUG
+        bool "aicupg uart debug log"
+        default n
+
+    config AIC_SHOW_BOOT_TIME
+        bool "show boot time"
+        default n
+
+endmenu # "Debug"
+
+endmenu # "Bootloader options"

@@ -1,0 +1,20 @@
+Import('AIC_ROOT')
+Import('PRJ_KERNEL')
+from building import *
+
+cwd = GetCurrentDir()
+src = Glob('*.c')
+CPPPATH = []
+
+if GetDepend('AIC_USING_CAMERA'):
+    CPPPATH.append(cwd)
+
+if GetDepend('AIC_USING_CAMERA_OV5640'):
+    src += Glob('ov5640/*.c')
+
+LOCAL_CCFLAGS = ''
+# LOCAL_CCFLAGS += ' -O0'
+
+group = DefineGroup('ov5640', src, depend = [''], CPPPATH = CPPPATH, LOCAL_CCFLAGS=LOCAL_CCFLAGS)
+
+Return('group')

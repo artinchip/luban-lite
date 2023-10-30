@@ -1,0 +1,13 @@
+Import('AIC_ROOT')
+Import('PRJ_KERNEL')
+from building import *
+
+cwd = GetCurrentDir()
+CPPPATH = []
+src = []
+if GetDepend('KERNEL_BAREMETAL') and GetDepend('AIC_GPAI_TEST'):
+    src += Glob('test_gpai.c')
+
+group = DefineGroup('test-gpai', src, depend = [''], CPPPATH = CPPPATH)
+
+Return('group')

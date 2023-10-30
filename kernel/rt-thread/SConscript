@@ -1,0 +1,19 @@
+Import('RTT_ROOT')
+Import('rtconfig')
+from building import *
+
+objs = []
+remove_components = []
+kernel_vdir = './'
+
+# include kernel
+objs = objs + SConscript(Rtt_Root + '/src/SConscript', variant_dir=kernel_vdir + '/src', duplicate=0)
+# include libcpu
+objs = objs + SConscript(Rtt_Root + '/libcpu/SConscript', variant_dir=kernel_vdir + '/libcpu', duplicate=0)
+# include components
+objs = objs + SConscript(Rtt_Root + '/components/SConscript', variant_dir=kernel_vdir + '/components', duplicate=0, exports='remove_components')
+# include testcases
+if os.path.isfile(os.path.join(Rtt_Root, 'examples/utest/testcases/SConscript')):
+    objs = objs + SConscript(os.path.join(Rtt_Root, 'examples/utest/testcases/SConscript'), variant_dir=kernel_vdir + '/examples/utest/testcases', duplicate=0)
+
+Return('objs')

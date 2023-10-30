@@ -1,0 +1,14 @@
+Import('AIC_ROOT')
+Import('PRJ_KERNEL')
+from building import *
+
+cwd = GetCurrentDir()
+CPPPATH = []
+src = []
+if GetDepend('KERNEL_BAREMETAL') and GetDepend('AIC_RTP_TEST') and GetDepend('AIC_DISP_DE_DRV'):
+    src += Glob('test_rtp_calibrate.c')
+    src += Glob('test_rtp_draw.c')
+
+group = DefineGroup('test-rtp', src, depend = [''], CPPPATH = CPPPATH)
+
+Return('group')

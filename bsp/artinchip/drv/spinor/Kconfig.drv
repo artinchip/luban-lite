@@ -1,0 +1,11 @@
+#-----------------------------
+# spinor driver local parameter
+#-----------------------------
+
+config AIC_SPINOR_DRV
+    bool
+    select AIC_QSPI_DRV
+    select RT_USING_MTD_NOR if DRIVER_DRV_EN
+    select RT_USING_SFUD if DRIVER_DRV_EN
+    default n
+

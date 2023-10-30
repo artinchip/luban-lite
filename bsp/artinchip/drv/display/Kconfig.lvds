@@ -1,0 +1,56 @@
+#-----------------------------
+# lvds devices local parameter
+#-----------------------------
+
+menu "LVDS interface options"
+    depends on AIC_DISP_LVDS
+
+choice
+    prompt "lvds mode"
+    default JEIDA_24BIT
+    depends on AIC_DISP_LVDS
+
+config AIC_LVDS_NS
+    bool "vesa-24"
+
+config AIC_LVDS_JEIDA_24BIT
+    bool "jeida-24"
+
+config AIC_LVDS_JEIDA_18BIT
+    bool "jeida-18"
+endchoice
+
+config AIC_LVDS_MODE
+    int
+    default 0     if AIC_LVDS_NS
+    default 1     if AIC_LVDS_JEIDA_24BIT
+    default 2     if AIC_LVDS_JEIDA_18BIT
+
+choice
+    prompt "lvds link mode"
+    default AIC_LVDS_LINK_1 if AIC_DE_DRV_V10
+    default AIC_LVDS_LINK_0 if AIC_DE_DRV_V11
+    depends on AIC_DISP_LVDS
+
+config AIC_LVDS_LINK_0
+    bool "single link 0"
+
+config AIC_LVDS_LINK_1
+    bool "single link 1"
+    depends on AIC_DE_DRV_V10
+
+config AIC_LVDS_DOUBLE_SCREEN
+    bool "double screen"
+
+config AIC_LVDS_DUAL_LINK
+    bool "dual link"
+endchoice
+
+config AIC_LVDS_LINK_MODE
+    int
+    default 0     if AIC_LVDS_LINK_0
+    default 1     if AIC_LVDS_LINK_1
+    default 2     if AIC_LVDS_DOUBLE_SCREEN
+    default 3     if AIC_LVDS_DUAL_LINK
+
+endmenu

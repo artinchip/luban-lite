@@ -1,0 +1,40 @@
+
+menu "display timing of simple panel"
+
+    config PANEL_PIXELCLOCK
+        int "pixelclock in MHZ"
+        default 52
+
+    config PANEL_HACTIVE
+        int "hactive"
+        default 1024
+
+    config PANEL_VACTIVE
+        int "vactive"
+        default 600
+
+    config PANEL_HBP
+        int "hback-porch"
+    default 160
+
+    config PANEL_HFP
+        int "hfront-porch"
+    default 160
+
+    config PANEL_HSW
+        int "hsync-len"
+    default 20
+
+    config PANEL_VBP
+        int "vback-porch"
+    default 12
+
+    config PANEL_VFP
+        int "vfront-porch"
+    default 20
+
+    config PANEL_VSW
+        int "vsync-len"
+    default 2
+endmenu
+

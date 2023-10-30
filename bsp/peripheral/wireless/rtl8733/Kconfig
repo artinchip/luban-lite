@@ -1,0 +1,11 @@
+config RTL8733_WLAN_DRV
+    bool
+    default n
+
+config RTL8733_WLAN_INTF_SDIO
+    bool
+    default n
+
+config RTL8733_WLAN_INTF_USB
+    bool
+    default n

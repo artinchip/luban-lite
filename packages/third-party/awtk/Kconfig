@@ -1,0 +1,181 @@
+# Kconfig file for package AWTK
+menuconfig LPKG_USING_AWTK
+    bool "AWTK GUI"
+    default n
+    select RT_USING_CPLUSPLUS
+    select RT_USING_CPLUSPLUS11
+
+if LPKG_USING_AWTK
+
+menu "AWTK function config"
+    config WITH_G2D
+        bool "Use g2d"
+        default y
+        select WITH_AIC_G2D
+
+    config WITH_AIC_G2D
+        depends on WITH_G2D
+        bool "Use aic g2d"
+        default y
+
+    config WITH_DEC_IMAGE
+        depends on WITH_G2D
+        bool "Use decoding image"
+        default n
+
+
+    config APP_RES_ROOT
+        depends on WITH_FS_RES
+        string "Set app resource root"
+        default "/data/res"
+
+    choice
+        prompt "Select lcd refresh mode"
+        default WITH_LCD_FLUSH
+
+    config WITH_LCD_SWAP
+        bool "swap mode"
+
+    config WITH_LCD_FLUSH
+        bool "flush mode"
+    endchoice
+
+    choice
+        prompt "Select bitmap format"
+        default WITH_BITMAP_BGRA
+
+    config WITH_BITMAP_BGR565
+        bool "Bitmap bgh565 fotmat"
+
+    config WITH_BITMAP_BGRA
+        bool "Bitmap bgra8888 fotmat"
+    endchoice
+
+    config NDEBUG
+        bool "Choice log level info else debug"
+        default y
+
+endmenu
+
+menu "AWTK cropping config"
+    config WITH_FS_RES
+        bool "Use fatfs files system"
+        default y
+
+    config WITH_UNICODE_BREAK
+        bool "Wrap using unicode standard"
+        default y
+
+    config WITH_STB_FONT
+        bool "Support truetype fonts"
+        default y
+
+    config WITH_TEXT_BIDI
+        bool "Supports bidirectional text alignment"
+        default y
+
+    config TK_GLYPH_CACHE_NR
+        int "Font manager shrink cache num"
+        default 256
+
+    config TK_MAX_MEM_BLOCK_NR_ON
+        bool "Support for multiple blocks of discontinuous memory"
+        default n
+
+    config TK_MAX_MEM_BLOCK_NR
+        depends on TK_MAX_MEM_BLOCK_NR_ON
+        int "Block nr num"
+        default 4
+
+    config WITH_IME_PINYIN
+        bool "Use pinyin"
+        default n
+
+    config WITHOUT_SUGGEST_WORDS
+        depends on WITH_IME_PINYIN
+        bool "Use pinyin assiciate func"
+        default n
+
+    config WITH_MINI_FONT
+        bool "Ues mini font"
+        default n
+
+    config WITH_DATA_READER_WRITER
+        bool "The configuration file requires the use or data_reader/data_writer"
+        default n
+
+    config WITHOUT_WINDOW_ANIMATORS
+        bool "Don't use window animations"
+        default n
+
+    config WITHOUT_WINDOW_ANIMATOR_CACHE
+        bool "Don't use window animations cache"
+        default n
+
+    config WITHOUT_WIDGET_ANIMATORS
+        bool "Don't use widget animations"
+        default n
+
+    config WITHOUT_CLIPBOARD
+        bool "Don't use clip board"
+        default n
+
+    config WITHOUT_DIALOG_HIGHLIGHTER
+        bool "Don't use dialog hightlighter"
+        default n
+endmenu
+
+menu "AWTK thread config"
+    config TK_UI_THREAD_STACK_SIZE
+        int "UI thread stack size"
+        default 60000
+
+    config TK_UI_THREAD_PRIORITY
+        int "UI thread prority"
+        default 19
+
+    config TK_UI_THREAD_TICK
+        int "UI thread tick"
+        default 20
+
+    config TK_TOUCH_THREAD_STACK_SIZE
+        int "Touch thread stack size"
+        default 2048
+
+    config TK_TOUCH_THREAD_PRIORITY
+        int "Touch thread prority"
+        default 19
+
+    config TK_TOUCH_THREAD_TICK
+        int "Touch thread tick"
+        default 5
+
+endmenu
+
+menu "AWTK input device config"
+    config AIC_TOUCH_PANEL_GT911
+        bool "Using the input device gt911"
+        default y
+    config AIC_TOUCH_PANEL_GT911_NAME
+        depends on AIC_TOUCH_PANEL_GT911
+        string "The name of the input device is gt911"
+        default "gt911"
+    config AIC_TOUCH_PANEL_GT911_DEBUG
+        depends on AIC_TOUCH_PANEL_GT911
+        bool "The input device gt911 debug"
+        default n
+endmenu
+
+choice
+    prompt "Select a demo"
+    default LPKG_AWTK_USING_DEMOS_CHART
+
+config LPKG_AWTK_USING_DEMOS_CHART
+        bool "Use demo chart"
+
+config LPKG_AWTK_USING_OFFICIAL_DEMO
+    bool "Use the official demo"
+
+endchoice
+
+endif

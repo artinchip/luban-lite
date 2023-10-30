@@ -1,0 +1,10 @@
+/home/ARTMEM/jun.ma/workspace/luban-dev-0620/dl/libmad/libmad_0.15.1b-10.diff.gz
+/home/ARTMEM/jun.ma/workspace/luban-dev-0620/package/third-party/libmad/0001-mips-h-constraint-removal.patch
+/home/ARTMEM/jun.ma/workspace/luban-dev-0620/package/third-party/libmad/0002-configure-ac-automake-foreign.patch
+/home/ARTMEM/jun.ma/workspace/luban-dev-0620/source/third-party/libmad-0.15.1b/debian/patches/optimize.diff
+/home/ARTMEM/jun.ma/workspace/luban-dev-0620/source/third-party/libmad-0.15.1b/debian/patches/amd64-64bit.diff
+/home/ARTMEM/jun.ma/workspace/luban-dev-0620/source/third-party/libmad-0.15.1b/debian/patches/Provide-Thumb-2-alternative-code-for-MAD_F_MLN.diff
+/home/ARTMEM/jun.ma/workspace/luban-dev-0620/source/third-party/libmad-0.15.1b/debian/patches/libmad.thumb.diff
+/home/ARTMEM/jun.ma/workspace/luban-dev-0620/source/third-party/libmad-0.15.1b/debian/patches/mips-gcc4.4.diff
+/home/ARTMEM/jun.ma/workspace/luban-dev-0620/source/third-party/libmad-0.15.1b/debian/patches/md_size.diff
+/home/ARTMEM/jun.ma/workspace/luban-dev-0620/source/third-party/libmad-0.15.1b/debian/patches/length-check.patch

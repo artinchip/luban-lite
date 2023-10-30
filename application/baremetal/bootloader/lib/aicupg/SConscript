@@ -1,0 +1,31 @@
+# RT-Thread building script for component
+
+from building import *
+
+Import('rtconfig')
+
+cwd     = GetCurrentDir()
+src     = Glob('basic_cmd.c')
+src     += Glob('fwc_cmd.c')
+src     += Glob('ram_fwc.c')
+src     += Glob('upg_main.c')
+src     += Glob('trans_rw_data.c')
+if GetDepend('AICUPG_UART_ENABLE'):
+    src     += Glob('upg_uart.c')
+if GetDepend('AICUPG_USB_ENABLE'):
+    src     += Glob('upg_device.c')
+if GetDepend('AICUPG_MMC_ARTINCHIP'):
+    src     += Glob('mmc_fwc.c')
+if GetDepend('AICUPG_NAND_ARTINCHIP'):
+    src     += Glob('nand_fwc.c')
+    src     += Glob('nand_fwc_spl.c')
+if GetDepend('AICUPG_NOR_ARTINCHIP'):
+    src     += Glob('nor_fwc.c')
+if GetDepend('AIC_BOOTLOADER_FATFS_SUPPORT'):
+    src     += Glob('upg_fat.c')
+CPPPATH = [cwd]
+ASFLAGS = ''
+
+group = DefineGroup('BLDRV', src, depend = [''], CPPPATH = CPPPATH, ASFLAGS = ASFLAGS)
+
+Return('group')

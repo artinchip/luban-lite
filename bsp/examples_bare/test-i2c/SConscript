@@ -1,0 +1,14 @@
+Import('AIC_ROOT')
+Import('PRJ_KERNEL')
+from building import *
+
+cwd = GetCurrentDir()
+CPPPATH = []
+src = []
+
+if GetDepend('KERNEL_BAREMETAL') and GetDepend('AIC_I2C_DRV_TEST'):
+    src += Glob('*.c')
+
+group = DefineGroup('test-i2c', src, depend = [''], CPPPATH = CPPPATH)
+
+Return('group')

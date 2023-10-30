@@ -1,0 +1,15 @@
+Import('AIC_ROOT')
+Import('PRJ_KERNEL')
+from building import *
+
+cwd = GetCurrentDir()
+src = Glob('*.c')
+CPPPATH = []
+
+if GetDepend('AIC_TOUCH_PANEL_GT911'):
+    CPPPATH.append(cwd + '/gt911/inc')
+    src += Glob('gt911/src/*.c')
+
+group = DefineGroup('gt911', src, depend = [''], CPPPATH = CPPPATH)
+
+Return('group')

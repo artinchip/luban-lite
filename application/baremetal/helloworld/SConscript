@@ -1,0 +1,21 @@
+Import('RTT_ROOT')
+Import('rtconfig')
+from building import *
+
+cwd     = GetCurrentDir()
+src     = Glob('*.c')
+CPPPATH = [cwd, ]
+
+CFLAGS = ' -c -ffunction-sections'
+
+group   = DefineGroup('Applications', src, depend = [''], CPPPATH = CPPPATH, CFLAGS=CFLAGS)
+
+lst  = os.listdir(cwd)
+
+for item in lst:
+    ipath = '{}/SConscript'.format(item)
+    if os.path.isfile(cwd + '/' + ipath) == False:
+        continue
+    group = group + SConscript(ipath)
+
+Return('group')

@@ -1,0 +1,14 @@
+
+# Kconfig file for package ramdisk
+config LPKG_USING_SFUD
+    bool "SPINOR Driver SFUD: Serial Flash Universal Driver"
+    default n
+    help
+        An using JEDEC's SFDP standard serial (SPI) flash universal driver library
+
+# only for bootloader, rtos use RT_SFUD_USING_FLASH_INFO_TABLE
+if LPKG_USING_SFUD && AIC_BOOTLOADER
+    config BOOTLOADER_SFUD_USING_FLASH_INFO_TABLE
+        bool "Using defined supported flash chip information table"
+        default y
+endif

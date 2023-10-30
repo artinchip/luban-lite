@@ -1,0 +1,37 @@
+#-----------------------------
+# devices local parameter
+#-----------------------------
+
+menu "PM configure"
+    depends on AIC_USING_PM
+
+    config AIC_PM_POWER_KEY
+        bool "Enable gpio to sleep/wakeup system"
+        default n
+
+    config AIC_PM_POWER_KEY_GPIO
+        string "Select sleep/wakeup pin"
+        default "PD.6"
+        depends on AIC_PM_POWER_KEY
+
+    config AIC_PM_POWER_TOUCH_WAKEUP
+        bool "Enable touch panel to wakeup system"
+        default n
+
+    config AIC_PM_POWER_TOUCH_TIME_SLEEP
+        int "Seconds to enter sleep"
+        default 120
+        depends on AIC_PM_POWER_TOUCH_WAKEUP
+
+    choice
+        prompt "Select default sleep mode"
+        default AIC_PM_POWER_DEFAULT_LIGHT_MODE
+
+        config AIC_PM_POWER_DEFAULT_LIGHT_MODE
+            bool "light sleep mode"
+
+        config AIC_PM_POWER_DEFAULT_DEEP_MODE
+            bool "deep sleep mode"
+    endchoice
+
+endmenu

@@ -1,0 +1,23 @@
+config AIC_USING_CAMERA
+    bool "Using camera device"
+    default n
+
+config AIC_USING_CAMERA_OV5640
+    bool "Using camera OV5640"
+    depends on AIC_USING_CAMERA && AIC_I2C_DRV
+    default n
+
+config AIC_CAMERA_I2C_CHAN
+    int "The No. of I2C channel"
+    depends on AIC_USING_CAMERA && AIC_I2C_DRV
+    default 0
+
+config AIC_CAMERA_RST_PIN
+    string "The reset pin of Camera"
+    depends on AIC_USING_CAMERA
+    default "PE.14"
+
+config AIC_CAMERA_PWDN_PIN
+    string "The power down pin of Camera"
+    depends on AIC_USING_CAMERA
+    default "PE.15"

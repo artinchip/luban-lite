@@ -1,0 +1,12 @@
+
+menuconfig LPKG_USING_STREAM
+    bool "STREAM : a benchmark that measures the sustained memory bandwidth."
+    default n
+
+if LPKG_USING_STREAM
+
+    config STREAM_ARRAY_SIZE
+        int "Stream test array size."
+        default "200000"
+
+endif

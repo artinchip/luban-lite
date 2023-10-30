@@ -1,0 +1,23 @@
+from building import *
+Import('rtconfig')
+
+src   = []
+cwd   = GetCurrentDir()
+
+CPPPATH = []
+LOCAL_CFLAGS = ''
+
+if GetDepend('LPKG_USING_SFUD'):
+    src += ['src/sfud.c', 'src/sfud_qe.c']
+    src += ['src/sfud_sfdp.c']
+    CPPPATH += [cwd + '/inc']
+
+    if rtconfig.PLATFORM in ['gcc', 'armclang']:
+        LOCAL_CFLAGS += ' -std=c99'
+    elif rtconfig.PLATFORM in ['armcc']:
+        LOCAL_CFLAGS += ' --c99'
+
+# add src and include to group.
+group = DefineGroup('sfud', src, depend = ['LPKG_USING_SFUD'], CPPPATH = CPPPATH, LOCAL_CFLAGS = LOCAL_CFLAGS)
+
+Return('group')

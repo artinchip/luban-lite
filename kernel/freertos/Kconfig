@@ -1,0 +1,16 @@
+menu "FreeRTOS options"
+
+config KERNEL_FREERTOS
+    bool
+    default y
+
+config DRIVER_HAL_EN
+    bool
+    default y
+
+config DRIVER_BARE_DRV_EN
+    bool
+    default y
+
+endmenu
+

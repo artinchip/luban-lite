@@ -1,0 +1,14 @@
+menu "BenchMark Tests"
+
+config AIC_PRINT_FLOAT_CUSTOM
+    bool
+    default y
+    depends on ARCH_RISCV32
+
+source "packages/third-party/benchmark/coremark/Kconfig"
+source "packages/third-party/benchmark/dhrystone/Kconfig"
+source "packages/third-party/benchmark/stream/Kconfig"
+source "packages/third-party/benchmark/whetstone/Kconfig"
+source "packages/third-party/benchmark/linpack/Kconfig"
+
+endmenu

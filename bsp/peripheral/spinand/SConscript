@@ -1,0 +1,67 @@
+from building import *
+Import('rtconfig')
+
+src   = []
+cwd   = GetCurrentDir()
+
+CPPPATH = []
+LOCAL_CFLAGS = ''
+
+if GetDepend('SPI_NAND_DOSILICON'):
+    src += ['dosilicon.c']
+
+if GetDepend('SPI_NAND_ETRON'):
+    src += ['etron.c']
+
+if GetDepend('SPI_NAND_MACRONIX'):
+    src += ['macronix.c']
+
+if GetDepend('SPI_NAND_WINBOND'):
+    src += ['winbond.c']
+
+if GetDepend('SPI_NAND_GIGADEVICE'):
+    src += ['gigadevice.c']
+
+if GetDepend('SPI_NAND_TOSHIBA'):
+    src += ['toshiba.c']
+
+if GetDepend('SPI_NAND_FORESEE'):
+    src += ['foresee.c']
+
+if GetDepend('SPI_NAND_XTX'):
+    src += ['xtx.c']
+
+if GetDepend('SPI_NAND_ZETTA'):
+    src += ['zetta.c']
+
+if GetDepend('SPI_NAND_MICRON'):
+    src += ['micron.c']
+
+if GetDepend('SPI_NAND_ZBIT'):
+    src += ['zbit.c']
+
+if GetDepend('SPI_NAND_ESMT'):
+    src += ['esmt.c']
+
+if GetDepend('SPI_NAND_UMTEK'):
+    src += ['umtek.c']
+
+if GetDepend('SPI_NAND_QUANXING'):
+    src += ['quanxing.c']
+
+if GetDepend('LPKG_USING_SPINAND'):
+    src += ['spinand.c']
+    src += ['bbt.c']
+    CPPPATH += [cwd + '/inc']
+
+    if rtconfig.PLATFORM in ['gcc', 'armclang']:
+        LOCAL_CFLAGS += ' -std=c99'
+    elif rtconfig.PLATFORM in ['armcc']:
+        LOCAL_CFLAGS += ' --c99'
+
+# add src and include to group.
+group = DefineGroup('spinand', src, depend = ['LPKG_USING_SPINAND'], CPPPATH = CPPPATH, LOCAL_CFLAGS = LOCAL_CFLAGS)
+
+Return('group')
+
+

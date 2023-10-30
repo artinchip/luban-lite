@@ -1,0 +1,14 @@
+Import('AIC_ROOT')
+Import('PRJ_KERNEL')
+from building import *
+
+cwd = GetCurrentDir()
+CPPPATH = []
+src = []
+if GetDepend('RT_USING_FINSH'):
+    if GetDepend('AIC_AUDIO_DRV_TEST') or GetDepend('AIC_I2S_DRV_TEST'):
+        src = Glob('*.c')
+
+group = DefineGroup('test-aplay', src, depend = [''], CPPPATH = CPPPATH)
+
+Return('group')

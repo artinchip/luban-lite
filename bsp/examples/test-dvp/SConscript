@@ -1,0 +1,13 @@
+Import('AIC_ROOT')
+Import('PRJ_KERNEL')
+from building import *
+
+cwd = GetCurrentDir()
+CPPPATH = []
+src = []
+if GetDepend('AIC_DVP_TEST') and GetDepend('RT_USING_FINSH'):
+    src = Glob('*.c')
+
+group = DefineGroup('test-dvp', src, depend = [''], CPPPATH = CPPPATH)
+
+Return('group')

@@ -1,0 +1,63 @@
+#-----------------------------
+# qspi devices local parameter
+#-----------------------------
+
+menu "Qspi0 Parameter"
+    depends on AIC_USING_QSPI0
+
+    config AIC_DEV_QSPI0_MAX_SRC_FREQ_HZ
+        int "Max frequency(Hz)"
+        default 100000000
+
+endmenu
+
+menu "Qspi1 Parameter"
+    depends on AIC_USING_QSPI1
+
+    config AIC_DEV_QSPI1_MAX_SRC_FREQ_HZ
+        int "Max frequency(Hz)"
+        default 100000000
+
+endmenu
+
+menu "Qspi2 Parameter"
+    depends on AIC_USING_QSPI2
+
+    config AIC_DEV_QSPI2_MAX_SRC_FREQ_HZ
+        int "Max frequency(Hz)"
+        default 100000000
+
+endmenu
+
+menu "Qspi3 Parameter"
+    depends on AIC_USING_QSPI3
+
+    config AIC_DEV_QSPI3_MAX_SRC_FREQ_HZ
+        int "Max frequency(Hz)"
+        default 100000000
+
+endmenu
+
+menu "Se spi Parameter"
+    depends on AIC_USING_SE_SPI
+
+    config AIC_DEV_SE_SPI_MAX_SRC_FREQ_HZ
+        int "Max frequency(Hz)"
+        default 50000000
+
+endmenu
+
+config AIC_SUPPORT_SPI_IN_BIT_MODE
+    bool "Enable SPI bit mode"
+    default n
+    depends on AIC_QSPI_DRV
+
+config AIC_SUPPORT_SPI_X_WIRE_IN_BIT_MODE
+    int "SPI bit mode is 3-WIRE or STD"
+    depends on AIC_SUPPORT_SPI_IN_BIT_MODE
+    default 3
+    range 3 4
+
+source "bsp/artinchip/drv/spinor/Kconfig.dev"
+source "bsp/artinchip/drv/spinand/Kconfig.dev"
+

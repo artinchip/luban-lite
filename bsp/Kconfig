@@ -1,0 +1,345 @@
+menu "Drivers options"
+
+#--------------------------------------------
+# baremetal driver
+#--------------------------------------------
+
+if DRIVER_BARE_DRV_EN
+    menu "AIC Bare Driver"
+
+    config AIC_MTD_BARE_DRV
+        bool "Enable AIC MTD Bare Driver"
+        depends on AIC_SPINAND_DRV || AIC_SPINOR_DRV
+        default n
+
+    config AIC_CONSOLE_BARE_DRV
+        bool "Enable AIC Tiny Console Bare Driver"
+        depends on AIC_UART_DRV
+        default n
+
+    if AIC_CONSOLE_BARE_DRV
+        config AIC_CONSOLE_SYSNAME
+            string "AIC Tiny Console Sysname"
+            default "tinySPL"
+    endif
+
+    config AIC_PRINTF_BARE_DRV
+        bool "Enable Tiny Printf Bare Driver"
+        depends on AIC_UART_DRV
+        default n
+
+    choice
+        prompt "Select Heap Type"
+        default AIC_USING_UMM_HEAP if AIC_BOOTLOADER
+        default AIC_USING_TLSF_HEAP if ! AIC_BOOTLOADER
+
+        config AIC_USING_TLSF_HEAP
+            bool "tlsf"
+            select TLSF_MEM_HEAP
+        config AIC_USING_UMM_HEAP
+            bool "umm"
+            select AIC_UMM_HEAP_BARE_DRV
+    endchoice
+
+    config AIC_UMM_HEAP_BARE_DRV
+        bool "Enable Umm Heap Bare Driver"
+        default n
+
+    config TLSF_MEM_HEAP
+        bool "Enable Tlsf Heap Bare Driver"
+        default n
+
+    endmenu
+
+endif
+
+#--------------------------------------------
+# modules driver
+#--------------------------------------------
+
+source "bsp/artinchip/drv/gpio/Kconfig.drv"
+source "bsp/artinchip/drv/uart/Kconfig.drv"
+source "bsp/artinchip/drv/qspi/Kconfig.drv"
+source "bsp/artinchip/drv/i2c/Kconfig.drv"
+source "bsp/artinchip/drv/spinor/Kconfig.drv"
+source "bsp/artinchip/drv/spinand/Kconfig.drv"
+
+#--------------------------------------------
+# Peripheral driver
+#--------------------------------------------
+
+menu "Peripheral"
+source "bsp/peripheral/Kconfig"
+endmenu
+
+#--------------------------------------------
+# Driver debug option
+#--------------------------------------------
+
+menu "Drivers debug"
+
+choice
+    prompt "Global log level"
+    depends on !RT_USING_ULOG
+    default AIC_LOG_LEVEL_WARN
+
+config AIC_LOG_LEVEL_NONE
+    bool "none"
+
+config AIC_LOG_LEVEL_ERR
+    bool "error"
+
+config AIC_LOG_LEVEL_WARN
+    bool "warn"
+
+config AIC_LOG_LEVEL_INFO
+    bool "info"
+
+config AIC_LOG_LEVEL_DEBUG
+    bool "debug"
+
+endchoice
+
+config AIC_LOG_LEVEL
+    int
+    default 0 if AIC_LOG_LEVEL_NONE
+    default 3 if AIC_LOG_LEVEL_ERR
+    default 4 if AIC_LOG_LEVEL_WARN
+    default 6 if AIC_LOG_LEVEL_INFO
+    default 7 if AIC_LOG_LEVEL_DEBUG
+
+config AIC_CMU_DRV_DEBUG
+    bool "Enable CMU driver debug"
+    default n
+    depends on AIC_CMU_DRV
+
+config AIC_GPIO_DRV_DEBUG
+    bool "Enable GPIO driver debug"
+    default n
+    depends on AIC_GPIO_DRV
+
+config AIC_DMA_DRV_DEBUG
+    bool "Enable DMA driver debug"
+    default n
+    depends on AIC_DMA_DRV
+
+config AIC_UART_DRV_DEBUG
+    bool "Enable UART driver debug"
+    default n
+    depends on AIC_UART_DRV
+
+config AIC_I2C_DRV_DEBUG
+    bool "Enable I2C driver debug"
+    default n
+    depends on AIC_I2C_DRV
+
+config AIC_RTC_DRV_DEBUG
+    bool "Enable RTC driver debug"
+    default n
+    depends on AIC_RTC_DRV
+
+config AIC_QSPI_DRV_DEBUG
+    bool "Enable QSPI driver debug"
+    default n
+    depends on AIC_QSPI_DRV
+
+config AIC_SPINAND_DRV_DEBUG
+    bool "Enable SPINAND driver debug"
+    default n
+    depends on AIC_SPINAND_DRV
+
+config AIC_SPINOR_SFUD_DEBUG
+    bool "Enable SPINOR SFUD debug"
+    default n
+    depends on LPKG_USING_SFUD
+
+config AIC_FB_DRV_DEBUG
+    bool "Enable Display driver debug"
+    default n
+    depends on AIC_DISPLAY_DRV
+
+endmenu
+
+menu "Drivers examples"
+
+config AIC_CMU_DRV_TEST
+    bool "Enable CMU driver test command"
+    default n
+    depends on AIC_CMU_DRV
+
+config AIC_GPIO_DRV_TEST
+    bool "Enable GPIO driver test command"
+    default n
+    depends on AIC_GPIO_DRV
+
+config AIC_DMA_DRV_TEST
+    bool "Enable DMA driver test command"
+    default n
+    depends on AIC_DMA_DRV
+
+config AIC_UART_DRV_TEST
+    bool "Enable UART driver test command"
+    default n
+    depends on AIC_UART_DRV
+
+config AIC_RTC_DRV_TEST
+    bool "Enable RTC driver test command"
+    default n
+    depends on AIC_RTC_DRV
+
+config AIC_HRTIMER_DRV_TEST
+    bool "Enable HRTimer driver test command"
+    default n
+    depends on AIC_HRTIMER_DRV
+
+config AIC_GPTIMER_DRV_TEST
+    bool "Enable GPTimer driver test command"
+    default n
+    depends on AIC_GPTIMER_DRV
+
+config AIC_QSPI_DRV_TEST
+    bool "Enable QSPI driver test command"
+    default n
+    depends on AIC_QSPI_DRV
+
+config AIC_SPINOR_DRV_TEST
+    bool "Enable SPI NOR driver test command"
+    default n
+    depends on AIC_SPINOR_DRV
+
+config AIC_SPINAND_DRV_TEST
+    bool "Enable SPI NAND driver test command"
+    default n
+    depends on AIC_SPINAND_DRV
+
+config AIC_SDMC_DRV_TEST
+    bool "Enable SDMC driver test command"
+    default n
+    depends on AIC_SDMC_DRV
+
+config AIC_MTD_BARE_TEST
+    bool "Enable MTD driver test command"
+    default n
+    depends on AIC_MTD_BARE_DRV
+
+config AIC_MMC_BARE_TEST
+    bool "Enable MMC driver test command"
+    default n
+    depends on AIC_MMC_BARE_DRV
+
+config AIC_FILE_CRC32_TEST
+    bool "Enable file CRC32 test command"
+    default n
+    select RT_USING_LEGACY
+
+config AIC_FB_DRV_TEST
+    bool "Enable Display driver test command"
+    default n
+    depends on AIC_DISPLAY_DRV
+
+config AIC_VE_TEST
+    bool "Enable VE driver test command"
+    default n
+    depends on AIC_VE_DRV
+
+config AIC_MTOP_DRV_TEST
+    bool "Enable mtop driver test command"
+    default y
+    depends on AIC_MTOP_DRV
+
+config AIC_CAN_DRV_TEST
+    bool "Enable CAN driver test command"
+    default n
+    depends on AIC_CAN_DRV
+
+config AIC_CIR_DRV_TEST
+    bool "Enable CIR driver test command"
+    default n
+    depends on AIC_CIR_DRV
+
+config AIC_AUDIO_DRV_TEST
+    bool "Enable audio driver test command"
+    default n
+    depends on AIC_AUDIO_DRV || AIC_I2S_DRV
+    select RT_USING_LEGACY
+
+config AIC_I2C_DRV_TEST
+    bool "Enable i2c driver test command"
+    default n
+    depends on AIC_I2C_DRV
+
+config AIC_DVP_TEST
+    bool "Enable DVP driver test command"
+    default n
+    depends on AIC_DVP_DRV
+
+config AIC_TP_DRV_TEST
+    bool "Enable touch panel driver test command"
+    default n
+    depends on AIC_TOUCH_PANEL_GT911
+
+config AIC_WDT_DRV_TEST
+    bool "Enable WDT driver test command"
+    default n
+    depends on AIC_WDT_DRV
+
+config AIC_GPAI_TEST
+    bool "Enable GPAI driver test command"
+    default n
+    depends on AIC_GPAI_DRV
+
+config AIC_TSEN_TEST
+    bool "Enable TSEN driver test command"
+    default n
+    depends on AIC_TSEN_DRV
+
+config AIC_PSADC_TEST
+    bool "Enable PSADC driver test command"
+    default n
+    depends on AIC_PSADC_DRV
+
+config AIC_ZLIB_TEST
+    bool "Enable ZLIB test command"
+    default n
+    depends on AIC_VE_DRV
+
+config AIC_RTP_TEST
+    bool "Enable RTP driver test command"
+    default n
+    depends on AIC_RTP_DRV
+
+config AIC_PWM_TEST
+    bool "Enable PWM driver test command"
+    default n
+    depends on AIC_PWM_DRV
+
+config AIC_ADCIM_DM_TEST
+    bool "Enable ADCIM DM test command"
+    default n
+    depends on AIC_ADCIM_DM_DRV
+
+if LPKG_USING_LWIP
+
+    menu "LwIP examples"
+
+    config AIC_MQTT_LWIP_TEST
+        bool "Enable MQTT protocol test command"
+        default n
+        depends on LPKG_LWIP_USING_MQTT
+
+    endmenu
+
+endif
+
+config AIC_CE_DRV_TEST
+    bool "Enable CE driver test command"
+    default n
+    depends on AIC_CE_DRV
+
+config AIC_SID_BARE_TEST
+    bool "Enable SID driver test command"
+    default n
+    depends on AIC_SID_DRV
+
+endmenu
+endmenu

@@ -1,0 +1,63 @@
+# Kconfig file for package beep
+
+menuconfig LPKG_USING_BEEP
+    bool "beep: Control the buzzer to make beeps at different intervals."
+    default n
+
+if LPKG_USING_BEEP
+
+    choice
+        prompt "Buzzer type"
+        default LPKG_BEEP_ACTIVE_BUZZER
+        help
+            Select the the Buzzer type
+
+        config LPKG_BEEP_ACTIVE_BUZZER
+            bool "Active buzzer"
+            select RT_USING_PIN
+            select BSP_USING_GPIO
+
+        config LPKG_BEEP_PASSIVE_BUZZER
+            bool "Passive buzzer"
+            select RT_USING_PWM
+            select BSP_USING_PWM
+    endchoice
+
+    if LPKG_BEEP_PASSIVE_BUZZER
+
+        config LPKG_BEEP_PWM_DEV_NAME
+            string "Setting current PWM device name."
+            default "pwm1"
+
+        config LPKG_BEEP_PWM_DEV_CHANNEL
+            int "Setting current PWM device channel."
+            range 1 4
+            default 1
+
+        config LPKG_BEEP_DEFAULT_FREQ
+            int "Setting the best frequency(Hz) for buzzer."
+            range 100 10000
+            default 2700
+
+        if RT_USING_PM
+            config LPKG_BEEP_BLOCK_POWER_STOP
+                bool "Block the MCU power enter to stop mode on beeping."
+                default y
+
+            config LPKG_BEEP_SUPPORT_PM_RUN_FREQ_CHANGE
+                bool "Beep with the original frequency at MCU run frequency changed."
+                default y
+        endif
+
+    endif
+
+    config LPKG_BEEP_USING_MSH_CMD
+    bool "Beep the buzzer on console to test."
+    default n
+
+    if RT_USING_HEAP
+        config LPKG_BEEP_THREAD_STACK_USING_HEAP
+        bool "Use heap with the beep thread stack created."
+        default y
+    endif
+endif
