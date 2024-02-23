@@ -32,8 +32,14 @@ static struct aic_sdmc_pdata sdmc_pdata[] = {
         .base = SDMC0_BASE,
         .irq = SDMC0_IRQn,
         .clk = CLK_SDMC0,
+#if defined(AIC_SDMC0_BUSWIDTH1)
+        .buswidth = SDMC_CTYPE_1BIT,
+#endif
+#if defined(AIC_SDMC0_BUSWIDTH4)
+        .buswidth = SDMC_CTYPE_4BIT,
+#endif
 #if defined(AIC_SDMC0_BUSWIDTH8)
-        .buswidth8 = 1,
+        .buswidth = SDMC_CTYPE_8BIT,
 #endif
         .drv_phase = AIC_SDMC0_DRV_PHASE,
         .smp_phase = AIC_SDMC0_SMP_PHASE,
@@ -45,6 +51,15 @@ static struct aic_sdmc_pdata sdmc_pdata[] = {
         .base = SDMC1_BASE,
         .irq = SDMC1_IRQn,
         .clk = CLK_SDMC1,
+#if defined(AIC_SDMC1_BUSWIDTH1)
+        .buswidth = SDMC_CTYPE_1BIT,
+#endif
+#if defined(AIC_SDMC1_BUSWIDTH4)
+        .buswidth = SDMC_CTYPE_4BIT,
+#endif
+#if defined(AIC_SDMC1_BUSWIDTH8)
+        .buswidth = SDMC_CTYPE_8BIT,
+#endif
 #if defined(AIC_SDMC1_IS_SDIO)
         .is_sdio = 1,
 #endif
@@ -58,6 +73,15 @@ static struct aic_sdmc_pdata sdmc_pdata[] = {
         .base = SDMC2_BASE,
         .irq = SDMC2_IRQn,
         .clk = CLK_SDMC2,
+#if defined(AIC_SDMC2_BUSWIDTH1)
+        .buswidth = SDMC_CTYPE_1BIT,
+#endif
+#if defined(AIC_SDMC2_BUSWIDTH4)
+        .buswidth = SDMC_CTYPE_4BIT,
+#endif
+#if defined(AIC_SDMC2_BUSWIDTH8)
+        .buswidth = SDMC_CTYPE_8BIT,
+#endif
 #if defined(AIC_SDMC2_IS_SDIO)
         .is_sdio = 1,
 #endif
@@ -67,20 +91,6 @@ static struct aic_sdmc_pdata sdmc_pdata[] = {
 #endif
 };
 
-static inline u32 GET_BITS(u32 *resp, u32 start, u32 size)
-{
-    const s32 __size = size;
-    const u32 __mask = (__size < 32 ? 1 << __size : 0) - 1;
-    const s32 __off = 3 - ((start) / 32);
-    const s32 __shft = (start) & 31;
-    u32 __res;
-
-    __res = resp[__off] >> __shft;
-    if (__size + __shft > 32)
-        __res |= resp[__off-1] << ((32 - __shft) % 32);
-
-    return __res & __mask;
-}
 
 static void mmc_trace_before_send(struct aic_sdmc_cmd *cmd)
 {
@@ -493,8 +503,10 @@ static void mmc_update_version(struct aic_sdmc *host, int version)
 static int mmc_get_csd(struct aic_sdmc *host)
 {
     struct aic_sdmc_cmd cmd = {0};
+    int erase_gsz, erase_gmul;
     int err = 0;
-    u32 csd_ver = 0;
+    u32 csize = 0, cmult = 0;
+    u64 capacity;
 
     /* CMD9 - Get the Card-Specific Data */
     cmd.cmd_code = MMC_CMD_SEND_CSD;
@@ -509,24 +521,23 @@ static int mmc_get_csd(struct aic_sdmc *host)
     if (host->dev->version == MMC_VERSION_UNKNOWN)
         mmc_update_version(host, (cmd.resp[0] >> 26) & 0xf);
 
-    host->dev->read_bl_len = 512;
-    if (host->index) {
-        csd_ver = GET_BITS(cmd.resp, 126, 2);
-        switch (csd_ver) {
-        case 0:
-            host->dev->card_capacity = (GET_BITS(cmd.resp, 62, 12) + 1) << (GET_BITS(cmd.resp, 47, 3) + 2);
-            host->dev->card_capacity *= GET_BITS(cmd.resp, 80, 4);
-            host->dev->card_capacity >>= 10; /* unit:KB */
-            break;
-        case 1:
-            host->dev->card_capacity = (GET_BITS(cmd.resp, 48, 22) + 1) * 512; /* unit:KB */
-            break;
-        default:
-            pr_err("unrecognised CSD structure version %d!", csd_ver);
-            break;
-        }
-        printf("SD card capacity %d KB.\n", host->dev->card_capacity);
+    host->dev->read_bl_len = 1 << ((cmd.resp[1] >> 16) & 0xf);
+    if (host->dev->high_capacity) {
+        csize = (cmd.resp[1] & 0x3f) << 16 | (cmd.resp[2] & 0xffff0000) >> 16;
+        cmult = 8;
+    } else {
+        csize = (cmd.resp[1] & 0x3ff) << 2 | (cmd.resp[2] & 0xc0000000) >> 30;
+        cmult = (cmd.resp[2] & 0x00038000) >> 15;
     }
+
+    /* Calculate the group size from the csd value. */
+    erase_gsz = (cmd.resp[2] & 0x00007c00) >> 10;
+    erase_gmul = (cmd.resp[2] & 0x000003e0) >> 5;
+    host->dev->erase_grp_size = (erase_gsz + 1) * (erase_gmul + 1);
+
+	capacity = (csize + 1) << (cmult + 2);
+	capacity *= host->dev->read_bl_len;
+    host->dev->card_capacity = (u32)(capacity >> 10); /* in KB */
 
     return 0;
 }
@@ -554,8 +565,8 @@ static int sd_startup(struct aic_sdmc *host)
     if (err != 0)
         return err;
 
-    if (host->dev->card_caps & MMC_MODE_4BIT) {
-        host->dev->bus_width = 4;
+    if (host->dev->card_caps & MMC_MODE_4BIT &&
+        host->pdata->buswidth == SDMC_CTYPE_4BIT) {
         sd_select_bus_width(host, 4);
         aic_sdmc_set_cfg(host);
     }
@@ -613,6 +624,22 @@ static int emmc_startup(struct aic_sdmc *host)
             host->dev->part_config = ext_csd[179];
     }
 
+    if (host->dev->version >= MMC_VERSION_4_2) {
+        /*
+		 * According to the JEDEC Standard, the value of
+		 * ext_csd's capacity is valid if the value is more
+		 * than 2GB
+		 */
+        u64 capacity;
+        capacity = ext_csd[EXT_CSD_SEC_CNT] << 0 |
+                   ext_csd[EXT_CSD_SEC_CNT + 1] << 8 |
+                   ext_csd[EXT_CSD_SEC_CNT + 2] << 16 |
+                   ext_csd[EXT_CSD_SEC_CNT + 3] << 24;
+        capacity *= host->dev->read_bl_len;
+        if ((capacity >> 20) > 2 * 1024)
+            capacity = capacity;
+        host->dev->card_capacity = (u32)(capacity >> 10); /* in KB */
+    }
 
     err = mmc_get_capabilities(host, ext_csd);
     if (err != 0)
@@ -621,13 +648,13 @@ static int emmc_startup(struct aic_sdmc *host)
     /* Restrict card's capabilities by what the host can do */
     host->dev->card_caps &= host->dev->host_caps;
 
-    if (host->dev->card_caps & MMC_MODE_4BIT) {
+    if (host->dev->card_caps & MMC_MODE_4BIT &&
+        host->pdata->buswidth == SDMC_CTYPE_4BIT) {
         /* Set the card to use 4 bit*/
-        host->dev->bus_width = 4;
         aic_sdmc_set_cfg(host);
-    } else if (host->dev->card_caps & MMC_MODE_8BIT) {
+    } else if (host->dev->card_caps & MMC_MODE_8BIT &&
+               host->pdata->buswidth == SDMC_CTYPE_8BIT) {
         /* Set the card to use 8 bit*/
-        host->dev->bus_width = 8;
         aic_sdmc_set_cfg(host);
     }
 
@@ -896,6 +923,79 @@ u32 mmc_bwrite(struct aic_sdmc *host, u32 start, u32 blkcnt, const u8 *src)
     return blkcnt;
 }
 
+u32 mmc_erase_t(struct aic_sdmc *host, u32 start, u32 blkcnt)
+{
+    struct aic_sdmc_cmd cmd = {0};
+    u32 end;
+    int err;
+
+    if (host->dev->high_capacity) {
+        end = start + blkcnt - 1;
+    } else {
+        end = (start + blkcnt -1) * host->dev->read_bl_len;
+        start = start * host->dev->read_bl_len;
+    }
+
+    cmd.cmd_code = MMC_CMD_ERASE_GROUP_START;
+    cmd.arg = start;
+    cmd.resp_type = MMC_RSP_R1;
+
+    err = mmc_send_cmd(host, &cmd, NULL);
+    if (err)
+        goto err_out;
+
+    cmd.cmd_code = MMC_CMD_ERASE_GROUP_END;
+    cmd.arg = end;
+
+    err = mmc_send_cmd(host, &cmd, NULL);
+    if (err)
+        goto err_out;
+
+    cmd.cmd_code = MMC_CMD_ERASE;
+    cmd.arg = MMC_ERASE_ARG;
+    cmd.resp_type = MMC_RSP_R1b;
+
+    err = mmc_send_cmd(host, &cmd, NULL);
+    if (err)
+        goto err_out;
+
+    return 0;
+
+err_out:
+    pr_err("Erase blocks failed, error = -%d\n", err);
+    return err;
+}
+
+u32 mmc_berase(struct aic_sdmc *host, u32 start, u32 blkcnt)
+{
+    int err = 0;
+    u32 blk = 0, blk_r = 0;
+    u64 timeout = 1000000;
+    u64 start_us = aic_get_time_us();
+
+    pr_err("host->dev->erase_grp_size:%d\n", host->dev->erase_grp_size);
+    while (blk < blkcnt) {
+        blk_r = ((blkcnt - blk) > host->dev->erase_grp_size) ?
+                    host->dev->erase_grp_size :
+                    (blkcnt - blk);
+        err = mmc_erase_t(host, start + blk, blk_r);
+        if (err)
+            break;
+
+        blk += blk_r;
+
+        /* Waiting for the ready status */
+        while (hal_sdmc_is_busy(&host->host)) {
+            if (aic_get_time_us() - start_us > timeout) {
+                pr_warn("Data transfer is busy\n");
+                return 0;
+            }
+        }
+    }
+
+    return blk;
+}
+
 void mmc_setup_cfg(struct aic_sdmc *host)
 {
     host->dev->freq_min = SDMC_CLOCK_MIN;
@@ -905,10 +1005,12 @@ void mmc_setup_cfg(struct aic_sdmc *host)
     host->dev->voltages = MMC_VDD_29_30 | MMC_VDD_30_31 | MMC_VDD_31_32 |
                           MMC_VDD_32_33 | MMC_VDD_33_34 | MMC_VDD_34_35 |
                           MMC_VDD_35_36;
-    host->dev->flags = EXT_CSD_BUS_WIDTH_4 | EXT_CSD_SUP_SDIO_IRQ | EXT_CSD_SUP_HIGHSPEED | EXT_CSD_MUTBLKWRITE;
+    host->dev->flags = EXT_CSD_SUP_SDIO_IRQ | EXT_CSD_SUP_HIGHSPEED | EXT_CSD_MUTBLKWRITE;
 
-    if (host->pdata->buswidth8)
-            host->dev->flags |= EXT_CSD_BUS_WIDTH_8;
+    if (host->pdata->buswidth == SDMC_CTYPE_4BIT)
+        host->dev->flags |= EXT_CSD_BUS_WIDTH_4;
+    if (host->pdata->buswidth == SDMC_CTYPE_8BIT)
+        host->dev->flags |= EXT_CSD_BUS_WIDTH_8;
 
     host->dev->max_seg_size = 4096;
     host->dev->max_dma_segs = 256;
@@ -1061,6 +1163,7 @@ s32 mmc_init(int id)
     if (ret)
         goto out;
 
+    mmc_block_init(host);
     return 0;
 
 out:
@@ -1076,23 +1179,25 @@ out:
 
 s32 mmc_deinit(int id)
 {
-    struct aic_sdmc *p = (struct aic_sdmc *)mmc_dev[id];
+    struct aic_sdmc *host = (struct aic_sdmc *)mmc_dev[id];
 
     if (id < 0 || id > MAX_MMC_DEV_NUM - 1) {
         pr_err("Invalid SDMC ID %d\n", id);
         return -1;
     }
 
-    if (p == NULL) {
+    if (host == NULL) {
         pr_info("SDMC%d was already deinited\n", id);
         return 0;
     }
 
-    if (p->dev)
-        free(p->dev);
+    mmc_block_deinit(host);
 
-    if (p) {
-        free(p);
+    if (host->dev)
+        free(host->dev);
+
+    if (host) {
+        free(host);
         mmc_dev[id] = NULL;
     }
 

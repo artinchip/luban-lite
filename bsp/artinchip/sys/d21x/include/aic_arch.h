@@ -32,8 +32,6 @@
 
 #ifdef __riscv_xthead
 #ifdef __riscv_xtheade
-#define CONFIG_THEAD_EXT_SPUSHEN
-#define CONFIG_THEAD_EXT_SPSWAPEN
 #endif
 #endif
 

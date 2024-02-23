@@ -10,6 +10,9 @@
 #include "aic_hal_clk.h"
 
 #include "hal_adcim.h"
+#ifdef AIC_SYSCFG_DRV
+#include "hal_syscfg.h"
+#endif
 
 /* Register of ADCIM */
 #define ADCIM_MCSR       0x000
@@ -31,8 +34,16 @@
 #define ADCIM_FIFOSTS_ADC_ARBITER_IDLE  BIT(6)
 #define ADCIM_FIFOSTS_FIFO_ERR          BIT(5)
 #define ADCIM_FIFOSTS_CTR_MASK          GENMASK(4, 0)
-#define ADCDM_CAL_ADC_STANDARD_VAL      0x800
-#define ADCIM_CAL_ADC_VAL_OFFSET        0X32
+#define ADCIM_CAL_ADC_STANDARD_VAL      0x800
+#define AIC_ADC_MAX_VAL                 0xFFF
+#define AIC_VOLTAGE_ACCURACY            10000
+
+#ifdef AIC_ADCIM_DRV_V11
+#define ADCIM_CAL_ADC_OFFSET_MISMATCH   0x32
+#endif
+#ifdef AIC_ADCIM_DRV_V10
+#define ADCIM_CAL_ADC_OFFSET_MISMATCH   0x28
+#endif
 
 #ifdef AIC_ADCIM_DM_DRV
 #define ADCDM_RTP_CFG   0x03F0
@@ -105,12 +116,20 @@ int hal_adcim_calibration_set(unsigned int val)
     return 0;
 }
 
-int hal_adcim_auto_calibration(int adc_val, int st_voltage, int scale,
-                               int adc_max_val)
+int hal_adcim_auto_calibration(int adc_val, float def_voltage, int scale)
 {
     u32 flag = 1;
     u32 data = 0;
     int new_voltage = 0;
+    int st_voltage = 0;
+
+#ifdef AIC_SYSCFG_DRV
+    st_voltage = syscfg_read_ldo_cfg();
+#endif
+    if (!st_voltage) {
+        pr_err("Failed to get standard voltage\n");
+        st_voltage = (int)(def_voltage * AIC_VOLTAGE_ACCURACY);
+    }
 
     adcim_writel(0x083F2f03, ADCIM_CALCSR);//auto cal
     do {
@@ -119,7 +138,7 @@ int hal_adcim_auto_calibration(int adc_val, int st_voltage, int scale,
 
     data = (adcim_readl(ADCIM_CALCSR) >> 16) & 0xfff;
     if (adc_val) {
-        new_voltage = (adc_val + ADCDM_CAL_ADC_STANDARD_VAL - data + ADCIM_CAL_ADC_VAL_OFFSET) * st_voltage * scale / adc_max_val;
+        new_voltage = (adc_val + ADCIM_CAL_ADC_STANDARD_VAL - data + ADCIM_CAL_ADC_OFFSET_MISMATCH) * st_voltage / AIC_ADC_MAX_VAL;
     }
 
     return new_voltage;

@@ -16,14 +16,6 @@
 
 #define TIMEOUT         0
 
-#if defined(AIC_CHIP_AIC1606CS)
-#define REBOOT_REASON_CMD_REBOOT REBOOT_REASON_CS_CMD_REBOOT
-#elif defined(AIC_CHIP_AIC1606SC)
-#define REBOOT_REASON_CMD_REBOOT REBOOT_REASON_SC_CMD_REBOOT
-#elif defined(AIC_CHIP_AIC1606SP)
-#define REBOOT_REASON_CMD_REBOOT REBOOT_REASON_SP_CMD_REBOOT
-#endif
-
 
 void cmd_reboot(int argc, char **argv)
 {

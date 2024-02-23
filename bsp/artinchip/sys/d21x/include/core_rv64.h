@@ -747,11 +747,11 @@ __STATIC_INLINE void csi_icache_enable(void)
         __ICACHE_IALL();
         cache |= CACHE_MHCR_IE_Msk;
         __set_MHCR(cache);
-        mhint = __get_MHINT();
-        mhint &= ~(MHINT_IPLD_Msk | MHINT_IWPE_Msk);
-        mhint |= (1<<MHINT_IPLD_Pos) | (1<<MHINT_IWPE_Pos);
-        __set_MHINT(mhint);
     }
+    mhint = __get_MHINT();
+    mhint &= ~(MHINT_IPLD_Msk | MHINT_IWPE_Msk | MHINT_DPLD_Msk | MHINT_AMR_Msk | MHINT_DDIS_Msk);
+    mhint |= (1<<MHINT_IPLD_Pos) | (1<<MHINT_IWPE_Pos) | (1<<MHINT_DPLD_Pos) | (1<<MHINT_AMR_Pos) | (3<<MHINT_DDIS_Pos);
+    __set_MHINT(mhint);
     __DSB();
     __ISB();
 #endif
@@ -774,7 +774,7 @@ __STATIC_INLINE void csi_icache_disable(void)
         cache &= ~CACHE_MHCR_IE_Msk; /* disable icache */
         __set_MHCR(cache);
         mhint = __get_MHINT();
-        mhint &= ~(MHINT_IPLD_Msk | MHINT_IWPE_Msk);
+        mhint &= ~(MHINT_IPLD_Msk | MHINT_IWPE_Msk | MHINT_DPLD_Msk | MHINT_AMR_Msk | MHINT_DDIS_Msk);
         __set_MHINT(mhint);
         __ICACHE_IALL(); /* invalidate all icache */
     }
@@ -970,17 +970,26 @@ __STATIC_INLINE void csi_dcache_invalid_range(phy_addr_t addr, u32 dsize)
     s32 op_size = dsize + addr % CACHE_LINE_SIZE;
     phy_addr_t op_addr = addr & CACHE_INV_ADDR_Msk;
 
+    if (op_size % CACHE_LINE_SIZE)
+        op_size += CACHE_LINE_SIZE - op_size % CACHE_LINE_SIZE;
     if ((op_size != dsize) || (op_addr != addr))
         printf("Alarm! Invalid cache out of range: 0x%x[%d] > 0x%x[%d]\n",
                op_addr, op_size, addr, dsize);
 
     __DSB();
 
+#ifdef __riscv_xthead
     while (op_size > 0) {
         __DCACHE_IPA(op_addr);
         op_addr += CACHE_LINE_SIZE;
         op_size -= CACHE_LINE_SIZE;
     }
+#else
+    register unsigned long c_addr asm("a5") = op_addr;
+    unsigned long end = op_addr + op_size;
+    for (; c_addr < end; c_addr += CACHE_LINE_SIZE)
+        asm volatile (".long 0x02a7800b"); /* dcache.ipa a5 */
+#endif
 
     __DSB();
     __ISB();
@@ -998,21 +1007,30 @@ __STATIC_INLINE void csi_dcache_invalid_range(phy_addr_t addr, u32 dsize)
 __STATIC_INLINE void csi_dcache_clean_range(phy_addr_t addr, u32 dsize)
 {
 
-#if (__DCACHE_PRESENT == 1)
+#if (__DCACHE_PRESENT == 1U)
     s32 op_size = dsize + addr % CACHE_LINE_SIZE;
     phy_addr_t op_addr = addr & CACHE_INV_ADDR_Msk;
 
+    if (op_size % CACHE_LINE_SIZE)
+        op_size += CACHE_LINE_SIZE - op_size % CACHE_LINE_SIZE;
     if ((op_size != dsize) || (op_addr != addr))
         printf("Alarm! Clean cache out of range: 0x%x[%d] > 0x%x[%d]\n",
                op_addr, op_size, addr, dsize);
 
     __DSB();
 
+#ifdef __riscv_xthead
     while (op_size > 0) {
         __DCACHE_CPA(op_addr);
         op_addr += CACHE_LINE_SIZE;
         op_size -= CACHE_LINE_SIZE;
     }
+#else
+    register unsigned long c_addr asm("a5") = op_addr;
+    unsigned long end = op_addr + op_size;
+    for (; c_addr < end; c_addr += CACHE_LINE_SIZE)
+        asm volatile (".long 0x0297800b"); /* dcache.cpa a5 */
+#endif
 
     __DSB();
     __ISB();
@@ -1034,17 +1052,26 @@ __STATIC_INLINE void csi_dcache_clean_invalid_range(phy_addr_t addr, u32 dsize)
     s32 op_size = dsize + addr % CACHE_LINE_SIZE;
     phy_addr_t op_addr = addr & CACHE_INV_ADDR_Msk;
 
+    if (op_size % CACHE_LINE_SIZE)
+        op_size += CACHE_LINE_SIZE - op_size % CACHE_LINE_SIZE;
     if ((op_size != dsize) || (op_addr != addr))
         printf("Alarm! Clean&Invalid cache out of range: 0x%x[%d] > 0x%x[%d]\n",
                op_addr, op_size, addr, dsize);
 
     __DSB();
 
+#ifdef __riscv_xthead
     while (op_size > 0) {
         __DCACHE_CIPA(op_addr);
         op_addr += CACHE_LINE_SIZE;
         op_size -= CACHE_LINE_SIZE;
     }
+#else
+    register unsigned long c_addr asm("a5") = op_addr;
+    unsigned long end = op_addr + op_size;
+    for (; c_addr < end; c_addr += CACHE_LINE_SIZE)
+        asm volatile (".long 0x02b7800b"); /* dcache.cipa a5 */
+#endif
 
     __DSB();
     __ISB();
@@ -1058,7 +1085,6 @@ __STATIC_INLINE void csi_dcache_clean_invalid_range(phy_addr_t addr, u32 dsize)
   */
 __STATIC_INLINE void csi_cache_set_range (uint64_t index, uint64_t baseAddr, uint64_t size, uint64_t enable)
 {
-    ;
 }
 
 /**
@@ -1067,7 +1093,6 @@ __STATIC_INLINE void csi_cache_set_range (uint64_t index, uint64_t baseAddr, uin
   */
 __STATIC_INLINE void csi_cache_enable_profile(void)
 {
-    ;
 }
 
 /**
@@ -1076,7 +1101,6 @@ __STATIC_INLINE void csi_cache_enable_profile(void)
   */
 __STATIC_INLINE void csi_cache_disable_profile(void)
 {
-    ;
 }
 
 /**
@@ -1085,7 +1109,6 @@ __STATIC_INLINE void csi_cache_disable_profile(void)
   */
 __STATIC_INLINE void csi_cache_reset_profile(void)
 {
-    ;
 }
 
 /**

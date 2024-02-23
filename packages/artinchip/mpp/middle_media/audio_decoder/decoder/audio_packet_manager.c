@@ -10,6 +10,7 @@
 
 #include <string.h>
 #include <pthread.h>
+#include <inttypes.h>
 
 #include "aic_audio_decoder.h"
 #include "audio_packet_manager.h"
@@ -54,7 +55,7 @@ struct audio_packet_manager *audio_pm_create(struct aic_audio_decode_config *cfg
 
 	logi("create packet manager");
 
-	if(init_cfg == NULL){
+	if (init_cfg == NULL) {
 		init_cfg = &default_cfg;
 		init_cfg->packet_buffer_size = 16*1024;
 		init_cfg->packet_count = 8;
@@ -80,7 +81,7 @@ struct audio_packet_manager *audio_pm_create(struct aic_audio_decode_config *cfg
 	pm->buffer_start =mpp_alloc(pm->buffer_size);
 	pm->buffer_end = pm->buffer_start + pm->buffer_size - 1;
 
-	logi("packet manager create %d count packet, buffer size %ld", pm->packet_count, pm->buffer_size);
+	logi("packet manager create %d count packet, buffer size %zu", pm->packet_count, pm->buffer_size);
 
 	pm->read_offset = 0;
 	pm->write_offset = 0;
@@ -104,7 +105,7 @@ struct audio_packet_manager *audio_pm_create(struct aic_audio_decode_config *cfg
 int audio_pm_destroy(struct audio_packet_manager *pm)
 {
 
-	if (!pm){
+	if (!pm) {
 		loge("param error!!!\n");
 		return -1;
 	}
@@ -127,7 +128,7 @@ int audio_pm_dequeue_empty_packet(struct audio_packet_manager *pm, struct mpp_pa
 	//size_t write_offset = 0;
 	//size_t pos_offset;
 
-	if (!pm || !packet || size <= 0){
+	if (!pm || !packet || size <= 0) {
 		loge("param error!!!\n");
 		return -1;
 	}
@@ -138,14 +139,14 @@ int audio_pm_dequeue_empty_packet(struct audio_packet_manager *pm, struct mpp_pa
 	left_size = pm->buffer_size - pm->write_offset;
 
 	if (pm->available_size < size) {
-		logd("packet manager dequeue mpp packet size %ld > available size %ld", size, pm->available_size);
+		logd("packet manager dequeue mpp packet size %zu > available size %zu", size, pm->available_size);
 		pthread_mutex_unlock(&pm->lock);
 		return -1;
 	}
 
 	if (pm->write_offset >= pm->read_offset) {
 		if (left_size < size && pm->read_offset < size) {
-			logd("packet manager dequeue mpp packet size failed,size:%lu, read offset %lu write offset %lu",size,
+			logd("packet manager dequeue mpp packet size failed,size:%zu, read offset %zu write offset %zu",size,
 			     pm->read_offset, pm->write_offset);
 			pthread_mutex_unlock(&pm->lock);
 			return -1;
@@ -166,16 +167,16 @@ int audio_pm_dequeue_empty_packet(struct audio_packet_manager *pm, struct mpp_pa
 
 	if (pm->write_offset >= pm->read_offset) {
 		if (left_size >= size) {
-			//* if left_size is enough to store this packet
+			// if left_size is enough to store this packet
 			pm->write_offset += size;
 			pm->available_size -= size;
 
 			if (pm->write_offset == pm->buffer_size)
 				pm->write_offset = 0;
 		} else if (pm->read_offset >= size) {
-			logd("left_size: %lu, size: %lu", left_size, size);
-			//* if left_size is not enough to store this packet,
-			//*  we store this packet from the start of stream buffer
+			logd("left_size: %zu, size: %zu", left_size, size);
+			// if left_size is not enough to store this packet,
+			//  we store this packet from the start of stream buffer
 			pm->write_offset = size;
 			pm->available_size -= (size + left_size);
 			pkt_impl->pos_offset = left_size;
@@ -209,7 +210,7 @@ int audio_pm_enqueue_ready_packet(struct audio_packet_manager *pm, struct mpp_pa
 	size_t left_offset;
 
 
-	if (!pm || !packet){
+	if (!pm || !packet) {
 		loge("param error!!!\n");
 		return -1;
 	}
@@ -280,7 +281,7 @@ struct mpp_packet *audio_pm_dequeue_ready_packet(struct audio_packet_manager *pm
 
 	//logd("packet manager dequeue ready packet");
 
-	if (!pm){
+	if (!pm) {
 		loge("param error!!!\n");
 		return NULL;
 	}
@@ -306,7 +307,7 @@ int audio_pm_enqueue_empty_packet(struct audio_packet_manager *pm, struct mpp_pa
 
 	//logd("packet manager enqueue empty packet");
 
-	if (!pm || !pkt_impl){
+	if (!pm || !pkt_impl) {
 		loge("param error!!!\n");
 		return -1;
 	}
@@ -341,19 +342,19 @@ int audio_pm_get_ready_packet_num(struct audio_packet_manager *pm)
 
 int audio_pm_reset(struct audio_packet_manager *pm)
 {
-	if (!pm){
+	if (!pm) {
 		loge("audio_pm_reset fail:fm=NULL\n");
 		return -1;
 	}
 	pthread_mutex_lock(&pm->lock);
-	if(!mpp_list_empty(&pm->ready_list)){
+	if (!mpp_list_empty(&pm->ready_list)) {
 		struct audio_packet_impl *pkt1=NULL,*pkt2=NULL;
-		mpp_list_for_each_entry_safe(pkt1,pkt2,&pm->ready_list,list){
+		mpp_list_for_each_entry_safe(pkt1,pkt2,&pm->ready_list,list) {
 			mpp_list_del_init(&pkt1->list);
 			mpp_list_add_tail(&pkt1->list, &pm->empty_list);
 		}
 	}
-	logd("read_offset:%ld,write_offset:%ld,empty_num:%d,ready_num:%d,available_size:%ld\n"
+	logd("read_offset:%zu,write_offset:%zu,empty_num:%d,ready_num:%d,available_size:%zu\n"
 	,pm->read_offset
 	,pm->write_offset
 	,pm->empty_num

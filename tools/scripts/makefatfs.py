@@ -33,7 +33,7 @@ def mkimage_get_part_size(outfile):
         lines = f.readlines()
         for ln in lines:
             name = ln.split(',')[1].replace('"', '').replace('*', '')
-            if imgname == name or imgname in name:
+            if imgname == re.sub(".sparse", "", name) or imgname in re.sub(".sparse", "", name):
                 size = int(ln.split(',')[2])
                 return size
     print('Image {} is not used in any partition'.format(imgname))
@@ -59,6 +59,10 @@ def gen_fatfs(tooldir, srcdir, outimg, imgsiz, sector_siz, cluster):
         mcopy = '{}mcopy -i {} -s {}// ::/'.format(tooldir, outimg, srcdir)
         run_cmd(mcopy)
 
+        # gen sparse format
+        img2simg = '{}img2simg {} {}.sparse 1024'.format(tooldir, outimg, outimg)
+        run_cmd(img2simg)
+
     elif platform.system() == 'Windows':
         outimg = outimg.replace(' ', '\\ ')
         outimg = outimg.replace('/', '\\')
@@ -68,11 +72,15 @@ def gen_fatfs(tooldir, srcdir, outimg, imgsiz, sector_siz, cluster):
         truncate = '{}truncate.exe -s {} {}'.format(tooldir, imgsiz, outimg)
         run_cmd(truncate)
 
-        mformat = '{}mformat.exe -F -M {} -T {} -c {} -i {}'.format(tooldir, sector_siz, sector_cnt, cluster, outimg)
+        mformat = '{}mformat.exe -M {} -T {} -c {} -i {}'.format(tooldir, sector_siz, sector_cnt, cluster, outimg)
         run_cmd(mformat)
 
         mcopy = '{}mcopy.exe -i {} -s {}\\\\ ::/'.format(tooldir, outimg, srcdir)
         run_cmd(mcopy)
+
+        # gen sparse format
+        img2simg = '{}img2simg.exe {} {}.sparse 1024'.format(tooldir, outimg, outimg)
+        run_cmd(img2simg)
 
 def round_pow2(x):
     cnt = 0

@@ -1,5 +1,11 @@
 /*
+ * Copyright (c) 2022, ArtInChip Technology Co., Ltd
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
  * RT-Thread Device Interface for uffs
+ *
+ * Authors: Mingfeng.Li <mingfeng.li@artinchip.com>
  */
 
 #include <rtthread.h>
@@ -8,8 +14,10 @@
 #include <aic_common.h>
 #include <aic_core.h>
 #include <aic_drv.h>
-#include "crc32.h"
+#include <aic_crc32.h>
 #include "aic_time.h"
+
+#define BUFFER_SIZE 8192
 
 static void show_speed(char *msg, u32 len, u32 us)
 {
@@ -26,34 +34,36 @@ static void show_speed(char *msg, u32 len, u32 us)
 
 static void file_crc32(int argc, char **argv)
 {
-    int fd, size;
+    int fd;
     uint8_t *buffer;
-    uint32_t result;
-    uint32_t start_us;
+    uint64_t start_us;
 
     if (argc != 2) {
         pr_err("Usage %s: %s <file name>.\n", __func__, __func__);
         return;
     }
 
-    buffer = (uint8_t *)aicos_malloc(MEM_CMA, 0x40000);
+    buffer = (uint8_t *)aicos_malloc(MEM_CMA, BUFFER_SIZE);
     if (buffer == RT_NULL) {
         pr_err("buffer: no memory\n");
         return;
     }
 
+    u32 crc32_val = crc32(0, NULL, 0);
+    u32 read_bytes = 0;
+    u32 file_sizes = 0;
     /* open the ‘/text.txt’ file in read-only mode */
     fd = open(argv[1], O_RDONLY);
     if (fd >= 0) {
         start_us = aic_get_time_us();
-        size = read(fd, buffer, 0x80000);
-        show_speed("read speed", size, aic_get_time_us() - start_us);
+        while((read_bytes = read(fd, buffer, BUFFER_SIZE))) {
+            crc32_val = crc32(crc32_val, buffer, read_bytes);
+            file_sizes += read_bytes;
+        }
+        show_speed("read speed", file_sizes, aic_get_time_us() - start_us);
 
-        result = crc32(0, buffer, size);
-        pr_info("result : 0x%x size : %d\n", result, size);
-
+        pr_info("crc32_val: 0x%x sizes: %d\n", crc32_val, file_sizes);
         close(fd);
-        pr_info("Read from file : %s \n", argv[1]);
     }
 
     if (buffer)

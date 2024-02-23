@@ -75,7 +75,7 @@ static int test_spibit_init(int argc, char **argv)
     else
         spi_cfg.mode = 3;
 
-    spi_cfg.max_hz = 48000000;
+    spi_cfg.max_hz = 50000000;
 
     ret = rt_spi_configure(g_spi, &spi_cfg);
     if (ret < 0) {
@@ -97,12 +97,14 @@ static int test_spibit_send_recv(int argc, char **argv)
 
     addr = strtol(argv[1], NULL, 16);
 
-    pr_info("addr = %d\n", addr);
+    pr_info("addr = %x\n", addr);
 
     rt_spi_take_bus((struct rt_spi_device *)g_spi);
-    rt_spi_send_then_recv(g_spi, &addr, 2, &data, 3);
+    /*note: the length units of the following parameters are bits,
+      not bytes*/
+    rt_spi_send_then_recv(g_spi, &addr, 10, &data, 20);
     rt_spi_release_bus((struct rt_spi_device *)g_spi);
-    pr_info("data = %d\n", data);
+    pr_info("data = %x\n", data);
 
     return 0;
 }
@@ -128,5 +130,4 @@ help:
     spibit_usage();
 }
 
-MSH_CMD_EXPORT_ALIAS(cmd_test_spibit, test_spibit,
-                     Using spi bit mode to read and write data);
+MSH_CMD_EXPORT_ALIAS(cmd_test_spibit, test_spibit, Test spi bit mode);

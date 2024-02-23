@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include "mpp_log.h"
 #include "mpp_list.h"
@@ -115,6 +116,9 @@ typedef struct ADEC_DATA_TYPE {
     struct mpp_list sOutReadyFrame;
     struct mpp_list sOutProcessingFrame;
     pthread_mutex_t sOutFrameLock;
+
+    OMX_S8 nWaitForReadyPkt;
+    OMX_S8 nWaitForEmptyFrame;
 
 }ADEC_DATA_TYPE;
 

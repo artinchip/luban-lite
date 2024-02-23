@@ -65,6 +65,67 @@ static const struct spinand_manufacturer *spinand_manufacturers[] = {
 #define SPINAND_LIST_NUM \
     (sizeof(spinand_manufacturers) / sizeof(struct spinand_manufacturer *))
 
+/**
+ * fls - find last (most-significant) bit set
+ * @x: the word to search
+ *
+ * This is defined the same way as ffs.
+ * Note fls(0) = 0, fls(1) = 1, fls(0x80000000) = 32.
+ */
+static inline int generic_fls(int x)
+{
+    int r = 32;
+
+    if (!x)
+        return 0;
+    if (!(x & 0xffff0000u)) {
+        x <<= 16;
+        r -= 16;
+    }
+    if (!(x & 0xff000000u)) {
+        x <<= 8;
+        r -= 8;
+    }
+    if (!(x & 0xf0000000u)) {
+        x <<= 4;
+        r -= 4;
+    }
+    if (!(x & 0xc0000000u)) {
+        x <<= 2;
+        r -= 2;
+    }
+    if (!(x & 0x80000000u)) {
+        x <<= 1;
+        r -= 1;
+    }
+    return r;
+}
+
+static void spinand_cache_op_adjust_colum(struct aic_spinand *flash, u16 blk,
+                                          u16 *column)
+{
+    u32 shift = 0;
+    u16 plane = 0;
+
+    if (flash->info->planes_per_lun < 2)
+        return;
+
+    /* The plane number is passed in MSB just above the column address */
+    shift = generic_fls(flash->info->page_size);
+    plane = blk % flash->info->planes_per_lun;
+    *column |= plane << shift;
+}
+
+struct spi_nand_cmd_cfg cmd_cfg_table[] = {
+    /*opcode    opcode_bits addr_bytes	addr_bits	dummy_bytes	data_nbits*/
+    { SPINAND_CMD_READ_FROM_CACHE, 1, 2, 1, 1, 1 },
+    { SPINAND_CMD_READ_FROM_CACHE_X2, 1, 2, 1, 1, 2 },
+    { SPINAND_CMD_READ_FROM_CACHE_X4, 1, 2, 1, 1, 4 },
+    { SPINAND_CMD_PROG_LOAD, 1, 2, 1, 0, 1 },
+    { SPINAND_CMD_PROG_LOAD_X4, 1, 2, 1, 0, 4 },
+    { SPINAND_CMD_END },
+};
+
 static struct spi_nand_cmd_cfg *
 spi_nand_lookup_cmd_cfg_table(u8 opcode, struct spi_nand_cmd_cfg *table)
 {
@@ -138,12 +199,33 @@ int spinand_read_cfg(struct aic_spinand *flash, u8 *cfg)
     return spinand_read_reg_op(flash, REG_CFG, cfg);
 }
 
+int spinand_check_ecc_status(struct aic_spinand *flash, u8 status)
+{
+    if (flash->info->get_status) {
+        return flash->info->get_status(flash, status);
+    }
+
+    switch (status & STATUS_ECC_MASK) {
+        case STATUS_ECC_NO_BITFLIPS:
+            return 0;
+        case STATUS_ECC_HAS_1_4_BITFLIPS:
+            return 4;
+        case STATUS_ECC_UNCOR_ERROR:
+            return -SPINAND_ERR_ECC;
+
+        default:
+            break;
+    }
+
+    return -SPINAND_ERR;
+}
+
 int spinand_isbusy(struct aic_spinand *flash, u8 *status)
 {
     u8 SR = 0xFF;
     int result;
 
-    u32 start_us, stop_us = 30000;
+    u64 start_us, stop_us = 30000;
     start_us = aic_get_time_us();
 
     do {
@@ -416,11 +498,6 @@ int spinand_flash_init(struct aic_spinand *flash)
                                      CFG_QUAD_ENABLE)) != SPINAND_SUCCESS)
         goto exit_spinand_init;
 
-    /* Enable BUF mode */
-    if ((result = spinand_config_set(flash, CFG_BUF_ENABLE, CFG_BUF_ENABLE)) !=
-        SPINAND_SUCCESS)
-        goto exit_spinand_init;
-
     /* Un-protect */
     if ((result = spinand_lock_block(flash, 0)) != SPINAND_SUCCESS)
         goto exit_spinand_init;
@@ -475,6 +552,7 @@ int spinand_read_page(struct aic_spinand *flash, u32 page, u8 *data,
     u32 cpos __attribute__((unused));
     u8 *buf = NULL;
     u32 nbytes = 0;
+    u16 blk = 0;
     u16 column = 0;
     u8 status;
 
@@ -495,11 +573,13 @@ int spinand_read_page(struct aic_spinand *flash, u32 page, u8 *data,
         goto exit_spinand_read_page;
     }
 
-    status = (status & 0x30) >> 4;
-    if ((status > 0x01)) {
-        result = -SPINAND_ERR_ECC;
+    result = spinand_check_ecc_status(flash, status);
+    if (result < 0) {
         pr_err("Error ECC status error[0x%x].\n", status);
         goto exit_spinand_read_page;
+    } else if (result > 0) {
+        pr_debug("with %d bit/page ECC corrections, status : [0x%x].\n", result,
+                 status);
     }
 
     if (data && data_len) {
@@ -525,6 +605,9 @@ int spinand_read_page(struct aic_spinand *flash, u32 page, u8 *data,
     drv_spienc_set_cfg(0, page * flash->info->page_size, cpos, data_len);
     drv_spienc_start();
 #endif
+    blk = page / flash->info->pages_per_eraseblock;
+    spinand_cache_op_adjust_colum(flash, blk, &column);
+
     result = spinand_read_from_cache_op(flash, column, buf, nbytes);
 #if defined(AIC_SPIENC_DRV)
     drv_spienc_stop();
@@ -658,11 +741,14 @@ int spinand_continuous_read(struct aic_spinand *flash, u32 page, u8 *data,
         goto exit_spinand_continuous_read;
     }
 
-    status = (status & 0x30) >> 4;
-    if ((status > 0x01)) {
+    result = spinand_check_ecc_status(flash, status);
+    if (result < 0) {
         result = -SPINAND_ERR_ECC;
         pr_err("Error ECC status error[0x%x].\n", status);
         goto exit_spinand_continuous_read;
+    } else if (result > 0) {
+        pr_debug("with %d bit/page ECC corrections, status : [0x%x].\n", result,
+                 status);
     }
 
     result = spinand_read_from_cache_cont_op(flash, data, size);
@@ -688,6 +774,7 @@ int spinand_write_page(struct aic_spinand *flash, u32 page, const u8 *data,
     u8 *buf = NULL;
     u32 nbytes = 0;
     u16 column = 0;
+    u16 blk = 0;
     u8 status;
 
     if (!flash) {
@@ -736,6 +823,9 @@ int spinand_write_page(struct aic_spinand *flash, u32 page, const u8 *data,
     drv_spienc_set_cfg(0, page * flash->info->page_size, cpos, data_len);
     drv_spienc_start();
 #endif
+    blk = page / flash->info->pages_per_eraseblock;
+    spinand_cache_op_adjust_colum(flash, blk, &column);
+
     result = spinand_write_to_cache_op(flash, column, (u8 *)buf, nbytes);
     if (result != SPINAND_SUCCESS)
         goto exit_spinand_write_page;
@@ -760,11 +850,13 @@ int spinand_write_page(struct aic_spinand *flash, u32 page, const u8 *data,
         goto exit_spinand_write_page;
     }
 
-    status = (status & 0x30) >> 4;
-    if ((status > 0x01)) {
-        result = -SPINAND_ERR_ECC;
+    result = spinand_check_ecc_status(flash, status);
+    if (result < 0) {
         pr_err("Error ECC status error[0x%x].\n", status);
         goto exit_spinand_write_page;
+    } else if (result > 0) {
+        pr_debug("with %d bit/page ECC corrections, status : [0x%x].\n", result,
+                 status);
     }
 
     result = SPINAND_SUCCESS;
@@ -796,24 +888,22 @@ int spinand_block_markbad(struct aic_spinand *flash, u16 blk)
     return spinand_write_page(flash, page, NULL, 0, &badblockmarker, 1);
 }
 
+#define READ_DATE_OFFSET_ALIGN   1
+#define READ_DATE_OFFSET_UNALIGN 2
+
 int spinand_read(struct aic_spinand *flash, u8 *addr, u32 offset, u32 size)
 {
     int err = 0;
     u32 page, cplen;
     u32 off = offset;
-    u8 *buf = NULL, *p, copy_flag;
+    u8 *buf = NULL, *p, copy_flag = 0;
     u32 remaining = size;
     u16 blk;
     u32 blk_size;
+    u32 off_in_page = 0;
 
     if (!flash) {
         pr_err("flash is NULL\r\n");
-        return -SPINAND_ERR;
-    }
-
-    if (offset % flash->info->page_size) {
-        pr_err("Offset not aligned with a page (0x%x)\r\n",
-               flash->info->page_size);
         return -SPINAND_ERR;
     }
 
@@ -835,12 +925,19 @@ int spinand_read(struct aic_spinand *flash, u8 *addr, u32 offset, u32 size)
     }
 
     while (remaining > 0) {
-        if (remaining >= flash->info->page_size) {
-            p = addr;
-            copy_flag = 0;
+        if (off % flash->info->page_size == 0) {
+            if (remaining >= flash->info->page_size) {
+                p = addr;
+                copy_flag = 0;
+            } else {
+                p = buf;
+                copy_flag = READ_DATE_OFFSET_UNALIGN;
+                memset(buf, 0xFF, flash->info->page_size);
+            }
         } else {
             p = buf;
-            copy_flag = 1;
+            copy_flag = READ_DATE_OFFSET_ALIGN;
+            memset(buf, 0xFF, flash->info->page_size);
         }
         page = off / flash->info->page_size;
 
@@ -850,10 +947,22 @@ int spinand_read(struct aic_spinand *flash, u8 *addr, u32 offset, u32 size)
             goto exit_spinand_read;
 
         cplen = flash->info->page_size;
-        if (remaining < cplen)
+
+        if (copy_flag == READ_DATE_OFFSET_ALIGN) {
+            /*Misaligned offset with page address*/
+            off_in_page = off % flash->info->page_size;
+            if (remaining <= flash->info->page_size - off_in_page) {
+                cplen = remaining;
+            } else {
+                cplen = flash->info->page_size - off_in_page;
+            }
+            memcpy(addr, buf + off_in_page, cplen);
+        } else if (copy_flag == READ_DATE_OFFSET_UNALIGN) {
+            /*Align offset with page address*/
             cplen = remaining;
-        if (copy_flag)
             memcpy(addr, buf, cplen);
+        }
+
         remaining -= cplen;
         off += cplen;
         addr += cplen;

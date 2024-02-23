@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2023, ArtInChip Technology Co., Ltd
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include "dfs.h"
 #include "unistd.h"
@@ -31,8 +36,8 @@ int zlib_test(int argc,char **argv)
     unsigned long out_buff = 0;
     unsigned long out_buff_align;
     int align;
-    unsigned int before;
-    unsigned int after;
+    unsigned long long before;
+    unsigned long long after;
 
     if (argc != 4) {
         print_help(argv[0]);
@@ -91,7 +96,7 @@ int zlib_test(int argc,char **argv)
     uncompress_len =  mpp_zlib_uncompressed((unsigned char*)in_buff_align, file_len, (unsigned char*)out_buff_align, out_len_align);
     after =  aic_get_time_us();
 
-    logd("diff:%u\n",after-before);
+    logd("diff:%llu\n",after-before);
 
     if (uncompress_len < 0) {
         loge("mpp_zlib_uncompressed fail\n");

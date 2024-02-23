@@ -162,15 +162,17 @@ int recv_buf_read(u8 *buf, int len)
 
 int recv_buf_peek(struct dma_input *in)
 {
-    int newlen, rdlen, cnt = 1000;
+    int newlen, rdlen, timeout = 100;
     bool wait = false;
+    volatile u64 start, cur;
 
     /* Read all data in uart fifo as fast as posible */
-    if (recv_buf_in_idx >= UART_RECV_BUF_LEN){
+    if (recv_buf_in_idx >= UART_RECV_BUF_LEN) {
         pr_err("error, recv_buf_in_idx %d\n", recv_buf_in_idx);
         return -1;
     }
 
+    start = aic_get_time_us();
     do {
         rdlen = uart_getbytes(upg_uart_id, &uart_recv_buf[recv_buf_in_idx], UART_RECV_BUF_LEN - recv_buf_in_idx);
         if (rdlen) {
@@ -185,8 +187,9 @@ int recv_buf_peek(struct dma_input *in)
             break;
         }
 
+        cur = aic_get_time_us();
         /* Tell caller some key information */
-        in->head = uart_recv_buf[recv_buf_out_idx];
+        in->head = (u8)uart_recv_buf[recv_buf_out_idx];
         if (in->head == SOH) {
             if (newlen < 4) {
                 /* Got frame, but data is not all arrived */
@@ -195,7 +198,7 @@ int recv_buf_peek(struct dma_input *in)
                 continue;
             }
 
-            in->frm_len = uart_recv_buf[recv_buf_out_idx + 3];
+            in->frm_len = (u8)uart_recv_buf[recv_buf_out_idx + 3];
             if (newlen < (in->frm_len + 6)) {
                 /* Got frame, but data is not all arrived */
                 wait = true;
@@ -217,14 +220,14 @@ int recv_buf_peek(struct dma_input *in)
             pr_err("Expect DC1_SEND but got 0x%x\n", in->head);
             hexdump((unsigned char*)&uart_recv_buf[recv_buf_out_idx], newlen, 1);
         }
-    } while (wait && cnt--);
+    } while (wait && ((cur - start) < timeout));
 
     return newlen;
 }
 
 static int uart_conn_detect_proc(void)
 {
-    u32 delta, cur_tm;
+    u64 delta, cur_tm;
     char ch = 0;
 
     ch = (char)recv_buf_read_byte(upg_uart_id);
@@ -263,7 +266,7 @@ static int uart_conn_normal_proc(void)
 {
     u8 ch, frame[LNG_FRM_MAX_LEN];
     int cnt, ret, tmo_check;
-    u32 delta, cur_tm;
+    u64 delta, cur_tm;
     struct dma_input in;
     struct phy_data_rw rw;
 
@@ -298,13 +301,13 @@ static int uart_conn_normal_proc(void)
         if (in.frm_len <= 0) /* Frame data recv not finish */
             break;
         ret = read_short_frame_data(frame, in.frm_len + 6);
-        if (ret == UART_NO_DATA)
+        if (ret == UART_NO_DATA) {
             break;
-        else if (ret == UART_ERR_DATA)
+        } else if (ret == UART_ERR_DATA) {
             ch = NAK;
-        else if (ret == UART_SKIP_DATA)
+        } else if (ret == UART_SKIP_DATA) {
             ch = ACK;
-        else {
+        } else {
             pr_debug("Recv %d\n", ret);
             ch = ACK;
         }
@@ -327,13 +330,13 @@ static int uart_conn_normal_proc(void)
         if (in.frm_len <= 0) /* Frame data recv not finish */
             break;
         ret = read_long_frame_data(frame, in.frm_len + 5);
-        if (ret == UART_NO_DATA)
+        if (ret == UART_NO_DATA) {
             break;
-        else if (ret == UART_ERR_DATA)
+        } else if (ret == UART_ERR_DATA) {
             ch = NAK;
-        else if (ret == UART_SKIP_DATA)
+        } else if (ret == UART_SKIP_DATA) {
             ch = ACK;
-        else {
+        } else {
             pr_debug("Recv %d\n", ret);
             ch = ACK;
         }
@@ -389,22 +392,6 @@ static int wait_host_to_recv_mode(void)
     int retry = 1000;
     u8 ch = 0;
 
-    if (uart_upg.direction == DIR_HOST_RECV) {
-        /* Just check if host send DC2_RECV again */
-        ch = recv_buf_read_byte(upg_uart_id);
-        if ((char)ch == 0xFF) /* Not send again, just return */
-            return 0;
-        if ((char)ch != 0xFF && ch == DC2_RECV) {
-            /* Send again, ACK it */
-            send_byte(upg_uart_id, ACK);
-            pr_debug("Host switch recv mode.\n");
-            return 0;
-        }
-        send_byte(upg_uart_id, CAN);
-        pr_err("Wrong state, expecting DC2_RECV, but got 0x%x\n", ch);
-        return -1;
-    }
-
     while (retry) {
         /*
          * Two cases:
@@ -417,6 +404,9 @@ static int wait_host_to_recv_mode(void)
             uart_upg.direction = DIR_HOST_RECV;
             pr_debug("Host switch to recv mode.\n");
             break;
+        }
+        if ((char)ch == 0xFF) {
+            pr_debug("Waiting DC2_RECV 0x12, but Got 0x%x\n", ch);
         }
         retry--;
         aicos_mdelay(1);
@@ -464,7 +454,8 @@ static int pack_frame(u8 blk, u8 *frame, u8 *data, int len)
 int aic_upg_uart_send(u8 *buf, int len)
 {
     u8 ch, *pframe, *p;
-    int ret, retry, rest, slice, flen, resend_cnt;
+    int ret, rest, slice, flen, resend_cnt;
+    volatile u64 start, cur;
 
     pframe = g_uart_send_recv_buf;
     if (wait_host_to_recv_mode()) {
@@ -496,13 +487,13 @@ resend:
         }
         pr_debug("frame data is written.\n");
 read_ack:
-        retry = 1000;
+        start = aic_get_time_ms();
         do {
             ch = recv_buf_read_byte(upg_uart_id);
-            if (ch == 0xFF)
-                aicos_mdelay(1);
-        } while (ch == 0xFF && --retry > 0);
-        if (retry == 0) {
+            cur = aic_get_time_ms();
+        } while (ch == 0xFF && (cur - start) < 200);
+
+        if ((cur - start) >= 200) {
             pr_err("Failed to read ACK, resend data.\n");
             resend_cnt++;
             goto resend;
@@ -513,6 +504,7 @@ read_ack:
             send_byte(upg_uart_id, ACK);
             goto read_ack;
         }
+
         if (ch != ACK) {
             pr_err("Expect ACK but got 0x%x\n", ch);
             hexdump(pframe, slice, 1);
@@ -562,7 +554,8 @@ static int wait_host_to_send_mode(void)
 static int aic_upg_uart_recv(u8 *buf, int len)
 {
     u8 ch, *pframe, *p;
-    int ret, retry, gotlen;
+    int ret, gotlen, timeout = 10000;
+    volatile u64 start, cur;
     struct dma_input in;
 
     pframe = g_uart_send_recv_buf;
@@ -573,16 +566,15 @@ static int aic_upg_uart_recv(u8 *buf, int len)
 
     gotlen = 0;
     p = buf;
-    retry = 10000;
+    start = aic_get_time_ms();
     while (gotlen < len) {
         /* Peek the input buffer */
         memset(&in, 0, sizeof(in));
         ret = recv_buf_peek(&in);
         if (ret == 0) {
             /* Waiting for data */
-            aicos_mdelay(1);
-            retry--;
-            if (retry == 0) {
+            cur = aic_get_time_ms();
+            if ((cur - start) > timeout) {
                 pr_err("Recv uart frame timeout, got len %d.\n", gotlen);
                 return -1;
             }
@@ -601,8 +593,9 @@ static int aic_upg_uart_recv(u8 *buf, int len)
         }
 
         if (in.head == SOH) {
-            if (in.frm_len == 0) /* frame is not ready, just wait */
+            if (in.frm_len == 0) { /* frame is not ready, just wait */
                 continue;
+            }
             ret = read_short_frame_data(pframe, in.frm_len + 6);
             if (ret > 0) {
                 pr_debug("Recv %d\n", ret);
@@ -618,8 +611,9 @@ static int aic_upg_uart_recv(u8 *buf, int len)
             send_byte(upg_uart_id, ch);
             pr_debug("Ack SOH frame\n");
         } else {
-            if (in.frm_len == 0) /* frame is not ready, just wait */
+            if (in.frm_len == 0) { /* frame is not ready, just wait */
                 continue;
+            }
             ret = read_long_frame_data(pframe, in.frm_len + 5);
             if (ret > 0) {
                 pr_debug("Recv %d\n", ret);
@@ -652,7 +646,7 @@ static int read_short_frame_data(u8 *buf, int len)
         return UART_NO_DATA;
     }
 
-    pr_debug("SHORT: %d\n", aic_get_time_us());
+    pr_debug("SHORT: %llu\n", aic_get_time_us());
     // hexdump(buf, len, 1);
     blk1 = buf[1];
     blk2 = buf[2];
@@ -671,7 +665,7 @@ static int read_short_frame_data(u8 *buf, int len)
     }
 
     nextblk = uart_upg.recv_blk_no + 1;
-    if (blk1 != 1 && nextblk != blk1) {
+    if (blk1 != 1 && nextblk != blk1 && !uart_upg.first_connect) {
         pr_err("blk no discontinue should be %d, got %d\n", nextblk, blk1);
         return UART_ERR_DATA;
     }
@@ -681,6 +675,7 @@ static int read_short_frame_data(u8 *buf, int len)
         return UART_SKIP_DATA;
     }
     uart_upg.recv_blk_no = blk1;
+    uart_upg.first_connect = 0;
     pr_debug("%s done\n", __func__);
     return flen;
 }
@@ -720,7 +715,7 @@ static int read_long_frame_data(u8 *buf, int len)
     }
 
     nextblk = uart_upg.recv_blk_no + 1;
-    if (blk1 != 1 && nextblk != blk1) {
+    if (blk1 != 1 && nextblk != blk1 && !uart_upg.first_connect) {
         pr_err("blk no discontinue should be %d, got %d\n", nextblk, blk1);
         return UART_ERR_DATA;
     }
@@ -731,6 +726,7 @@ static int read_long_frame_data(u8 *buf, int len)
         return UART_SKIP_DATA;
     }
     uart_upg.recv_blk_no = blk1;
+    uart_upg.first_connect = 0;
     pr_debug("%s done\n", __func__);
     return dlen;
 }
@@ -738,6 +734,7 @@ static int read_long_frame_data(u8 *buf, int len)
 void aic_upg_uart_baudrate_update(int baudrate)
 {
     update_baudrate = baudrate;
+    pr_debug("update burn baudrate:%d\n", baudrate);
 }
 
 void aic_upg_uart_init(int id)
@@ -748,6 +745,7 @@ void aic_upg_uart_init(int id)
     uart_upg.state = CONN_STATE_DETECTING;
     uart_upg.direction = DIR_HOST_SEND;
     uart_upg.proc = uart_conn_detect_proc;
+    uart_upg.first_connect = 1;
 
     uart_init(upg_uart_id);
     recv_buf_init();
@@ -756,4 +754,12 @@ void aic_upg_uart_init(int id)
 void aic_upg_uart_loop(void)
 {
     uart_upg.proc();
+}
+
+bool aic_upg_uart_connect_check(void)
+{
+    if (uart_upg.state == CONN_STATE_CONNECTED)
+        return 1;
+
+    return 0;
 }

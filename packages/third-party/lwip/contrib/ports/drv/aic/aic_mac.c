@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2022, Artinchip Technology Co., Ltd
  *
  * SPDX-License-Identifier: Apache-2.0
@@ -160,8 +160,18 @@ int aicmac_init(uint32_t port)
 
     memset(dctl, 0, sizeof(dctl));
 
-    /* phy reset */
-    if (mac_config[port].phyrst_gpio_name){
+    /* HW Low-Level Init */
+    aicmac_low_level_init(port, ENABLE);
+
+    /* Software reset */
+    aicmac_sw_reset(port);
+    /* Wait for software reset */
+    while (aicmac_get_sw_reset_status(port) == SET) {
+    
+    }
+    
+    /* phy reset must after mac reset */
+    if (mac_config[port].phyrst_gpio_name) {
         pin = hal_gpio_name2pin(mac_config[port].phyrst_gpio_name);
         g = GPIO_GROUP(pin);
         p = GPIO_GROUP_PIN(pin);
@@ -174,14 +184,6 @@ int aicmac_init(uint32_t port)
         aicos_mdelay(50);
     }
 
-    /* HW Low-Level Init */
-    aicmac_low_level_init(port, ENABLE);
-
-    /* Software reset */
-    aicmac_sw_reset(port);
-    /* Wait for software reset */
-    while (aicmac_get_sw_reset_status(port) == SET)
-        ;
     aicos_udelay(1000);
 
     /* MDCIO Internal Clock Select */
@@ -198,8 +200,8 @@ int aicmac_init(uint32_t port)
         tmpreg |= ETH_MDIOCTL_CR_Div62;
     } else if ((ahbclk >= 150000000) && (ahbclk < 250000000)) {
         tmpreg |= ETH_MDIOCTL_CR_Div102;
-    } else /* ((ahbclk >= 250000000)&&(ahbclk <= 300000000)) */
-    {
+    } else {
+        /* ((ahbclk >= 250000000)&&(ahbclk <= 300000000)) */
         tmpreg |= ETH_MDIOCTL_CR_Div124;
     }
     writel(tmpreg, MAC(port, mdioctl));
@@ -569,7 +571,7 @@ void aicmac_dma_rx_desc_init(uint32_t port)
         #else
         /* get a pbuf from PBUF_POOL */
         p = pbuf_alloc(PBUF_RAW, 1, PBUF_POOL);
-        if (p == NULL){
+        if (p == NULL) {
             pr_err("%s pbuf_alloc fail!\n", __func__);
             return;
         }
@@ -728,7 +730,7 @@ aicmac_frame_t aicmac_get_rx_frame_interrupt(uint32_t port)
 {
     aicmac_dma_desc_t *pdesc = dctl[port].rx_desc_p;
     aicmac_rx_frame_info_t *pinfo = dctl[port].rx_frame_info_p;
-    aicmac_frame_t frame = { 0, 0, 0, 0};
+    aicmac_frame_t frame = { 0, 0, 0, 0 };
     uint32_t descriptor_scan_counter = 0;
 
     /* before read: invalid cache */
@@ -807,13 +809,13 @@ void aicmac_release_rx_frame(uint32_t port)
     while(pdesc != pdesc_end) {
         #ifdef CONFIG_MAC_ZERO_COPY_RXBUF
         index = pdesc->reserved1;
-        if (index >= ETH_RXBUFNB){
+        if (index >= ETH_RXBUFNB) {
             pr_err("%s get dma desc index err.\n", __func__);
             return;
         }
         /* get a pbuf from PBUF_POOL */
         p = pbuf_alloc(PBUF_RAW, 1, PBUF_POOL);
-        if (p == NULL){
+        if (p == NULL) {
             pr_info("%s rx pbuf_alloc fail!\n", __func__);
             dctl[port].rx_buf_underrun = 1;
             return;
@@ -843,7 +845,7 @@ void aicmac_release_rx_frame(uint32_t port)
     }
 
     #ifdef CONFIG_MAC_ZERO_COPY_RXBUF
-    if (dctl[port].rx_buf_underrun){
+    if (dctl[port].rx_buf_underrun) {
         pr_info("%s rx pbuf underrun resume!\n", __func__);
         dctl[port].rx_buf_underrun = 0;
     }
@@ -869,8 +871,9 @@ int aicmac_submit_tx_frame(uint32_t port, u16 frame_len)
         buf_count = frame_len / ETH_TX_BUF_SIZE;
         if (frame_len % ETH_TX_BUF_SIZE)
             buf_count++;
-    } else
+    } else {
         buf_count = 1;
+    }
 
     if (buf_count == 1) {
         /* Set frame size */
@@ -955,13 +958,13 @@ void aicmac_confirm_tx_frame(uint32_t port)
             ((pdesc->control & ETH_DMARxDesc_OWN) == (uint32_t)RESET)) {
 
         index = pdesc->reserved1;
-        if (index >= ETH_RXBUFNB){
+        if (index >= ETH_RXBUFNB) {
             pr_err("%s get dma desc index err.\n", __func__);
             return;
         }
 
         p = dctl[port].tx_buff[index];
-        if (p != NULL){
+        if (p != NULL) {
             pbuf_free(p);
             dctl[port].tx_buff[index] = NULL;
         }
@@ -982,7 +985,7 @@ void aicmac_confirm_tx_frame(uint32_t port)
 void aicmac_set_dma_tx_desc_int(uint32_t port, bool en)
 {
     aicmac_dma_desc_t *prxdesc;
-    uint32_t count = ETH_RXBUFNB;
+    uint32_t count = ETH_TXBUFNB;
     uint32_t i;
 
     for (i = 0; i < count; i++) {

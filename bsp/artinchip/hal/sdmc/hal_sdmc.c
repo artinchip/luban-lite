@@ -97,6 +97,11 @@ void hal_sdmc_idma_disable(struct aic_sdmc_host *host)
     sdmc_writel(host, SDMC_PBUSCFG, temp);
 }
 
+u8 hal_sdmc_get_idma_status(struct aic_sdmc_host *host)
+{
+    return (sdmc_readl(host, SDMC_PBUSCFG) & SDMC_PBUSCFG_IDMAC_EN);
+}
+
 void hal_sdmc_idma_prepare(struct aic_sdmc_host *host,
                            u32 blksize, u32 blks,
                            struct aic_sdmc_idma_desc *cur_idma,
@@ -145,7 +150,7 @@ void hal_sdmc_idma_prepare(struct aic_sdmc_host *host,
 
 int hal_sdmc_fifo_rdy(struct aic_sdmc_host *host, u32 bit, u32 *len)
 {
-    u32 start_us;
+    u64 start_us;
 
     start_us = aic_get_time_us();
     *len = sdmc_readl(host, SDMC_CTRST);
@@ -255,7 +260,7 @@ void hal_sdmc_get_rsp(struct aic_sdmc_host *host, u32 *buf, u32 all)
 
 int hal_sdmc_reset(struct aic_sdmc_host *host, u32 value)
 {
-    unsigned long start_us;
+    u64 start_us;
     u32 ctrl;
 
     ctrl = sdmc_readl(host, SDMC_HCTRL1);

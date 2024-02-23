@@ -47,7 +47,7 @@ int vin_vb_req_buf(struct vb_queue *q,
         if (i >= VIN_MAX_BUF_NUM)
             break;
 
-        cur_plane = &vbuf->planes[i * VIN_MAX_PLANE_NUM];
+        cur_plane = &vbuf->planes[i * vbuf->num_planes];
         for (j = 0; j < vbuf->num_planes; j++) {
             cur_plane->buf = (dma_addr_t)(ptr_t)&buf[offset];
             cur_plane->len = vbuf->planes[j].len;

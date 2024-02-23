@@ -4,7 +4,7 @@
 #define MSC_IN_EP  0x81
 #define MSC_OUT_EP 0x02
 
-#define USBD_VID           0xFFFF
+#define USBD_VID           0x33C3
 #define USBD_PID           0xFFFF
 #define USBD_MAX_POWER     100
 #define USBD_LANGID_STRING 1033
@@ -95,10 +95,13 @@ const uint8_t msc_ram_descriptor[] = {
     0x00
 };
 
+struct usbd_interface intf0;
+
 void usbd_event_handler(uint8_t event)
 {
     switch (event) {
         case USBD_EVENT_RESET:
+            usbd_msc_init_intf(&intf0, MSC_OUT_EP, MSC_IN_EP);
             break;
         case USBD_EVENT_CONNECTED:
             break;
@@ -137,19 +140,17 @@ void usbd_msc_get_cap(uint8_t lun, uint32_t *block_num, uint16_t *block_size)
 }
 int usbd_msc_sector_read(uint32_t sector, uint8_t *buffer, uint32_t length)
 {
-    if (sector < 10)
+    if (sector < BLOCK_COUNT)
         memcpy(buffer, mass_block[sector].BlockSpace, length);
     return 0;
 }
 
 int usbd_msc_sector_write(uint32_t sector, uint8_t *buffer, uint32_t length)
 {
-    if (sector < 10)
+    if (sector < BLOCK_COUNT)
         memcpy(mass_block[sector].BlockSpace, buffer, length);
     return 0;
 }
-
-struct usbd_interface intf0;
 
 void msc_ram_init(void)
 {

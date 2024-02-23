@@ -160,6 +160,13 @@ static inline int aicos_event_send(aicos_event_t event, uint32_t set)
 // Queue API
 //--------------------------------------------------------------------+
 
+typedef struct {
+    int item_size;
+    int depth;
+    void *buf;
+    void *q;
+} osal_queue_def_t;
+
 static inline aicos_queue_t aicos_queue_create(uint32_t item_size, uint32_t queue_size)
 {
     osal_queue_def_t *p_queue_def;

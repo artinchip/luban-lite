@@ -180,6 +180,7 @@ static int aic_can_recv(struct rt_can_device *can, void *buf, rt_uint32_t boxno)
     pmsg->rtr = phandle->msg.rtr;
     pmsg->ide = phandle->msg.ide;
     pmsg->len = phandle->msg.dlc;
+    pmsg->hdr = 0;
 
     for (i = 0; i < pmsg->len; i++)
         pmsg->data[i] = phandle->msg.data[i];

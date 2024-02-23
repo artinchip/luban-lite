@@ -12,12 +12,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-/* partition magic word */
-#define FAL_PART_MAGIC_WORD         0x45503130
-#define FAL_PART_MAGIC_WORD_H       0x4550L
-#define FAL_PART_MAGIC_WORD_L       0x3130L
-#define FAL_PART_MAGIC_WROD         0x45503130
-
 struct part_flash_info
 {
     const struct fal_flash_dev *flash_dev;
@@ -35,10 +29,8 @@ struct part_flash_info
 #endif
 
 /* partition table definition */
-static const struct fal_partition partition_table_def[] = FAL_PART_TABLE;
-static const struct fal_partition *partition_table = NULL;
-/* partition and flash object information cache table */
-static struct part_flash_info part_flash_cache[sizeof(partition_table_def) / sizeof(partition_table_def[0])] = { 0 };
+static struct fal_partition partition_table_def[] = FAL_PART_TABLE;
+static struct fal_partition *partition_table = NULL;
 
 #else /* FAL_PART_HAS_TABLE_CFG */
 
@@ -52,8 +44,8 @@ static struct part_flash_info part_flash_cache[sizeof(partition_table_def) / siz
 #endif
 
 static struct fal_partition *partition_table = NULL;
-static struct part_flash_info *part_flash_cache = NULL;
 #endif /* FAL_PART_HAS_TABLE_CFG */
+static struct part_flash_info *part_flash_cache = NULL;
 
 static uint8_t init_ok = 0;
 static size_t partition_table_len = 0;
@@ -106,7 +98,6 @@ static int check_and_update_part_cache(const struct fal_partition *table, size_t
     const struct fal_flash_dev *flash_dev = NULL;
     size_t i;
 
-#ifndef FAL_PART_HAS_TABLE_CFG
     if (part_flash_cache)
     {
         FAL_FREE(part_flash_cache);
@@ -117,7 +108,6 @@ static int check_and_update_part_cache(const struct fal_partition *table, size_t
         log_e("Initialize failed! No memory for partition table cache");
         return -2;
     }
-#endif
 
     for (i = 0; i < len; i++)
     {
@@ -143,6 +133,8 @@ static int check_and_update_part_cache(const struct fal_partition *table, size_t
     return 0;
 }
 
+extern int aic_get_fal_partition_table(const char *dev_name,
+                                       struct fal_partition **table);
 /**
  * Initialize all flash partition on FAL partition table
  *
@@ -150,12 +142,21 @@ static int check_and_update_part_cache(const struct fal_partition *table, size_t
  */
 int fal_partition_init(void)
 {
+    struct fal_partition *aic_part;
 
     if (init_ok)
     {
         return partition_table_len;
     }
 
+    partition_table_len = aic_get_fal_partition_table(FAL_USING_NOR_FLASH_DEV_NAME, &aic_part);
+    if (partition_table_len > 0) {
+        partition_table = aic_part;
+        if (check_and_update_part_cache(partition_table, partition_table_len) == 0) {
+            init_ok = 1;
+            return partition_table_len;
+        }
+    }
 #ifdef FAL_PART_HAS_TABLE_CFG
     partition_table = &partition_table_def[0];
     partition_table_len = sizeof(partition_table_def) / sizeof(partition_table_def[0]);

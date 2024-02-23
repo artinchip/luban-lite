@@ -356,10 +356,20 @@ static inline void hal_i2s_rxfifo_output_mode(struct aic_i2s_ctrl *i2s)
     writel(reg_val, i2s->reg_base + I2S_FCTL_REG);
 }
 
+static inline void hal_i2s_enable_loopback(struct aic_i2s_ctrl *i2s)
+{
+    uint32_t reg_val;
+
+    reg_val = readl(i2s->reg_base + I2S_CTL_REG);
+    reg_val |= I2S_CTL_LOOP;
+    writel(reg_val, i2s->reg_base + I2S_CTL_REG);
+}
+
 int hal_i2s_init(aic_i2s_ctrl *i2s, uint32_t i2s_idx);
 int hal_i2s_uninit(aic_i2s_ctrl *i2s);
 int hal_i2s_protocol_select(struct aic_i2s_ctrl *i2s, i2s_protocol_t protocol);
 int hal_i2s_sample_width_select(aic_i2s_ctrl *i2s, i2s_sample_width_t width);
+int hal_i2s_slot_width_select(aic_i2s_ctrl *i2s, i2s_sample_width_t slot_width);
 void hal_i2s_polarity_set(struct aic_i2s_ctrl *i2s, i2s_polarity_t polarity);
 int hal_i2s_mclk_set(struct aic_i2s_ctrl *i2s,
                      i2s_sample_rate_t sample_rate, uint32_t mclk_nfs);
@@ -367,6 +377,7 @@ int hal_i2s_sclk_set(struct aic_i2s_ctrl *i2s,
                      i2s_sample_rate_t sample_rate, uint32_t sclk_nfs);
 void hal_i2s_channel_select(struct aic_i2s_ctrl *i2s,
                             i2s_sound_channel_t channel, i2s_stream_t stream);
+int hal_i2s_set_format(aic_i2s_ctrl *i2s, i2s_format_t *fmt);
 void hal_i2s_playback_start(aic_i2s_ctrl *i2s, i2s_format_t *format);
 void hal_i2s_record_start(aic_i2s_ctrl *i2s, i2s_format_t *format);
 void hal_i2s_playback_stop(aic_i2s_ctrl *i2s);

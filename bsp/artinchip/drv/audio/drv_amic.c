@@ -17,7 +17,7 @@
 
 #include "hal_audio.h"
 
-#define RX_AMIC_FIFO_SIZE (4096)
+#define RX_AMIC_FIFO_SIZE               (RT_AUDIO_RECORD_PIPE_SIZE * 2)
 static rt_uint8_t amic_rx_fifo[RX_AMIC_FIFO_SIZE] __attribute__((aligned(64)));
 
 struct aic_amic
@@ -25,6 +25,7 @@ struct aic_amic
     struct rt_audio_device audio;
     aic_audio_ctrl codec;
     rt_uint8_t volume;
+    uint8_t index;
 };
 
 static struct aic_amic amic_dev;
@@ -102,11 +103,10 @@ rt_err_t drv_amic_configure(struct rt_audio_device *audio,
         {
         case AUDIO_MIXER_VOLUME:
             volume = caps->udata.value;
-            /* The miximum value of volume in register is 255,
-             * but in rtt audio framework, the miximum volume
-             * is 100, so must convert user volume to register volume.
-             **/
-            reg_volume = volume * 255 / 100;
+            /*
+             * Set max user volume to 0db
+             */
+            reg_volume = volume * MAX_VOLUME_0DB / 100;
 
             hal_audio_set_amic_volume(pcodec, reg_volume);
             p_amic_dev->volume = volume;
@@ -266,8 +266,9 @@ static void drv_amic_callback(aic_audio_ctrl *pcodec, void *arg)
     switch (event)
     {
     case AUDIO_RX_AMIC_PERIOD_INT:
+        aicos_dcache_invalid_range((void *)amic_rx_fifo, RX_AMIC_FIFO_SIZE);
         period_len = pcodec->dmic_info.buf_info.period_len;
-        if (!p_amic_dev->index){
+        if (!p_amic_dev->index) {
             rt_audio_rx_done(audio, &amic_rx_fifo[0], period_len);
             p_amic_dev->index = 1;
         } else {

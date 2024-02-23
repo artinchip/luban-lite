@@ -5,11 +5,16 @@
             "spl":      { "size": "1m" },
             "env":      { "size": "256k" },
             "env_r":    { "size": "256k" },
-            "os":       { "size": "2m" },
-            "os_r":     { "size": "2m" },
-            "rodata":   { "size": "6m" },
-            "rodata_r": { "size": "6m" },
-            "data":     { "size": "35m" },
+            "os":       { "size": "4m" },
+            "os_r":     { "size": "4m" },
+            "rodata":   { "size": "12m" },
+            "rodata_r": { "size": "12m" },
+            "data": {
+                "size": "50m",
+                "nftl": { // Volume in NFTL device
+                    "data": { "size": "-" },
+                },
+            },
         },
     },
     "image": {
@@ -54,14 +59,14 @@
                 "attr": ["mtd", "required"],
                 "part": ["os"]
             },
-            "res": {
-                "file": "app.fatfs",
+            "rodata": {
+                "file": "rodata.fatfs",
                 "attr": ["mtd", "optional"],
                 "part": ["rodata"]
             },
-            "app": {
-                "file": "page_2k_block_128k_oob_64_data.uffs",
-                "attr": ["uffs", "optional"],
+            "data": {
+                "file": "data.fatfs",
+                "attr": ["block", "optional"],
                 "part": ["data"]
             },
         },

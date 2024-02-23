@@ -3,9 +3,16 @@
         "size": "128m", // Size of SPI NAND
         "partitions": {
             "spl":        { "size": "1m" },
-            "os":         { "size": "1m" },
-            "rodata":     { "size": "6m" },
-            "data":       { "size": "28m" }
+            "env":      { "size": "256k" },
+            "env_r":    { "size": "256k" },
+            "os":         { "size": "4m" },
+            "rodata":     { "size": "12m" },
+            "data": {
+                "size": "50m",
+                "nftl": { // Volume in NFTL device
+                    "data": { "size": "-" },
+                },
+            },
         },
     },
     "image": {
@@ -16,10 +23,10 @@
             "media": {
                 "type": "spi-nand",
                 "device_id": 0,
-								"array_organization": [
-									{ "page": "2k", "block": "128k", "oob": "64"},
-									// { "page": "4k", "block": "256k", "oob": "128"},
-								],
+		"array_organization": [
+			{ "page": "2k", "block": "128k", "oob": "64"},
+			// { "page": "4k", "block": "256k", "oob": "128"},
+			],
             }
         },
         "updater": { // Image writer which is downloaded to RAM by USB
@@ -35,6 +42,11 @@
                 "attr": ["mtd", "required"],
                 "part": ["spl"]
             },
+            "env": {
+                "file": "env.bin",
+                "attr": ["mtd", "optional"],
+                "part": ["env","env_r"]
+            },
             "os": {
                 "file": "d13x_os.itb",
                 "attr": ["mtd", "required"],
@@ -46,8 +58,8 @@
                 "part": ["rodata"]
             },
             "data": {
-                "file": "page_2k_block_128k_oob_64_data.uffs",
-                "attr": ["uffs", "optional"],
+                "file": "data.fatfs",
+                "attr": ["block", "optional"],
                 "part": ["data"]
             },
         },
@@ -60,8 +72,18 @@
                     "file": "bootloader.bin",
                     "load address": "0x30100000",
                     "entry point":  "0x30100100",
-                    "run in dram": "false",
                 },
+                "resource": {
+                    "private": "pbp_cfg.bin",
+                    "pbp": "d13x.pbp",
+                },
+            },
+        },
+        "uboot_env": {
+            "env.bin": {
+                "file": "env.txt",
+                "size": "4096",
+                "redundant": "enable",
             },
         },
         "itb": {

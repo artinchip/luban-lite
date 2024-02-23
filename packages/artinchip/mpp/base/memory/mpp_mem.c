@@ -117,22 +117,24 @@ unsigned int mpp_phy_alloc(size_t size)
 
     if(i == MEMORY_NUM) {
         loge("memory count exceed max number");
-        return -1;
+        return 0;
     }
 
 #ifdef USE_CARVOUT
     info[i].addr = g_addr;
     info[i].align_addr = info[i].addr;
-#else
-    size += 1023;
-    info[i].addr = (unsigned long)aicos_malloc(MEM_CMA, size);
-    info[i].align_addr = ALIGN_1024B(info[i].addr);
-#endif
     info[i].size = ALIGN_1024B(size);
-    info[i].used = 1;
-
     g_addr += info[total_cnt].size;
+#else
+    info[i].addr = (unsigned long)aicos_malloc(MEM_CMA, ALIGN_UP(size, CACHE_LINE_SIZE) + 1024);
+    info[i].align_addr = ALIGN_1024B(info[i].addr);
+    info[i].size = size;
+#endif
+    info[i].used = 1;
     total_cnt ++;
+
+    aicos_dcache_clean_invalid_range((unsigned long *)((unsigned long)info[i].align_addr),
+                                     ALIGN_UP(info[i].size, CACHE_LINE_SIZE));
 
     logw("mpp_phy_alloc success, addr: %08x, align_addr: %08x, size: %d",
         info[i].addr, info[i].align_addr, info[i].size);

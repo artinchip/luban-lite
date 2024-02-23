@@ -40,7 +40,7 @@ static struct StrToFormat *format_table = NULL;
 
 static void usage(char *app)
 {
-    printf("Usage: %s [Options], built on %s %s\n", app, __DATE__, __TIME__);
+    printf("Usage: %s [Options]: \n", app);
     printf("\t-o, --dither_on,  Select open dither (default 0), 0 :close  1 :open\n");
     printf("\t-s, --src_format, Select src format  (default argb8888)\n");
     printf("\t-d, --dst_format, Select dst format  (default argb4444)\n");
@@ -222,7 +222,7 @@ static void ge_dither_test(int argc, char **argv)
     int src_format = 0;
     int dst_format = 0;
 
-    int bmp_fd = 0;
+    int bmp_fd = -1;
     enum mpp_pixel_format bmp_fmt = 0;
     struct mpp_ge *ge = NULL;
     struct ge_bitblt blt = {0};
@@ -250,32 +250,32 @@ static void ge_dither_test(int argc, char **argv)
             src_format = str_to_format(optarg);
             if (src_format < 0) {
                 printf("src format set error, please set against\n");
-                goto EXIT;
+                return;
             }
             break;
         case 'd':
             dst_format = str_to_format(optarg);
             if (dst_format < 0) {
                 printf("dst format set error, please set against\n");
-                goto EXIT;
+                return;
             }
             break;
         case 'o':
             dither_on = str2int(optarg);
             if ((dither_on > 1) || (dither_on < 0)) {
                 LOGE("dither switch set error, please set against\n");
-                goto EXIT;
+                return;
             }
             break;
         case 'u':
             usage(argv[0]);
-            goto EXIT;
+            return;
         case 'h':
             help();
-            goto EXIT;
+            return;
         default:
             LOGE("Invalid parameter: %#x\n", ret);
-            goto EXIT;
+            return;
         }
     }
 
@@ -289,7 +289,7 @@ static void ge_dither_test(int argc, char **argv)
 
     bmp_fd = bmp_open(DITHER_IMAGE, &bmp_head);
     if (bmp_fd < 0) {
-        LOGE("open bmp error\n");
+        LOGE("open bmp error, path = %s\n", DITHER_IMAGE);
         goto EXIT;
     }
 
@@ -347,22 +347,22 @@ static void ge_dither_test(int argc, char **argv)
     fb_swap_frame(fb_info);
 
 EXIT:
-    if (!bmp_fd)
+    if (bmp_fd > 0)
         bmp_close(bmp_fd);
 
-    if (!ge)
+    if (ge)
         mpp_ge_close(ge);
 
-    if (!fb_info)
+    if (fb_info)
         fb_close(fb_info);
 
-    if (!bmp_buffer)
+    if (bmp_buffer)
         ge_buf_free(bmp_buffer);
 
-    if (!src_buffer)
+    if (src_buffer)
         ge_buf_free(src_buffer);
 
-    if (!dst_buffer)
+    if (dst_buffer)
         ge_buf_free(dst_buffer);
 }
 MSH_CMD_EXPORT_ALIAS(ge_dither_test, ge_dither, ge dithe test);

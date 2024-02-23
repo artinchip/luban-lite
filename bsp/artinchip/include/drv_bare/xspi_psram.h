@@ -26,6 +26,9 @@ struct aic_xspi
     bool inited;
 };
 
+#define PSRAM_INIT_OK 0
+#define PSRAM_INIT_FAILED 1
+
 u32 aic_xspi_psram_init(void);
 
 #ifdef __cplusplus

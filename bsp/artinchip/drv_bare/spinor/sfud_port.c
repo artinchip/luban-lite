@@ -33,6 +33,18 @@
 
 #define SFUD_READ_SFDP_FREQ 50000000
 
+#if defined(AIC_QSPI_DRV_V10)
+#if defined(AIC_BOOTLOADER)
+#define DMA_SLAVE_MAXBURST_DEFAULT 8
+#else
+#define DMA_SLAVE_MAXBURST_DEFAULT 1
+#endif
+#elif defined(AIC_QSPI_DRV_V20)
+#define DMA_SLAVE_MAXBURST_DEFAULT 1
+#else
+#define DMA_SLAVE_MAXBURST_DEFAULT 8
+#endif
+
 #define QSPI_MAX_CNT 4
 struct aic_qspi_bus
 {
@@ -100,12 +112,13 @@ static struct aic_qspi_bus qspi_bus_arr[] = {
         .clk_id = CLK_SE_SPI,
         .clk_in_hz = AIC_DEV_SE_SPI_MAX_SRC_FREQ_HZ,
         .bus_hz = AIC_SE_SPI_DEVICE_SPINOR_FREQ,
-        .dma_port_id = DMA_ID_SPI0,
-        .irq_num = QSPI0_IRQn,
+        .dma_port_id = DMA_ID_SE_SPI,
+        .irq_num = SE_SPI_IRQn,
     },
 #endif
 };
 
+char *aic_spinor_get_partition_string(struct mtd_dev *mtd);
 static void retry_delay_100us(void)
 {
     aicos_udelay(100);
@@ -127,6 +140,8 @@ static struct aic_qspi_bus *get_qspi_by_index(u32 idx)
     return qspi;
 }
 
+#ifdef SFUD_USING_QSPI
+
 static u32 address_copy(u32 addr, u32 size, uint8_t *dst)
 {
     u32 i;
@@ -139,7 +154,6 @@ static u32 address_copy(u32 addr, u32 size, uint8_t *dst)
     return i;
 }
 
-#ifdef SFUD_USING_QSPI
 static sfud_err qspi_read(const struct __sfud_spi *spi, u32 addr,
                           sfud_qspi_read_cmd_format *rd_fmt, uint8_t *read_buf,
                           size_t read_size)
@@ -327,17 +341,6 @@ static int sfud_mtd_write(struct mtd_dev *mtd, u32 offset, uint8_t *data,
     return sfud_write(flash, start, dolen, data);
 }
 
-static char *get_part_str(u32 spi_bus)
-{
-    char name[8] = {0};
-
-    strcpy(name, "spi0");
-    name[3] += spi_bus;
-    if (strncmp(name, NOR_MTD_PARTS, 4) == 0)
-        return NOR_MTD_PARTS;
-    return NULL;
-}
-
 sfud_flash *sfud_probe(u32 spi_bus)
 {
     sfud_err result = SFUD_SUCCESS;
@@ -375,15 +378,19 @@ sfud_flash *sfud_probe(u32 spi_bus)
     struct qspi_master_dma_config dmacfg;
     memset(&dmacfg, 0, sizeof(dmacfg));
     dmacfg.port_id = qspi->dma_port_id;
-    dmacfg.tx_bus_width = DMA_SLAVE_BUSWIDTH_1_BYTE;
-    dmacfg.rx_bus_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
-    dmacfg.tx_max_burst = 1;
-    dmacfg.rx_max_burst = 8;
+
+    dmacfg.tx_bus_width = DMA_SLAVE_BUSWIDTH_UNDEFINED;
+    dmacfg.rx_bus_width = DMA_SLAVE_BUSWIDTH_UNDEFINED;
+    dmacfg.tx_max_burst = DMA_SLAVE_MAXBURST_DEFAULT;
+    dmacfg.rx_max_burst = DMA_SLAVE_MAXBURST_DEFAULT;
+
     ret = hal_qspi_master_dma_config(&qspi->handle, &dmacfg);
     if (ret) {
         pr_err("qspi dma config failed.\n");
         return NULL;
     }
+
+    qspi->probe_flag = true;
 #endif
     qspi->attached_flash.user_data = (void *)qspi;
     qspi->attached_flash.init_hz = SFUD_READ_SFDP_FREQ;
@@ -411,8 +418,9 @@ sfud_flash *sfud_probe(u32 spi_bus)
     mtd->priv = &qspi->attached_flash;
     mtd_add_device(mtd);
 
-    partstr = get_part_str(spi_bus);
+    partstr = aic_spinor_get_partition_string(mtd);
     part = mtd_parts_parse(partstr);
+    free(partstr);
     p = part;
     while (p) {
         mtd = malloc(sizeof(*mtd));
@@ -433,5 +441,6 @@ sfud_flash *sfud_probe(u32 spi_bus)
     if (part)
         mtd_parts_free(part);
 
+    qspi->probe_flag = true;
     return &qspi->attached_flash;
 }

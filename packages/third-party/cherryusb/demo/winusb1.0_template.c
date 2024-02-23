@@ -163,7 +163,7 @@ struct usb_msosv1_descriptor msosv1_desc = {
 #define WINUSB_IN_EP  0x81
 #define WINUSB_OUT_EP 0x02
 
-#define USBD_VID           0xefff
+#define USBD_VID           0x33C3
 #define USBD_PID           0xffff
 #define USBD_MAX_POWER     100
 #define USBD_LANGID_STRING 1033

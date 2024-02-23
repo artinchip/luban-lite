@@ -138,7 +138,7 @@ void hal_audio_set_samplerate(aic_audio_ctrl *codec, uint32_t samplerate)
     hal_clk_set_freq(pclk_id, module_freq * 20);
     /* Set AudioCodec module clock rate */
     hal_clk_set_rate(codec->clk_id, module_freq, module_freq * 20);
-#elif defined(AIC_AUDIO_DRV_V11)
+#elif defined(AIC_AUDIO_DRV_V11) || defined(AIC_AUDIO_DRV_V12)
     /* Audio has the same frequency with AUDIO_SCLK  */
     hal_clk_set_freq(pclk_id, module_freq);
 #endif

@@ -217,6 +217,11 @@ aic_i2c_get_transmit_fifo_num(unsigned long reg_base)
     return readl(reg_base + I2C_TXFLR);
 }
 
+static inline void aic_i2c_transfer_stop_bit(unsigned long reg_base)
+{
+    writel(I2C_DATA_CMD_STOP, reg_base + I2C_DATA_CMD);
+}
+
 static inline void aic_i2c_read_data_cmd(unsigned long reg_base)
 {
     writel(I2C_DATA_CMD_READ, reg_base + I2C_DATA_CMD);
@@ -344,7 +349,7 @@ static inline void aic_i2c_set_receive_fifo_threshold(unsigned long reg_base,
   \param[in]   i2c_idx     i2c index number
   \return      0, if success, error code if failed
 */
-int aic_i2c_init(uint32_t i2c_idx);
+int aic_i2c_init(int32_t i2c_idx);
 
 
 void hal_i2c_set_hold(unsigned long reg_base, u32 val);

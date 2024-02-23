@@ -15,7 +15,6 @@
 extern "C" {
 #endif
 
-#define AXICFG_BASE         0x184FE000
 #define AXICFG_INVALID_BASE (0xFFFFFFFF)
 
 #define AXICFG_REG_CFG0(base, mode_w, device_p) \

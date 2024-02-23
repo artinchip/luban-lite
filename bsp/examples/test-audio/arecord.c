@@ -13,8 +13,6 @@
 #define RECORD_CHANNEL      2
 #define RECORD_CHUNK_SZ     ((RECORD_SAMPLERATE * RECORD_CHANNEL * 2) * 20\
                              / 1000)
-
-#define SOUND_DEVICE_NAME    "dmic0"
 static rt_device_t mic_dev;
 
 struct wav_header
@@ -57,34 +55,45 @@ static void wavheader_init(struct wav_header *header, int sample_rate,
 
 int test_wavrecord(int argc, char **argv)
 {
-    int fd = -1;
+    int fd = -1, ret = RT_EOK;
     uint8_t *buffer = NULL;
     struct wav_header header;
     struct rt_audio_caps caps = {0};
     int length, total_length = 0;
 
-    if (argc != 2)
+    if (argc != 3)
     {
         rt_kprintf("Usage:\n");
-        rt_kprintf("arecord file.wav\n");
-        return -1;
+        rt_kprintf("\tarecord soundCard file.wav\n");
+        rt_kprintf("\tFor example:\n");
+        rt_kprintf("\t\tarecord dmic0 test.wav\n");
+        rt_kprintf("\t\tarecord amic0 test.wav\n");
+        rt_kprintf("\t\tarecord i2s0_sound test.wav\n");
+        rt_kprintf("\t\tarecord i2s1_sound test.wav\n");
+        return -RT_EINVAL;
     }
 
-    fd = open(argv[1], O_WRONLY | O_CREAT);
+    fd = open(argv[2], O_WRONLY | O_CREAT);
     if (fd < 0)
     {
         rt_kprintf("open file for recording failed!\n");
-        return -1;
+        return -RT_ERROR;
     }
     write(fd, &header, sizeof(struct wav_header));
 
     buffer = rt_malloc(RECORD_CHUNK_SZ);
-    if (buffer == RT_NULL)
+    if (buffer == RT_NULL) {
+        rt_kprintf("malloc record chunk size failed!\n");
+        ret = -RT_ENOMEM;
         goto __exit;
+    }
 
-    mic_dev = rt_device_find(SOUND_DEVICE_NAME);
-    if (mic_dev == RT_NULL)
+    mic_dev = rt_device_find(argv[1]);
+    if (!mic_dev) {
+        rt_kprintf("%s not found!\n", argv[1]);
+        ret = -RT_ERROR;
         goto __exit;
+    }
 
     rt_device_open(mic_dev, RT_DEVICE_OFLAG_RDONLY);
 
@@ -123,6 +132,6 @@ __exit:
     if (buffer)
         rt_free(buffer);
 
-    return 0;
+    return ret;
 }
 MSH_CMD_EXPORT_ALIAS(test_wavrecord, arecord, record voice to a wav file);

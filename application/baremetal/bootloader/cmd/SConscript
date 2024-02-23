@@ -19,12 +19,16 @@ if GetDepend('AIC_BOOTLOADER_CMD_NOR_BOOT') and not GetDepend('LPKG_USING_FDTLIB
 	src     += Glob('nor_boot_no_fitimage.c')
 if GetDepend('AIC_BOOTLOADER_CMD_NAND_BOOT'):
 	src     += Glob('nand_boot.c')
-if GetDepend('AIC_BOOTLOADER_CMD_MMC_BOOT'):
+if GetDepend('AIC_BOOTLOADER_CMD_MMC_BOOT') and GetDepend('LPKG_USING_FDTLIB'):
 	src     += Glob('mmc_boot.c')
+if GetDepend('AIC_BOOTLOADER_CMD_MMC_BOOT') and not GetDepend('LPKG_USING_FDTLIB'):
+	src     += Glob('mmc_boot_no_fitimage.c')
 if GetDepend('AIC_BOOTLOADER_CMD_PSRAM_TEST'):
 	src     += Glob('psram_test.c')
 if GetDepend('AIC_BOOTLOADER_CMD_XIP_BOOT'):
 	src     += Glob('xip_boot.c')
+if GetDepend('AIC_BOOTLOADER_CMD_PART'):
+	src     += Glob('part.c')
 
 CPPPATH = [cwd]
 ASFLAGS = ''

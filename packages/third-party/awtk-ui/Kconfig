@@ -1,0 +1,221 @@
+# Kconfig file for package AWTK
+menuconfig LPKG_USING_AWTK
+    bool "AWTK GUI"
+    default n
+    select RT_USING_CPLUSPLUS
+    select RT_USING_CPLUSPLUS11
+
+if LPKG_USING_AWTK
+
+menu "AWTK common function config"
+    config WITH_G2D
+        depends on AIC_USING_GE
+        bool "Use g2d"
+        default y
+        select WITH_AIC_G2D
+
+    config WITH_AIC_G2D
+        depends on WITH_G2D
+        bool "Use aic g2d"
+        default y
+
+    config WITH_DEC_IMAGE
+        depends on WITH_G2D
+        depends on AIC_USING_DE
+        depends on WITH_FS_RES
+        bool "Use decoding image"
+        default y
+
+    config APP_RES_ROOT
+        depends on WITH_FS_RES
+        string "Set app resource root"
+        default "/rodata/res"
+
+    config AWTK_START_UP
+        bool "Self start funcion upon startup"
+        default y
+
+    choice
+        prompt "Select lcd refresh mode"
+        default WITH_LCD_SWAP_EX
+
+    config WITH_LCD_FLUSH
+        bool "flush mode"
+
+    config WITH_LCD_SWAP
+        bool "swap mode"
+
+    config WITH_LCD_SWAP_EX
+        bool "swap_ex mode"
+
+    endchoice
+
+endmenu
+
+menu "AWTK cropping config"
+    config WITH_FS_RES
+        bool "Use files system"
+        default y
+
+    config WITH_STB_IMAGE
+        depends on WITH_FS_RES
+        bool "use STB image lib"
+        default y
+
+    config WITH_STB_FONT
+        depends on WITH_STB_IMAGE
+        bool "Support truetype fonts"
+        default y
+
+    config WITH_UNICODE_BREAK
+        bool "Wrap using unicode standard"
+        default y
+
+    config WITHOUT_WINDOW_ANIMATOR_CACHE
+        bool "Don't use window animation cache and default open don't use dialog hightlighter "
+        default y
+
+    choice
+        prompt "Choice log level"
+        default NDEBUG
+
+    config WITH_DEBUG
+        bool "log level debug"
+
+    config NDEBUG
+        bool "log level info"
+
+    endchoice
+
+    choice
+        prompt "Select input method"
+        default WITH_NULL_IM
+
+    config WITH_IME_NULL
+        bool "Supports soft keyboard without enabing input method"
+
+    config WITH_NULL_IM
+        bool "Don't supports soft keyboard without enabing input method"
+
+    config WITH_IME_PINYIN
+        bool "Use pinyin input method and soft keyboard"
+    endchoice
+
+    config WITHOUT_SUGGEST_WORDS
+        depends on WITH_IME_PINYIN
+        bool "Use pinyin assiciate func"
+        default n
+
+    config WITH_TEXT_BIDI
+        bool "Supports bidirectional text alignment"
+        default n
+
+    config WITHOUT_WINDOW_ANIMATORS
+        bool "Don't use window animation"
+        default n
+
+    config WITHOUT_WIDGET_ANIMATORS
+        bool "Don't use widget animation"
+        default n
+
+    config WITHOUT_CLIPBOARD
+        bool "Don't use clip board"
+        default n
+
+    config WITHOUT_DIALOG_HIGHLIGHTER
+        bool "Don't use dialog hightlighter, ensure that windows animation is not in use"
+        default n
+
+    config WITHOUT_LAYOUT
+        bool "Don't use layout algorithms"
+        default n
+
+    config WITHOUT_EXT_WIDGETS
+        bool "Don't use ext widgets"
+        default n
+
+    config WITH_BITMAP_FONT
+        bool "Supported pre decoded bitmap"
+        help
+            enabled when ram is extremly low
+        default n
+
+    config WITH_DATA_READER_WRITER
+        bool "The configuration file requires the use or data_reader/data_writer"
+        default n
+
+    config WITH_ASSET_LOADER_ZIP
+        depends on WITH_FS_RES
+        bool "Use assets zip"
+        default n
+
+    config ASSETS_ZIP
+        depends on WITH_ASSET_LOADER_ZIP
+        string "Assets zip path"
+        default "/rodata/assets.zip"
+
+    config TK_GLYPH_CACHE_NR
+        int "Font manager shrink cache num"
+        default 64
+endmenu
+
+choice
+    prompt "Select a demo"
+    default LPKG_AWTK_USING_DEMOS_CHART
+
+config LPKG_AWTK_USING_DEMOS_CHART
+    bool "Use the chart demo"
+    help
+        "assets in packages/third-party/awtk-ui/user_apps/awtk-demo-chart/rtos_res/"
+
+config LPKG_AWTK_USING_OFFICIAL_DEMO
+    bool "Use the official demo"
+    help
+        "assets in packages/third-party/awtk-ui/user_apps/offical-demo/res/
+endchoice
+
+menu "AWTK thread config"
+    config TK_UI_THREAD_STACK_SIZE
+        int "UI thread stack size"
+        default 10000
+
+    config TK_UI_THREAD_PRIORITY
+        int "UI thread prority"
+        default 19
+
+    config TK_UI_THREAD_TICK
+        int "UI thread tick"
+        default 20
+
+    config TK_TOUCH_THREAD_STACK_SIZE
+        int "Touch thread stack size"
+        default 1536
+
+    config TK_TOUCH_THREAD_PRIORITY
+        int "Touch thread prority"
+        default 19
+
+    config TK_TOUCH_THREAD_TICK
+        int "Touch thread tick"
+        default 5
+
+endmenu
+
+menu "AWTK input device config"
+    config AWTK_TOUCH_INPUT_DEV
+        depends on AIC_TOUCH_PANEL_GT911
+        bool "Using the input device gt911"
+        default y
+
+    config AIC_TOUCH_PANEL_GT911_NAME
+        depends on AWTK_TOUCH_INPUT_DEV
+        string "The name of the input device is gt911"
+        default "gt911"
+
+    config AIC_TOUCH_PANEL_GT911_DEBUG
+        depends on AWTK_TOUCH_INPUT_DEV
+        bool "The input device gt911 debug"
+        default n
+endmenu
+
+endif

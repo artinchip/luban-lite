@@ -56,5 +56,6 @@ s32 syscfg_fpga_de_clk_sel_by_div(u8 sclk, u8 pixclk);
 void syscfg_fpga_lcd_io_set(u32 val);
 
 s32 hal_syscfg_probe(void);
+u32 syscfg_read_ldo_cfg(void);
 
 #endif

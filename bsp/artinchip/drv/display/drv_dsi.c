@@ -7,6 +7,7 @@
 #include <aic_core.h>
 #include <aic_hal.h>
 #include <aic_hal_dsi.h>
+#include <mipi_display.h>
 
 #include "disp_com.h"
 
@@ -67,6 +68,7 @@ static int aic_dsi_enable(void)
 {
     struct aic_dsi_comp *comp = aic_dsi_request_drvdata();
     struct panel_dsi *dsi = comp->panel->dsi;
+    ulong lp_rate = MIPI_DSI_LP_RATE;
 
     reg_set_bit(comp->regs + DSI_CTL, DSI_CTL_EN);
 
@@ -74,7 +76,12 @@ static int aic_dsi_enable(void)
     dsi_set_lane_polrs(comp->regs, comp->ln_polrs);
     dsi_set_data_clk_polrs(comp->regs, comp->dc_inv);
 
-    dsi_set_clk_div(comp->regs, comp->sclk_rate);
+    if (lp_rate < 10000000 || lp_rate > 20000000) {
+        lp_rate = 10000000;
+        pr_warn("Invalid lp rate, use default lp rate: %ld\n", lp_rate);
+    }
+
+    dsi_set_clk_div(comp->regs, comp->sclk_rate, lp_rate);
     dsi_pkg_init(comp->regs);
     dsi_phy_init(comp->regs, comp->sclk_rate, dsi->lane_num);
     dsi_hs_clk(comp->regs, 1);
@@ -138,6 +145,13 @@ static int aic_dsi_set_vm(const struct display_timing *timing, int enable)
         dsi_set_vm(comp->regs, DSI_MOD_CMD_MODE, dsi->format,
             dsi->lane_num, comp->vc_num, timing);
         dsi_dcs_lw(comp->regs, true);
+#if DCS_GET_DISPLAY_ID
+        dsi_cmd_wr(comp->regs, MIPI_DSI_DCS_READ, 0,
+                (u8[]){ MIPI_DCS_GET_DISPLAY_ID }, 1);
+        aic_delay_ms(120);
+
+        pr_info("mipi-dsi screen id: %x\n", readl(comp->regs + DSI_GEN_PD_CFG));
+#endif
     }
 
     aic_dsi_release_drvdata();
@@ -153,6 +167,16 @@ static int aic_dsi_send_cmd(u32 dt, u32 vc, const u8 *data, u32 len)
     return 0;
 }
 
+static int aic_dsi_read_cmd(u32 val)
+{
+    struct aic_dsi_comp *comp = aic_dsi_request_drvdata();
+
+    dsi_cmd_wr(comp->regs, MIPI_DSI_DCS_READ, 0, (u8[]){ val }, 1);
+    aic_delay_ms(120);
+
+    return readl(comp->regs + DSI_GEN_PD_CFG);
+}
+
 struct di_funcs aic_dsi_func = {
     .clk_enable = aic_dsi_clk_enable,
     .clk_disable = aic_dsi_clk_disable,
@@ -161,6 +185,7 @@ struct di_funcs aic_dsi_func = {
     .attach_panel = aic_dsi_attach_panel,
     .set_videomode = aic_dsi_set_vm,
     .send_cmd = aic_dsi_send_cmd,
+    .read_cmd = aic_dsi_read_cmd,
 };
 
 static int aic_dsi_probe(void)

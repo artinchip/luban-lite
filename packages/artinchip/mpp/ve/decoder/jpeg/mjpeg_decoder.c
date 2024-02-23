@@ -272,10 +272,12 @@ int mjpeg_decode_sof(struct mjpeg_dec_ctx *s)
     if (s->h_count[0] == 2 && s->v_count[0] == 2 && s->h_count[1] == 1 &&
         s->v_count[1] == 1 && s->h_count[2] == 1 && s->v_count[2] == 1) {
         // not support NV21
-        if(s->uv_interleave)
+        if (s->out_pix_fmt == MPP_FMT_NV12 || s->out_pix_fmt == MPP_FMT_NV21) {
+            s->uv_interleave = 1;
             s->pix_fmt = MPP_FMT_NV12;
-        else
+        } else {
             s->pix_fmt = MPP_FMT_YUV420P;
+        }
         logi("pixel format: yuv420");
     } else if (s->h_count[0] == 4 && s->v_count[0] == 1 && s->h_count[1] == 1 &&
                 s->v_count[1] == 1 && s->h_count[2] == 1 && s->v_count[2] == 1) {
@@ -283,21 +285,31 @@ int mjpeg_decode_sof(struct mjpeg_dec_ctx *s)
         return -1;
     } else if (s->h_count[0] == 2 && s->v_count[0] == 1 && s->h_count[1] == 1 &&
                 s->v_count[1] == 1 && s->h_count[2] == 1 && s->v_count[2] == 1) {
-        if(s->uv_interleave)
+        if (s->out_pix_fmt == MPP_FMT_NV16 || s->out_pix_fmt == MPP_FMT_NV61) {
+            s->uv_interleave = 1;
             s->pix_fmt = MPP_FMT_NV16;
-        else
+        } else {
             s->pix_fmt = MPP_FMT_YUV422P;
+        }
         logi("pixel format: yuv422");
     } else if (s->h_count[0] == 1 && s->v_count[0] == 1 && s->h_count[1] == 1 &&
                 s->v_count[1] == 1 && s->h_count[2] == 1 && s->v_count[2] == 1) {
+#ifdef AIC_VE_DRV_V10
+        s->pix_fmt = MPP_FMT_YUV444P;
+#else
         s->pix_fmt = MPP_FMT_RGBA_8888;
         s->yuv2rgb = 1;
         logi("pixel format: yuv444, must convert to RGBA");
+#endif
     } else if (s->h_count[0] == 1 && s->v_count[0] == 2 && s->h_count[1] == 1 &&
                 s->v_count[1] == 2 && s->h_count[2] == 1 && s->v_count[2] == 2) {
+#ifdef AIC_VE_DRV_V10
+        s->pix_fmt = MPP_FMT_YUV444P;
+#else
         s->pix_fmt = MPP_FMT_RGBA_8888;
         s->yuv2rgb = 1;
         logi("pixel format: ffmpeg yuv444, must convert to RGBA");
+#endif
     } else if (s->h_count[0] == 1 && s->v_count[0] == 2 && s->h_count[1] == 1 &&
                 s->v_count[1] == 1 && s->h_count[2] == 1 && s->v_count[2] == 1) {
         //logi("not support pixel format: yuv422t");
@@ -313,6 +325,7 @@ int mjpeg_decode_sof(struct mjpeg_dec_ctx *s)
         return -1;
     }
 
+#ifndef AIC_VE_DRV_V10
     if(s->out_pix_fmt == MPP_FMT_ARGB_8888 || s->out_pix_fmt == MPP_FMT_ABGR_8888
         || s->out_pix_fmt == MPP_FMT_RGBA_8888 || s->out_pix_fmt == MPP_FMT_BGRA_8888
         || s->out_pix_fmt == MPP_FMT_RGB_888 || s->out_pix_fmt == MPP_FMT_BGR_888
@@ -320,6 +333,7 @@ int mjpeg_decode_sof(struct mjpeg_dec_ctx *s)
         s->pix_fmt = s->out_pix_fmt;
         s->yuv2rgb = 1;
     }
+#endif
 
     // get the output size of scale down
     s->nb_mcu_width = (s->width + 8 * s->h_count[0] - 1) / (8 * s->h_count[0]);
@@ -368,6 +382,7 @@ int mjpeg_decode_sof(struct mjpeg_dec_ctx *s)
         }
     }
 
+#ifndef AIC_VE_DRV_V10
     if(s->pix_fmt == MPP_FMT_BGR_888 || s->pix_fmt == MPP_FMT_RGB_888) {
         s->rm_h_stride[0] = ALIGN_16B(s->rm_h_stride[0] * 3);
     } else if(s->pix_fmt == MPP_FMT_BGR_565 || s->pix_fmt == MPP_FMT_RGB_565) {
@@ -376,6 +391,7 @@ int mjpeg_decode_sof(struct mjpeg_dec_ctx *s)
         || s->out_pix_fmt == MPP_FMT_RGBA_8888 || s->out_pix_fmt == MPP_FMT_BGRA_8888) {
         s->rm_h_stride[0] = ALIGN_16B(s->rm_h_stride[0] * 4);
     }
+#endif
 
     // get the start offset of output
     get_start_offset(s);
@@ -449,7 +465,7 @@ int mjpeg_decode_sos(struct mjpeg_dec_ctx *s,
     read_bits(&s->gb, 4);	/* Al */
 
     int sos_size = read_bits_count(&s->gb) / 8;
-    logd("sos_size %d", sos_size);
+    logd("sos_size %d, s->pix_fmt: %d", sos_size, s->pix_fmt);
 
     if(s->decoder.fm == NULL) {
         struct frame_manager_init_cfg cfg;
@@ -541,6 +557,16 @@ int mjpeg_find_marker(struct mjpeg_dec_ctx *s,
     return start_code;
 }
 
+static void skip_variable_marker(struct mjpeg_dec_ctx *s)
+{
+    int left = read_bits(&s->gb, 16);
+    left -= 2;
+    while(left) {
+        skip_bits(&s->gb, 8);
+        left --;
+    }
+}
+
 int __mjpeg_decode_frame(struct mpp_decoder *ctx)
 {
     struct mjpeg_dec_ctx *s = (struct mjpeg_dec_ctx*)ctx;
@@ -588,6 +614,7 @@ int __mjpeg_decode_frame(struct mpp_decoder *ctx)
         }
 
         s->start_code = start_code;
+        logi("startcode: %02x", start_code);
 
         /* process markers */
         if (start_code >= RST0 && start_code <= RST7) {
@@ -598,15 +625,16 @@ int __mjpeg_decode_frame(struct mpp_decoder *ctx)
             /* Comment */
         } else if (start_code == COM) {
             logd("com marker: %d", start_code & 0xff);
-        } else if (start_code == DQT) {
-            ret = mjpeg_decode_dqt(s);
-            if (ret < 0)
-                return ret;
         }
 
         ret = -1;
 
         switch (start_code) {
+        case DQT:
+            ret = mjpeg_decode_dqt(s);
+            if (ret < 0)
+                return ret;
+            break;
         case SOI:
             s->restart_interval = 0;
             s->restart_count = 0;
@@ -620,11 +648,14 @@ int __mjpeg_decode_frame(struct mpp_decoder *ctx)
             }
             break;
         case SOF0:
+            logi("baseline");
         case SOF1:
+            logi("SOF1");
             if ((ret = mjpeg_decode_sof(s)) < 0)
                 goto fail;
             break;
         case SOF2:
+            loge("progressive, not support");
             if ((ret = mjpeg_decode_sof(s)) < 0)
                 goto fail;
             break;
@@ -646,7 +677,7 @@ int __mjpeg_decode_frame(struct mpp_decoder *ctx)
                 goto fail;
 
             pm_enqueue_empty_packet(s->decoder.pm, s->curr_packet);
-            break;
+            goto the_end;
         case DRI:
             if ((ret = mjpeg_decode_dri(s)) < 0)
                 return ret;
@@ -664,6 +695,10 @@ int __mjpeg_decode_frame(struct mpp_decoder *ctx)
         case SOF15:
         case JPG:
             loge("mjpeg: unsupported coding type (%x)", start_code);
+            break;
+        default:
+            logi("skip this marker: %02x", start_code);
+            skip_variable_marker(s);
             break;
         }
 
@@ -714,11 +749,6 @@ int __mjpeg_decode_init(struct mpp_decoder *ctx, struct decode_config *config)
 
     if (s->out_pix_fmt == MPP_FMT_YUV420P)
         logw("default pix fmt %d", MPP_FMT_YUV420P);
-
-    if(s->out_pix_fmt == MPP_FMT_NV12 || s->out_pix_fmt == MPP_FMT_NV21
-        || s->out_pix_fmt == MPP_FMT_NV16 || s->out_pix_fmt == MPP_FMT_NV61) {
-        s->uv_interleave = 1;
-    }
 
     s->reg_list = mpp_alloc(sizeof(jpg_reg_list));
     if(!s->reg_list)

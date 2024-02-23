@@ -9,29 +9,21 @@
 #include "inc/spinand.h"
 #include "inc/manufacturer.h"
 
-#define SPINAND_MFR_DOSILICON		0xE5
-
-struct spi_nand_cmd_cfg dosilicon_cmd_cfg_table[] = {
-    /*opcode    opcode_bits addr_bytes	addr_bits	dummy_bytes	data_nbits*/
-    { SPINAND_CMD_READ_FROM_CACHE, 1, 2, 1, 1, 1 },
-    { SPINAND_CMD_READ_FROM_CACHE_X2, 1, 2, 1, 1, 2 },
-    { SPINAND_CMD_READ_FROM_CACHE_X4, 1, 2, 1, 1, 4 },
-    { SPINAND_CMD_PROG_LOAD, 1, 2, 1, 0, 1 },
-    { SPINAND_CMD_PROG_LOAD_X4, 1, 2, 1, 0, 4 },
-    { SPINAND_CMD_END },
-};
+#define SPINAND_MFR_DOSILICON 0xE5
 
 const struct aic_spinand_info dosilicon_spinand_table[] = {
-    /*devid page_size oob_size block_per_lun pages_per_eraseblock is_die_select*/
+    /*devid page_size oob_size block_per_lun pages_per_eraseblock planes_per_lun
+    is_die_select*/
     /*DS35Q1GA-IB*/
-    { 0x71, 2048, 64, 1024, 64, 0, "dosilicon 128MB: 2048+64@64@1024",
-      dosilicon_cmd_cfg_table },
+    { DEVID(0x71), PAGESIZE(2048), OOBSIZE(64), BPL(1024), PPB(64), PLANENUM(1),
+      DIE(0), "dosilicon 128MB: 2048+64@64@1024", cmd_cfg_table },
     /*DS35Q2GA-IB*/
-    { 0x72, 2048, 64, 2048, 64, 0, "dosilicon 256MB: 2048+64@64@2048",
-      dosilicon_cmd_cfg_table },
+    { DEVID(0x72), PAGESIZE(2048), OOBSIZE(64), BPL(2048), PPB(64), PLANENUM(2),
+      DIE(0), "dosilicon 256MB: 2048+64@64@2048", cmd_cfg_table },
 };
 
-const struct aic_spinand_info *dosilicon_spinand_detect(struct aic_spinand *flash)
+const struct aic_spinand_info *
+dosilicon_spinand_detect(struct aic_spinand *flash)
 {
     u8 *Id = flash->id.data;
 

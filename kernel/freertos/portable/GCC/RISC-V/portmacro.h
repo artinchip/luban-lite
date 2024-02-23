@@ -90,15 +90,16 @@ not need to be guarded with a critical section. */
 
 
 /* Scheduler utilities. */
+extern void vPortYield( void );
 extern void vTaskSwitchContext( void );
-#define portYIELD() __asm volatile( "ecall" );
-#define portEND_SWITCHING_ISR( xSwitchRequired ) if( xSwitchRequired ) vTaskSwitchContext()
+#define portYIELD() vPortYield()
+#define portEND_SWITCHING_ISR( xSwitchRequired ) if( xSwitchRequired ) portYIELD()
 #define portYIELD_FROM_ISR( x ) portEND_SWITCHING_ISR( x )
 /*-----------------------------------------------------------*/
 
 
 /* Critical section management. */
-#define portCRITICAL_NESTING_IN_TCB					1
+#define portCRITICAL_NESTING_IN_TCB					0
 extern void vTaskEnterCritical( void );
 extern void vTaskExitCritical( void );
 
@@ -113,7 +114,7 @@ extern void vTaskExitCritical( void );
 
 /* Architecture specific optimisations. */
 #ifndef configUSE_PORT_OPTIMISED_TASK_SELECTION
-	#define configUSE_PORT_OPTIMISED_TASK_SELECTION 1
+	#define configUSE_PORT_OPTIMISED_TASK_SELECTION 0
 #endif
 
 #if( configUSE_PORT_OPTIMISED_TASK_SELECTION == 1 )

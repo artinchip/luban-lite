@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2022-2023, ArtInChip Technology Co., Ltd
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ * Authors:  dwj <weijie.ding@artinchip.com>
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -20,8 +26,8 @@
 
 aic_audio_ctrl audio_ctrl;
 ringbuf_t *ring_buf;
-#define TX_FIFO_SIZE                    81920
-#define TX_FIFO_PERIOD_COUNT            4
+#define TX_FIFO_SIZE                    4096
+#define TX_FIFO_PERIOD_COUNT            2
 #define BUFFER_SIZE                     2048
 rt_uint8_t audio_tx_fifo[TX_FIFO_SIZE] __attribute__((aligned(64)));
 
@@ -34,6 +40,7 @@ static void drv_audio_callback(aic_audio_ctrl *pcodec, void *arg)
     case AUDIO_TX_PERIOD_INT:
         ring_buf->read += pcodec->tx_info.buf_info.period_len;
         ring_buf->data_len -= pcodec->tx_info.buf_info.period_len;
+        aicos_dcache_clean_range((void *)audio_tx_fifo, TX_FIFO_SIZE);
         break;
     default:
         hal_log_err("%s(%d)\n", __func__, __LINE__);

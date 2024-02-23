@@ -20,6 +20,9 @@ extern "C" {
 /* capture control command */
 #define INPUTCAPTURE_CMD_CLEAR_BUF        (128 + 0)    /* clear capture buf */
 #define INPUTCAPTURE_CMD_SET_WATERMARK    (128 + 1)    /* Set the callback threshold */
+#if defined (AIC_INPUTCAP_DRV) && defined (AIC_DMA_DRV)
+#define INPUTCAPTURE_CMD_SET_DATA_BUF     (128 + 2)    /* Set the data buf */
+#endif
 
 struct rt_inputcapture_data
 {
@@ -36,6 +39,16 @@ struct rt_inputcapture_device
     rt_size_t                           watermark;
 };
 
+#if defined (AIC_INPUTCAP_DRV) && defined (AIC_DMA_DRV)
+struct rt_inputcapture_fifo_buf
+{
+    rt_uint32_t *event0_buf;
+    rt_size_t event0_buflen;
+    rt_uint32_t *event1_buf;
+    rt_size_t event1_buflen;
+};
+#endif
+
 /**
  * capture operators
  */
@@ -45,6 +58,9 @@ struct rt_inputcapture_ops
     rt_err_t (*open)(struct rt_inputcapture_device *inputcapture);
     rt_err_t (*close)(struct rt_inputcapture_device *inputcapture);
     rt_err_t (*get_pulsewidth)(struct rt_inputcapture_device *inputcapture, rt_uint32_t *pulsewidth_us);
+#if defined (AIC_INPUTCAP_DRV) && defined (AIC_DMA_DRV)
+    rt_err_t (*set_buf)(struct rt_inputcapture_device *inputcapture, struct rt_inputcapture_fifo_buf *ptr);
+#endif
 };
 
 void rt_hw_inputcapture_isr(struct rt_inputcapture_device *inputcapture, rt_bool_t level);

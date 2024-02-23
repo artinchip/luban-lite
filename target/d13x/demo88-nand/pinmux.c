@@ -23,24 +23,43 @@ struct aic_pinmux aic_pinmux_config[] = {
     /* uart0 */
     {5, PIN_PULL_DIS, 3, "PA.0"},
     {5, PIN_PULL_DIS, 3, "PA.1"},
+#ifdef AIC_DEV_UART0_MODE_RS485
+    {1, PIN_PULL_DIS, 3, AIC_UART0_PA_RS485_CTL_NAME},
+#endif
 #endif
 #ifdef AIC_USING_UART1
     /* uart1 */
     {5, PIN_PULL_DIS, 3, "PD.2"},
     {5, PIN_PULL_DIS, 3, "PD.3"},
+#ifdef AIC_DEV_UART1_MODE_RS485
+    {1, PIN_PULL_DIS, 3, AIC_UART1_PA_RS485_CTL_NAME},
+#endif
 #endif
 #ifdef AIC_USING_UART2
     /* uart2 */
+#ifdef AIC_DEV_UART2_MODE_RS485
+    {5, PIN_PULL_DIS, 3, "PD.4"},   // BT_UART2_TX
+    {5, PIN_PULL_DIS, 3, "PD.5"},   // BT_UART2_RX
+    {1, PIN_PULL_DIS, 3, AIC_UART2_PA_RS485_CTL_NAME},
+#else
     {8, PIN_PULL_DIS, 3, "PA.2"},   // BT_UART2_CTS
     {8, PIN_PULL_DIS, 3, "PA.3"},   // BT_UART2_RTS
     {5, PIN_PULL_DIS, 3, "PD.4"},   // BT_UART2_TX
     {5, PIN_PULL_DIS, 3, "PD.5"},   // BT_UART2_RX
     {1, PIN_PULL_DIS, 3, "PD.6"},   // BT_PWR_ON
 #endif
+#endif
 #ifdef AIC_USING_CAN0
     /* can0 */
     {4, PIN_PULL_DIS, 3, "PA.4"},
     {4, PIN_PULL_DIS, 3, "PA.5"},
+#endif
+#ifdef AIC_USING_I2S0
+    {4, PIN_PULL_DIS, 3, "PD.11"},
+    {4, PIN_PULL_DIS, 3, "PD.12"},
+    {4, PIN_PULL_DIS, 3, "PD.13"},
+    {4, PIN_PULL_DIS, 3, "PD.14"},
+    {4, PIN_PULL_DIS, 3, "PD.15"},
 #endif
 #ifdef AIC_USING_RTP
     {2, PIN_PULL_DIS, 3, "PA.8"},
@@ -78,7 +97,7 @@ struct aic_pinmux aic_pinmux_config[] = {
     {2, PIN_PULL_UP, 3, "PC.5"},
     {2, PIN_PULL_UP, 3, "PC.6"},
 #endif
-#ifdef AIC_USING_RTL8733_WLAN0
+#ifdef AIC_WIRELESS_LAN
     {1, PIN_PULL_DIS, 3, "PD.7"},  // WIFI_PWR_ON
 #endif
 #ifdef AIC_USING_I2C0

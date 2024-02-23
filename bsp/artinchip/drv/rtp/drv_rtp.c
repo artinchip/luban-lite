@@ -97,6 +97,7 @@ static rt_size_t drv_rtp_read_point(struct rt_touch_device *touch, void *buf,
 static rt_err_t drv_rtp_control(struct rt_touch_device *touch,
                                 int cmd, void *arg)
 {
+    u32 val;
     switch (cmd) {
     case RT_TOUCH_CTRL_ENABLE_INT:
         hal_rtp_int_enable(&g_rtp_dev, 1);
@@ -104,6 +105,12 @@ static rt_err_t drv_rtp_control(struct rt_touch_device *touch,
 
     case RT_TOUCH_CTRL_DISABLE_INT:
         hal_rtp_int_enable(&g_rtp_dev, 0);
+        break;
+
+    case RT_TOUCH_CTRL_PDEB_VALID_CHECK:
+        val = hal_rtp_pdeb_valid_check(&g_rtp_dev);
+        if (val != RT_EOK)
+            LOG_I("PDEB should be configured as 0xff%xff%x\n", val, val);
         break;
 
     default:

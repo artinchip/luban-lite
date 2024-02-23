@@ -15,12 +15,27 @@
 #include <hal_qspi.h>
 #include "qspi_internal.h"
 
-#if defined(AIC_QSPI_DRV_V11)
+#if defined(AIC_QSPI_DRV_V11) || defined(AIC_QSPI_DRV_V12)
 #include "qspi_hw_v1.1.h"
 #elif defined(AIC_QSPI_DRV_V20)
 #include "qspi_hw_v2.0.h"
 #else
 #include "qspi_hw_v1.0.h"
+#endif
+
+/*Configuration related to DMA ddr/sram BURST*/
+#if defined(AIC_QSPI_DRV_V10)
+#if defined(AIC_BOOTLOADER)
+#define DMA_SLAVE_MAXBURST_DEFAULT 8
+#else
+#define DMA_SLAVE_MAXBURST_DEFAULT 1
+#endif
+#elif defined(AIC_QSPI_DRV_V11) || defined(AIC_QSPI_DRV_V12)
+#define DMA_SLAVE_MAXBURST_DEFAULT 8
+#elif defined(AIC_QSPI_DRV_V20)
+#define DMA_SLAVE_MAXBURST_DEFAULT 16
+#else
+#define DMA_SLAVE_MAXBURST_DEFAULT 1
 #endif
 
 void qspi_reg_dump(u32 base)
@@ -51,7 +66,6 @@ void hal_qspi_master_bit_mode_init(u32 base)
 #endif
 
     /* set chip select number */
-    qspi_hw_bit_mode_set_cs_num(0, base);
     qspi_hw_bit_mode_set_cs_pol(base, false);
     qspi_hw_bit_mode_set_ss_owner(base, true);
 }
@@ -68,13 +82,15 @@ int hal_qspi_master_transfer_bit_mode(qspi_master_handle *h, struct qspi_bm_tran
     if ((t->tx_data == NULL) && (t->rx_data == NULL))
         return -EINVAL;
 
-    if (!t->tx_len && !t->rx_len)
+    if (!t->rx_bits_len && !t->tx_bits_len)
         return -EINVAL;
 
-    if (t->tx_data)
-        ret = qspi_hw_bit_mode_write(base, t->tx_data, t->tx_len);
-    if (t->rx_data)
-        ret = qspi_hw_bit_mode_read(base, t->rx_data, t->rx_len);
+    if (t->tx_data) {
+        ret = qspi_hw_bit_mode_write(base, t->tx_data, t->tx_bits_len);
+    }
+    if (t->rx_data) {
+        ret = qspi_hw_bit_mode_read(base, t->rx_data, t->rx_bits_len);
+    }
 
     return ret; /* In progress */
 }
@@ -94,10 +110,6 @@ int hal_qspi_master_init(qspi_master_handle *h, struct qspi_master_config *cfg)
     if (base == QSPI_INVALID_BASE) {
         hal_log_err("invalid spi controller index %d\n", cfg->idx);
         return -ENODEV;
-    }
-
-    if (h->bit_mode) {
-        hal_qspi_master_bit_mode_init(base);
     }
 
     sclk = cfg->clk_in_hz;
@@ -123,6 +135,7 @@ int hal_qspi_master_init(qspi_master_handle *h, struct qspi_master_config *cfg)
 
     qspi_hw_init_default(base);
     qspi_hw_set_ctrl_mode(base, QSPI_CTRL_MODE_MASTER);
+    qspi_hw_set_tx_delay_mode(base, true);
     qspi_hw_interrupt_disable(base, ICR_BIT_ALL_MSK);
     qspi_hw_set_cpol(base, cfg->cpol);
     qspi_hw_set_cpha(base, cfg->cpha);
@@ -142,6 +155,10 @@ int hal_qspi_master_init(qspi_master_handle *h, struct qspi_master_config *cfg)
     qspi->clk_id = cfg->clk_id;
     qspi->cb = NULL;
     qspi->cb_priv = NULL;
+
+    if (h->bit_mode) {
+        hal_qspi_master_bit_mode_init(base);
+    }
 
     return 0;
 }
@@ -210,11 +227,16 @@ int hal_qspi_master_dma_config(qspi_master_handle *h,
     }
 
     rx_chan = hal_request_dma_chan();
-    if (!rx_chan)
+    if (!rx_chan) {
+        hal_log_err("Request dma chan error.\n");
         goto err;
+    }
+
     tx_chan = hal_request_dma_chan();
-    if (!tx_chan)
+    if (!tx_chan) {
+        hal_log_err("Request dma chan error.\n");
         goto err;
+    }
 
     qspi->dma_rx = rx_chan;
     qspi->dma_tx = tx_chan;
@@ -243,13 +265,23 @@ int hal_qspi_master_set_cs(qspi_master_handle *h, u32 cs_num, bool enable)
     CHECK_PARAM(h, -EINVAL);
     qspi = (struct qspi_master_state *)h;
     base = qspi_hw_index_to_base(qspi->idx);
-    pol = qspi_hw_get_cs_polarity(base);
 
     if (h->bit_mode) {
-        qspi_hw_bit_mode_set_cs_level(base, enable);
+        pol = qspi_hw_bit_mode_get_cs_pol(base);
+
+        if (enable)
+            level = (pol == QSPI_CS_POL_VALID_LOW) ? QSPI_CS_LEVEL_LOW :
+                                                     QSPI_CS_LEVEL_HIGH;
+        else
+            level = (pol == QSPI_CS_POL_VALID_LOW) ? QSPI_CS_LEVEL_HIGH :
+                                                     QSPI_CS_LEVEL_LOW;
+
+        qspi_hw_bit_mode_set_cs_num(cs_num, base);
+        qspi_hw_bit_mode_set_cs_level(base, level);
         return 0;
     }
 
+    pol = qspi_hw_get_cs_polarity(base);
     if (enable)
         level = (pol == QSPI_CS_POL_VALID_LOW) ? QSPI_CS_LEVEL_LOW :
                                                  QSPI_CS_LEVEL_HIGH;
@@ -328,7 +360,7 @@ static u32 qspi_master_get_best_div_param(u32 sclk, u32 bus_hz, u32 *div)
 
 int hal_qspi_master_set_bus_freq(qspi_master_handle *h, u32 bus_hz)
 {
-    u32 base, sclk, divider, div;
+    u32 base, sclk, divider, div, rxdlymode;
     struct qspi_master_state *qspi;
 
     CHECK_PARAM(h, -EINVAL);
@@ -344,6 +376,8 @@ int hal_qspi_master_set_bus_freq(qspi_master_handle *h, u32 bus_hz)
 
     show_freq("freq ( bus )", qspi->idx, bus_hz);
 
+    rxdlymode = qspi_hw_freq_to_delay_mode(bus_hz);
+    qspi_hw_set_rx_delay_mode(base, rxdlymode);
     if (h->bit_mode) {
         qspi_hw_bit_mode_set_clk(bus_hz, sclk, base);
     }
@@ -376,7 +410,7 @@ int hal_qspi_master_set_bus_width(qspi_master_handle *h, u32 bus_width)
 
 int qspi_wait_transfer_done(u32 base, u32 tmo)
 {
-    u32 start_us, cur;
+    u64 start_us, cur;
 
     start_us = aic_get_time_us();
     while (qspi_hw_check_transfer_done(base) == false) {
@@ -390,7 +424,7 @@ int qspi_wait_transfer_done(u32 base, u32 tmo)
 #ifdef AIC_DMA_DRV_V20
 int qspi_wait_gpdma_tx_done(u32 base, u32 tmo)
 {
-    u32 start_us, cur;
+    u64 start_us, cur;
 
     start_us = aic_get_time_us();
     while (qspi_hw_check_gpdma_tx_done(base) == false) {
@@ -403,7 +437,7 @@ int qspi_wait_gpdma_tx_done(u32 base, u32 tmo)
 
 int qspi_wait_gpdma_rx_done(u32 base, u32 tmo)
 {
-    u32 start_us, cur;
+    u64 start_us, cur;
 
     start_us = aic_get_time_us();
     while (qspi_hw_check_gpdma_rx_done(base) == false) {
@@ -417,7 +451,8 @@ int qspi_wait_gpdma_rx_done(u32 base, u32 tmo)
 
 int qspi_fifo_write_data(u32 base, u8 *data, u32 len, u32 tmo)
 {
-    u32 dolen, free_len, start_us;
+    u32 dolen, free_len;
+    u64 start_us;
 
     start_us = aic_get_time_us();
     while (len) {
@@ -443,7 +478,8 @@ int qspi_fifo_write_data(u32 base, u8 *data, u32 len, u32 tmo)
 
 int qspi_fifo_read_data(u32 base, u8 *data, u32 len, u32 tmo_us)
 {
-    u32 dolen, start_us;
+    u32 dolen;
+    u64 start_us;
 
     start_us = aic_get_time_us();
     while (len) {
@@ -541,7 +577,8 @@ out:
 #ifdef AIC_DMA_DRV
 static int qspi_master_wait_dma_done(struct aic_dma_chan *ch, u32 tmo)
 {
-    u32 start_us, cur, left;
+    u64 start_us, cur;
+    u32 left;
 
     start_us = aic_get_time_us();
     while (hal_dma_chan_tx_status(ch, &left) != DMA_COMPLETE && left) {
@@ -567,6 +604,7 @@ static int qspi_master_transfer_dma_sync(qspi_master_handle *h,
 
     qspi = (struct qspi_master_state *)h;
     base = qspi_hw_index_to_base(qspi->idx);
+    memset(&dmacfg, 0, sizeof(dmacfg));
 
     if ((t->tx_data == NULL) && (t->rx_data == NULL))
         return -EINVAL;
@@ -584,21 +622,14 @@ static int qspi_master_transfer_dma_sync(qspi_master_handle *h,
         qspi_hw_tx_dma_enable(base);
         qspi_hw_set_transfer_cnt(base, txlen, tx_1line_cnt, 0, 0);
         dma_tx = qspi->dma_tx;
+
         dmacfg.direction = DMA_MEM_TO_DEV;
         dmacfg.src_addr = (unsigned long)t->tx_data;
         dmacfg.dst_addr = (unsigned long)QSPI_REG_TXD(base);
-#ifndef AIC_DMA_DRV_V20
-        dmacfg.src_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
-        dmacfg.src_maxburst = 1;
+        dmacfg.src_addr_width = qspi->dma_cfg.tx_bus_width;
         dmacfg.dst_addr_width = qspi->dma_cfg.tx_bus_width;
+        dmacfg.src_maxburst = qspi->dma_cfg.tx_max_burst;
         dmacfg.dst_maxburst = qspi->dma_cfg.tx_max_burst;
-#else
-        dmacfg.src_addr_width = DMA_SLAVE_BUSWIDTH_16_BYTES;
-        dmacfg.src_maxburst = 16;
-        dmacfg.dst_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
-        dmacfg.dst_maxburst = 1;
-#endif
-
         dmacfg.slave_id = qspi->dma_cfg.port_id;
 
         ret = hal_dma_chan_config(dma_tx, &dmacfg);
@@ -648,16 +679,19 @@ static int qspi_master_transfer_dma_sync(qspi_master_handle *h,
 
         dmacfg.dst_addr = (unsigned long)t->rx_data;
 
-#ifndef AIC_DMA_DRV_V20
-        dmacfg.src_addr_width = DMA_SLAVE_BUSWIDTH_1_BYTE;
+        dmacfg.src_addr_width = qspi->dma_cfg.rx_bus_width;
         dmacfg.src_maxburst = qspi->dma_cfg.rx_max_burst;
+
         dmacfg.dst_addr_width = qspi->dma_cfg.rx_bus_width;
         dmacfg.dst_maxburst = qspi->dma_cfg.rx_max_burst;
-#else
-        dmacfg.src_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
-        dmacfg.src_maxburst = 1;
+
+#ifdef AIC_DMA_DRV_V20
+#ifndef AIC_USING_SE_SPI
         dmacfg.dst_addr_width = DMA_SLAVE_BUSWIDTH_16_BYTES;
-        dmacfg.dst_maxburst = 16;
+#else
+        dmacfg.dst_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
+#endif
+        dmacfg.dst_maxburst = DMA_SLAVE_MAXBURST_DEFAULT;
 #endif
 
         dmacfg.slave_id = qspi->dma_cfg.port_id;
@@ -715,9 +749,8 @@ static int qspi_master_can_dma(struct qspi_master_state *qspi,
         if (((unsigned long)t->tx_data) & (AIC_DMA_ALIGN_SIZE - 1))
             return 0;
 
-        /* Data length should be aligned with bus witdh */
-        if (qspi->dma_cfg.tx_bus_width &&
-            (t->data_len & (qspi->dma_cfg.tx_bus_width - 1))) {
+        /* Data length should be aligned with CACHE_LINE_SIZE */
+        if ((t->data_len & (CACHE_LINE_SIZE - 1))) {
             return 0;
         }
     }
@@ -726,9 +759,8 @@ static int qspi_master_can_dma(struct qspi_master_state *qspi,
         if (((unsigned long)t->rx_data) & (AIC_DMA_ALIGN_SIZE - 1))
             return 0;
 
-        /* Data length should be aligned with bus witdh */
-        if (qspi->dma_cfg.rx_bus_width &&
-            (t->data_len & (qspi->dma_cfg.rx_bus_width - 1))) {
+        /* Data length should be aligned with CACHE_LINE_SIZE */
+        if ((t->data_len & (CACHE_LINE_SIZE - 1))) {
             return 0;
         }
     }
@@ -876,12 +908,11 @@ static int qspi_master_transfer_dma_async(struct qspi_master_state *qspi,
         dmacfg.src_addr = (unsigned long)t->tx_data;
         dmacfg.dst_addr = (unsigned long)QSPI_REG_TXD(base);
 
-#ifndef AIC_DMA_DRV_V20
-        dmacfg.src_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
-        dmacfg.src_maxburst = 1;
+        dmacfg.src_addr_width = qspi->dma_cfg.tx_bus_width;
+        dmacfg.src_maxburst = qspi->dma_cfg.tx_max_burst;
         dmacfg.dst_addr_width = qspi->dma_cfg.tx_bus_width;
         dmacfg.dst_maxburst = qspi->dma_cfg.tx_max_burst;
-#else
+#ifdef AIC_DMA_DRV_V20
         dmacfg.src_addr_width = DMA_SLAVE_BUSWIDTH_16_BYTES;
         dmacfg.src_maxburst = 16;
         dmacfg.dst_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
@@ -914,12 +945,11 @@ static int qspi_master_transfer_dma_async(struct qspi_master_state *qspi,
 
         dmacfg.dst_addr = (unsigned long)t->rx_data;
 
-#ifndef AIC_DMA_DRV_V20
-        dmacfg.src_addr_width = DMA_SLAVE_BUSWIDTH_1_BYTE;
+        dmacfg.src_addr_width = qspi->dma_cfg.rx_bus_width;
         dmacfg.src_maxburst = qspi->dma_cfg.rx_max_burst;
-        dmacfg.dst_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
-        dmacfg.dst_maxburst = 1;
-#else
+        dmacfg.dst_addr_width = qspi->dma_cfg.rx_bus_width;
+        dmacfg.dst_maxburst = qspi->dma_cfg.rx_max_burst;
+#ifdef AIC_DMA_DRV_V20
         dmacfg.src_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
         dmacfg.src_maxburst = 1;
         dmacfg.dst_addr_width = DMA_SLAVE_BUSWIDTH_16_BYTES;

@@ -1,0 +1,21 @@
+from building import *
+import os
+
+cwd = GetCurrentDir()
+group = []
+src = []
+CPPPATH = [cwd]
+
+src += Glob('./launcher_ui.c')
+src += Glob('./launcher_screen.c')
+src += Glob('./camera_screen.c')
+
+list = os.listdir(cwd)
+for d in list:
+    path = os.path.join(cwd, d)
+    if os.path.isfile(os.path.join(path, 'SConscript')):
+        group = group + SConscript(os.path.join(d, 'SConscript'))
+
+group = group + DefineGroup('LVGL-port', src, depend = ['AIC_LVGL_LAUNCHER_DEMO'], CPPPATH = CPPPATH)
+
+Return('group')

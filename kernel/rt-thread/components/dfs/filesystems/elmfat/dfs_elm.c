@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2006-2021, RT-Thread Development Team
  *
  * SPDX-License-Identifier: Apache-2.0
@@ -28,6 +28,7 @@
 
 #include <dfs_fs.h>
 #include <dfs_file.h>
+#include <dfs_elm.h>
 
 static rt_device_t disk[FF_VOLUMES] = {0};
 
@@ -147,12 +148,12 @@ int dfs_elm_mount(struct dfs_filesystem *fs, unsigned long rwflag, const void *d
 
         /* open the root directory to test whether the fatfs is valid */
         result = f_opendir(dir, drive);
+        rt_free(dir);
         if (result != FR_OK)
             goto __err;
 
         /* mount succeed! */
         fs->data = fat;
-        rt_free(dir);
         return 0;
     }
 
@@ -955,7 +956,7 @@ DWORD get_fattime(void)
                (DWORD)tm_now.tm_mday        << 16 |
                (DWORD)tm_now.tm_hour        << 11 |
                (DWORD)tm_now.tm_min         <<  5 |
-               (DWORD)tm_now.tm_sec / 2 ;
+               (DWORD)tm_now.tm_sec / 2;
 
     return fat_time;
 }

@@ -1,0 +1,18 @@
+Import('PRJ_KERNEL')
+from building import *
+
+cwd = GetCurrentDir()
+path = [cwd + '/include']
+path += [cwd + '/portable/GCC/RISC-V']
+path += [cwd + '/portable/GCC/RISC-V/chip_specific_extensions/RV32I_CLINT_no_extensions']
+
+src = Glob('*.c')
+src += Glob('portable/MemMang/heap_5.c')
+src += Glob('portable/GCC/RISC-V/*.c')
+src += Glob('portable/GCC/RISC-V/*.S')
+
+CPPDEFINES = []
+
+group = DefineGroup('freertos', src, depend = ['KERNEL_FREERTOS'], CPPPATH = path, CPPDEFINES = CPPDEFINES)
+
+Return('group')

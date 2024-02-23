@@ -30,8 +30,9 @@ static rt_rtc_dev_t aic_rtc;
 static rt_err_t rtc_ops_init(void)
 {
     hal_rtc_init();
+#ifdef RT_USING_ALARM
     aicos_request_irq(RTC_IRQn, hal_rtc_irq, 0, NULL, NULL);
-
+#endif
     hal_rtc_cali(AIC_RTC_CLK_RATE);
 
 #if defined(AIC_RTC_ALARM_IO_OUTPUT)

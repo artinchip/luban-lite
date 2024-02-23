@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2022, Artinchip Technology Co., Ltd
  *
  * SPDX-License-Identifier: Apache-2.0
@@ -147,8 +147,10 @@ save_boot_params_ret:
     la      sp, g_top_normalstack
 #endif
 
-    jal     icache_enable
-    jal     dcache_enable
+    la      a5, icache_enable
+    jalr    a5
+    la      a5, dcache_enable
+    jalr    a5
 
 #ifndef QEMU_RUN
 
@@ -196,7 +198,7 @@ e907_tcm_init:
 #endif /* QEMU_RUN */
 
     /* Load data section */
-#if (defined(AIC_XIP) || defined(QEMU_RUN))
+#if defined(QEMU_RUN)
     la      a0, __erodata
     la      a1, __data_start__
     la      a2, __data_end__
@@ -208,6 +210,7 @@ e907_tcm_init:
     addi    a1, a1, 4
     bltu    a1, a2, 1b
 2:
+    jal     dcache_clean
 #endif
 
     /* Clear bss section */
@@ -221,7 +224,8 @@ e907_tcm_init:
 2:
 
 #ifndef __NO_SYSTEM_INIT
-    jal     SystemInit
+    la      a5, SystemInit
+    jalr    a5
 #endif
 
 #if (defined(KERNEL_RTTHREAD) || defined(KERNEL_FREERTOS))

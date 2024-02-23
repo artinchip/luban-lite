@@ -20,7 +20,9 @@
  */
 struct hwinfo {
     u8 magic[8];
-    u8 reserved0[32];
+    u8 reserved0[30];
+    u8 init_mode;
+    u8 curr_mode;
     u8 boot_stage;
     u8 reserved1[67];
 };
@@ -58,6 +60,7 @@ static s32 CMD_GET_HWINFO_read_output_data(struct upg_cmd *cmd, u8 *buf,
     struct resp_header resp;
     struct hwinfo hw;
     s32 siz = 0;
+    extern struct upg_internal upg_info;
 
     pr_debug("%s\n", __func__);
     if (cmd->state == CMD_STATE_START)
@@ -86,6 +89,8 @@ static s32 CMD_GET_HWINFO_read_output_data(struct upg_cmd *cmd, u8 *buf,
         memset(&hw, 0, sizeof(hw));
         memcpy(hw.magic, "HWINFO", 6);
         hw.boot_stage = BOOT_STAGE_UBOOT;
+        hw.init_mode = upg_info.init.mode;
+        hw.curr_mode = upg_info.cfg.mode;
         memcpy(buf + siz, &hw, sizeof(hw));
         siz += sizeof(hw);
 

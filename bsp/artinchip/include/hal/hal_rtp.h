@@ -104,5 +104,6 @@ s32 hal_rtp_ebuf_read(struct aic_rtp_ebuf *ebuf, struct aic_rtp_event *e);
 s32 hal_rtp_clk_init(void);
 s32 hal_rtp_register_callback(rtp_callback_t callback);
 s32 hal_rtp_ebuf_sync(struct aic_rtp_ebuf *ebuf);
+u32 hal_rtp_pdeb_valid_check(struct aic_rtp_dev *rtp);
 
 #endif

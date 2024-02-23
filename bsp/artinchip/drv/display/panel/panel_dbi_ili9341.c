@@ -66,7 +66,7 @@ static struct aic_panel_funcs ili9341_funcs = {
 };
 
 static struct display_timing ili9341_timing = {
-    .pixelclock   = 12000000,
+    .pixelclock   = 3000000,
 
     .hactive      = 240,
     .hback_porch  = 2,

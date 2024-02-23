@@ -25,6 +25,8 @@ if GetDepend(['RT_WLAN_CFG_ENABLE']):
 if GetDepend(['RT_WLAN_WORK_THREAD_ENABLE']):
     src += ['wlan_workqueue.c']
 
-group   = DefineGroup('DeviceDrivers', src, depend = ['RT_USING_WIFI'], CPPPATH = CPPPATH)
+mycflags = (' -w')
+group   = DefineGroup('DeviceDrivers', src, depend = ['RT_USING_WIFI'], CPPPATH
+        = CPPPATH, LOCAL_CFLAGS = mycflags)
 
 Return('group')

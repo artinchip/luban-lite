@@ -19,17 +19,19 @@
 #include <dirent.h>
 #include <inttypes.h>
 #include <getopt.h>
-
+#define LOG_DEBUG
 #include "mpp_dec_type.h"
 #include "mpp_list.h"
 #include "mpp_log.h"
 #include "mpp_mem.h"
+#include "mpp_fb.h"
 #include "aic_message.h"
 #include "aic_player.h"
 
 #include <rthw.h>
 #include <rtthread.h>
 #include <shell.h>
+#include <artinchip_fb.h>
 
 #ifdef LPKG_USING_CPU_USAGE
 #include "cpu_usage.h"
@@ -40,6 +42,7 @@
 #define BUFFER_LEN 16
 
 static int g_player_end = 0;
+static int g_player_stop = 0;
 static int g_demuxer_detected_flag = 0;
 static int g_sync_flag = AIC_PLAYER_PREPARE_SYNC;
 static struct av_media_info g_media_info;
@@ -60,6 +63,7 @@ static void print_help(const char* prog)
         "\t-W                             capture widht\n"
         "\t-H                             capture height\n"
         "\t-q                             capture quality\n"
+        "\t-r                             rotation\n"
         "\t-h                             help\n\n"
         "Example1(test single file for 1 time): player_demo -i /mnt/video/test.mp4 \n"
         "Example2(test single file for 3 times): player_demo -i /mnt/video/test.mp4 -l 3 \n"
@@ -125,6 +129,11 @@ static int read_dir(char* path, struct file_list *files)
             break;
     }
     return 0;
+}
+
+void player_demo_stop(void)
+{
+    g_player_stop = 1;
 }
 
 s32 event_handle(void* app_data,s32 event,s32 data1,s32 data2)
@@ -201,26 +210,72 @@ static int do_seek(struct aic_player *player,int forward)
     return 0;
 }
 
+static int do_rotation_common(struct aic_player *player, u32 rotation)
+{
+    if (rotation > MPP_ROTATION_270) {
+        loge("Invalid rotation: %d\n", rotation);
+        rotation = MPP_ROTATION_0;
+    }
+
+    logd("Rotation %d\n", rotation * 90);
+    aic_player_set_rotation(player, rotation);
+    return 0;
+}
+
 static int do_rotation(struct aic_player *player)
 {
     static int index = 0;
-    int rotation = MPP_ROTATION_0;
 
-    if (index % 4 == 0) {
-        rotation = MPP_ROTATION_90;
-        logd("*********MPP_ROTATION_90***************\n");
-    } else if(index % 4 == 1) {
-        rotation = MPP_ROTATION_180;
-        logd("*********MPP_ROTATION_180***************\n");
-    } else if(index % 4 == 2) {
-        rotation = MPP_ROTATION_270;
-        logd("*********MPP_ROTATION_270***************\n");
-    } else if(index % 4 == 3) {
-        rotation = MPP_ROTATION_0;
-        logd("*********MPP_ROTATION_0***************\n");
-    }
-    aic_player_set_rotation(player,rotation);
+    do_rotation_common(player, index % 4);
     index++;
+    return 0;
+}
+
+static int cal_disp_size(struct aic_video_stream *media, struct mpp_rect *disp)
+{
+    struct mpp_fb *fb = mpp_fb_open();
+    struct aicfb_screeninfo screen = {0};
+    float screen_ratio, media_ratio;
+
+    if (!fb)
+        return -1;
+
+    if (mpp_fb_ioctl(fb, AICFB_GET_SCREENINFO, &screen)) {
+        loge("get screen info failed\n");
+        goto out;
+    }
+
+#if 0
+    /* No scale when the resolution of media is smaller than screen */
+    if (media->width <= screen.width && media->height <= screen.height) {
+        disp->x = (screen.width - media->width) / 2;
+        disp->y = (screen.height - media->height) / 2;
+        disp->width = media->width;
+        disp->height = media->height;
+        goto out;
+    }
+#endif
+
+    screen_ratio = (float)screen.width / (float)screen.height;
+    media_ratio  = (float)media->width / (float)media->height;
+
+    if (media_ratio < screen_ratio) {
+        disp->y = 0;
+        disp->height = screen.height;
+        disp->width = (int)((float)screen.height * media_ratio) & 0xFFFE;
+        disp->x = (screen.width - disp->width) / 2;
+    } else {
+        disp->x = 0;
+        disp->width = screen.width;
+        disp->height = (int)((float)screen.width / media_ratio) & 0xFFFE;
+        disp->y = (screen.height - disp->height) / 2;
+    }
+
+out:
+    printf("Media size %d x %d, Display offset (%d, %d) size %d x %d\n",
+           media->width, media->height,
+           disp->x, disp->y, disp->width, disp->height);
+    mpp_fb_close(fb);
     return 0;
 }
 
@@ -229,7 +284,6 @@ static int start_play(struct aic_player *player,int volume)
     int ret = -1;
     static struct av_media_info media_info;
     struct mpp_size screen_size;
-    struct mpp_rect disp_rect;
 
     ret = aic_player_start(player);
     if (ret != 0) {
@@ -264,16 +318,22 @@ static int start_play(struct aic_player *player,int volume)
             return -1;
         }
         logd("screen_width:%d,screen_height:%d\n",screen_size.width,screen_size.height);
-        disp_rect.x = 324;
-        disp_rect.y = 50;
-        disp_rect.width = 600;
-        disp_rect.height = 500;
-        ret = aic_player_set_disp_rect(player, &disp_rect);//attention:disp not exceed screen_size
-        if (ret != 0) {
-            loge("aic_player_set_disp_rect error\n");
-            return -1;
+        if (strcmp(PRJ_CHIP,"d12x") != 0) {
+            struct mpp_rect disp_rect;
+
+            ret = cal_disp_size(&media_info.video_stream, &disp_rect);
+            if (ret < 0) {
+                loge("Failed to calculate the size of screen\n");
+                return -1;
+            }
+            ret = aic_player_set_disp_rect(player, &disp_rect);//attention:disp not exceed screen_size
+            if (ret != 0) {
+                loge("aic_player_set_disp_rect error\n");
+                return -1;
+            }
+            logd("aic_player_set_disp_rect  ok\n");
         }
-        logd("aic_player_set_disp_rect  ok\n");
+
     }
 
     if (media_info.has_audio) {
@@ -346,6 +406,8 @@ static void hook_of_scheduler(struct rt_thread *from,struct rt_thread *to) {
 }
 #endif
 
+static int power_on_flag = 0;
+
 static void player_demo_test(int argc, char **argv)
 {
     int ret = 0;
@@ -357,12 +419,42 @@ static void player_demo_test(int argc, char **argv)
     int loop_time = 1;
     struct file_list  files;
     struct aic_player *player = NULL;
-    int volume = 50;
+    int volume = 100;
     struct aic_capture_info   capture_info;
     char file_path[255] = {"/sdcard/video/capture.jpg"};
-    rt_device_t dev = RT_NULL;
+    rt_device_t uart_dev = RT_NULL;
+    u32 rotation = MPP_ROTATION_0;
+    int seek_loop = 0;
+
+    g_player_end = 0;
+    g_player_stop = 0;
+
+    if (strcmp(PRJ_CHIP, "d13x") == 0) {
+        rt_device_t render_dev;
+        struct aicfb_layer_data layer = {0};
+        //get fb dev
+        render_dev = rt_device_find("aicfb");
+        if (render_dev  == NULL) {
+            loge("rt_device_find aicfb failed!");
+            return;
+        }
+        if (!power_on_flag) {
+            rt_device_control(render_dev,AICFB_POWERON,0);
+            power_on_flag = 1;
+        }
+        layer.layer_id = AICFB_LAYER_TYPE_UI;
+        layer.enable = 0;
+        rt_device_control(render_dev,AICFB_UPDATE_LAYER_CONFIG,&layer);
+        // get serial dev
+    }
+
     // get serial dev
-    dev = rt_device_find("uart0");
+    uart_dev = rt_device_find(RT_CONSOLE_DEVICE_NAME);
+    if (uart_dev == NULL) {
+        loge("Failed to open %s\n", RT_CONSOLE_DEVICE_NAME);
+        return;
+    }
+
     //default capture_info
     capture_info.file_path = (s8 *)file_path;
     capture_info.width = 1024;
@@ -381,7 +473,7 @@ static void player_demo_test(int argc, char **argv)
 
     optind = 0;
     while (1) {
-        opt = getopt(argc, argv, "i:t:l:c:W:H:q:h");
+        opt = getopt(argc, argv, "i:t:l:c:W:H:q:r:sh");
         if (opt == -1) {
             break;
         }
@@ -418,6 +510,12 @@ static void player_demo_test(int argc, char **argv)
             break;
         case 'q':
             capture_info.quality = atoi(optarg);
+            break;
+        case 'r':
+            rotation = (atoi(optarg) % 360) / 90;
+            break;
+        case 's':
+            seek_loop = 1;
             break;
         case 'h':
             print_help(argv[0]);
@@ -461,25 +559,38 @@ static void player_demo_test(int argc, char **argv)
                     g_player_end = 1;
                     goto _NEXT_FILE_;
                 }
+
+                if (rotation)
+                    do_rotation_common(player, rotation);
             }
 
             while(1)
             {
     _NEXT_FILE_:
+                if (g_player_stop == 1) {
+                    logd("Stop player!\n");
+                    aic_player_stop(player);
+                    goto _EXIT0_;
+                }
                 if (g_player_end == 1) {
                     logd("play file:%s end!!!!\n",files.file_path[j]);
-                    ret = aic_player_stop(player);
-                    g_player_end = 0;
-                    break;
+                    if(seek_loop == 1) {
+                        aic_player_seek(player,0);
+                        g_player_end = 0;
+                    } else {
+                        aic_player_stop(player);
+                        g_player_end = 0;
+                        break;
+                    }
                 }
                 if (g_sync_flag == AIC_PLAYER_PREPARE_ASYNC && g_demuxer_detected_flag == 1) {
                     g_demuxer_detected_flag = 0;
-                    if (start_play(player,volume) != 0) {
+                    if (start_play(player, volume) != 0) {
                         g_player_end = 1;
                         goto _NEXT_FILE_;
                     }
                 }
-                if (rt_device_read(dev, -1, &ch, 1) == 1) {
+                if (rt_device_read(uart_dev, -1, &ch, 1) == 1) {
                     if (ch == 0x20) {// pause
                         logd("*********enter pause ***************\n");
                         aic_player_pause(player);
@@ -535,7 +646,7 @@ static void player_demo_test(int argc, char **argv)
                     static int index = 0;
                     char data_str[64];
                     float value = 0.0;
-                    if (index++ % 10 == 0) {
+                    if (index++ % 10 == 0 && strcmp(PRJ_CHIP,"d21x") == 0) {
                         value = cpu_load_average();
                         snprintf(data_str,sizeof(data_str),"%.2f%%\n", value);
                         printf("cpu_loading:%s\n",data_str);
@@ -558,8 +669,9 @@ _EXIT0_:
             mpp_free(files.file_path[i]);
         }
     }
+
     logd("player_demo exit\n");
     return;
 }
 
-MSH_CMD_EXPORT_ALIAS(player_demo_test,player_demo, player demo);
+MSH_CMD_EXPORT_ALIAS(player_demo_test, player_demo, player demo);

@@ -21,6 +21,7 @@ if GetDepend(['AIC_MPP_PLAYER_INTERFACE']):
     path += [cwd + '/middle_media/base/parser/mov']
     path += [cwd + '/middle_media/base/parser/rawdata']
     path += [cwd + '/middle_media/base/stream/file']
+    path += [cwd + '/middle_media/base/parser/mp3']
 
     #openmax
     path += [cwd + '/middle_media/openmax/component']
@@ -74,6 +75,8 @@ if GetDepend(['AIC_MPP_PLAYER_INTERFACE']):
     src += Glob('middle_media/base/render/aic_audio_render.c')
     src += Glob('middle_media/base/stream/aic_stream.c')
     src += Glob('middle_media/base/stream/file/aic_file_stream.c')
+    src += Glob('middle_media/base/parser/mp3/aic_mp3_parser.c')
+    src += Glob('middle_media/base/parser/mp3/mp3.c')
 
     #openmax
     src += Glob('middle_media/openmax/component/*.c')

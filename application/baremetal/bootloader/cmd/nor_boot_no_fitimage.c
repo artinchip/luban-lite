@@ -31,7 +31,7 @@ static int do_nor_boot(int argc, char *argv[])
     struct image_header head;
     struct mtd_dev *mtd;
     void *la;
-    u32 start_us;
+    u64 start_us;
 
     mtd_probe();
 

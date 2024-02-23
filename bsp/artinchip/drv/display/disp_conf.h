@@ -42,15 +42,22 @@
  */
 
 /* data line assignments */
-#define LANE_ASSIGNMENTS 0x0123;
+#define LANE_ASSIGNMENTS 0x3210;
 
 /* data line polarities */
-#define LANE_POLARITIES  0b1111;
+#define LANE_POLARITIES  0b0000;
 
 /* data clk inverse */
-#define CLK_INVERSE      1
+#define CLK_INVERSE      0
 
+/* virtual channel id */
 #define VIRTUAL_CHANNEL  0
+
+/* mipi-dsi lp rate, range [10M, 20M], default 10M */
+#define MIPI_DSI_LP_RATE    (10 * 1000 * 1000)
+
+/* mipi-dsi dcs get display id from screen when panel enable */
+#define DCS_GET_DISPLAY_ID  0
 
 /**
  * FB ROTATION options

@@ -129,18 +129,12 @@ static unsigned long
 clk_multi_parent_mod_recalc_rate(struct aic_clk_comm_cfg *comm_cfg,
                                  unsigned long parent_rate)
 {
-    unsigned long rate, div0 = 0, parent_index = 0;
+    unsigned long rate, div0 = 0;
     struct aic_clk_multi_parent_cfg *mod = to_clk_multi_parent(comm_cfg);
 
-    parent_index =
-            (readl(cmu_reg(mod->offset_reg)) >> mod->mux_bit) & mod->mux_mask;
-
-    if (mod->mux_mask == 7 || parent_index == 1) {
-        div0 = (readl(cmu_reg(mod->offset_reg)) >> mod->div0_bit) &
-               mod->div0_mask;
-        rate = parent_rate / (div0 + 1);
-    } else
-        rate = parent_rate;
+    div0 = (readl(cmu_reg(mod->offset_reg)) >> mod->div0_bit) &
+            mod->div0_mask;
+    rate = parent_rate / (div0 + 1);
 
 #ifdef FPGA_BOARD_ARTINCHIP
     rate = fpga_board_rate[mod->id];
@@ -173,19 +167,13 @@ static long clk_multi_parent_mod_round_rate(struct aic_clk_comm_cfg *comm_cfg,
                                             unsigned long rate,
                                             unsigned long *prate)
 {
-    u32 rrate, parent_rate, parent_index;
+    u32 rrate, parent_rate;
     u32 div0 = 0;
 
     struct aic_clk_multi_parent_cfg *mod = to_clk_multi_parent(comm_cfg);
 
     parent_rate = *prate;
-    parent_index =
-            (readl(cmu_reg(mod->offset_reg)) >> mod->mux_bit) & mod->mux_mask;
-
-    if (mod->mux_mask == 7 || parent_index == 1)
-        try_best_divider(rate, parent_rate, mod->div0_mask + 1, &div0);
-    else
-        div0 = 1;
+    try_best_divider(rate, parent_rate, mod->div0_mask + 1, &div0);
 
     rrate = parent_rate / div0;
 
@@ -200,18 +188,13 @@ static int clk_multi_parent_mod_set_rate(struct aic_clk_comm_cfg *comm_cfg,
                                          unsigned long parent_rate)
 {
     struct aic_clk_multi_parent_cfg *mod = to_clk_multi_parent(comm_cfg);
-    u32 val, parent_index;
+    u32 val;
     u32 div0 = 0;
 
     val = readl(cmu_reg(mod->offset_reg));
-    parent_index =
-            (readl(cmu_reg(mod->offset_reg)) >> mod->mux_bit) & mod->mux_mask;
-
-    if (mod->mux_mask == 7 || parent_index == 1) {
-        try_best_divider(rate, parent_rate, mod->div0_mask + 1, &div0);
-        val &= ~(mod->div0_mask << mod->div0_bit);
-        val |= ((div0 - 1) << mod->div0_bit);
-    }
+    try_best_divider(rate, parent_rate, mod->div0_mask + 1, &div0);
+    val &= ~(mod->div0_mask << mod->div0_bit);
+    val |= ((div0 - 1) << mod->div0_bit);
 
     writel(val, cmu_reg(mod->offset_reg));
     return 0;

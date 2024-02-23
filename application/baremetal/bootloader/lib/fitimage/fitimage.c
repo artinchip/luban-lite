@@ -11,9 +11,14 @@
 #include <stdint.h>
 #include <string.h>
 #include <mtd.h>
+#include <mmc.h>
 #include <aic_core.h>
 #include <libfdt.h>
+#include <hexdump.h>
+#include <aic_crc32.h>
 #include "fitimage.h"
+
+//#define CRC32_MTD_READ
 
 int fit_find_config_node(const void *fdt)
 {
@@ -104,10 +109,8 @@ int spl_fit_get_image_name(const struct spl_fit_info *ctx,
         }
     }
 
-    if (!found) {
-        printf("no string for index %d\n", index);
+    if (!found)
         return -1;
-    }
 
     *outname = str;
     return 0;
@@ -237,15 +240,54 @@ int fit_image_get_entry(const void *fit, int noffset, ulong *entry)
     return fit_image_get_address(fit, noffset, FIT_ENTRY_PROP, entry);
 }
 
+/*
+ * offset: The offset relative to the itb file start location
+ */
+static int spl_read(struct spl_load_info *info, ulong offset, void *buf, int size)
+{
+    int rdlen = 0;
+
+    if (info->dev_type == DEVICE_SPINAND || info->dev_type == DEVICE_SPINOR) {
+#if defined(AIC_MTD_BARE_DRV)
+        struct mtd_dev *mtd = (struct mtd_dev *)info->dev;
+
+        rdlen = mtd_read(mtd, offset, buf, size);
+#endif
+    } else if (info->dev_type == DEVICE_MMC) {
+#if defined(AIC_SDMC_DRV)
+        int blkcnt, blkstart, blkoffset, byte_offset;
+        struct aic_sdmc *host = (struct aic_sdmc *)info->dev;
+        struct aic_partition *part = (struct aic_partition *)info->priv;
+
+        blkstart = part->start / info->bl_len;
+        blkoffset = offset / info->bl_len;
+        byte_offset = offset % info->bl_len;
+        blkcnt = ALIGN_UP(size, info->bl_len)  / info->bl_len;
+        blkcnt = mmc_bread(host, blkstart + blkoffset, blkcnt, (u8 *)(buf - byte_offset));
+        rdlen = info->bl_len * blkcnt;
+        rdlen = min(rdlen, size);
+#endif
+    } else if (info->dev_type == DEVICE_XIPNOR) {
+        ulong xip_base = (ulong)info->priv;
+        int i;
+
+        for (i = 0; i < size; i++)
+            *(u8 *)(buf + i) = *(u8 *)(xip_base + offset + i);
+
+        rdlen = size;
+    }
+
+    return rdlen;
+}
+
 int spl_load_fit_image(struct spl_load_info *info, struct spl_fit_info *ctx, int node, ulong *entry_point)
 {
     ulong load_addr = 0;
     unsigned int length;
     int ret, offset = 0;
-    int start_offset, overhead, read_length;
     const void *fit = ctx->fit;
     bool external_data = false;
-    struct mtd_dev *mtd = (struct mtd_dev *)info->dev;
+    u64 start_us;
 
     if (fit_image_get_load(fit, node, &load_addr))
     {
@@ -266,17 +308,27 @@ int spl_load_fit_image(struct spl_load_info *info, struct spl_fit_info *ctx, int
     if (external_data)
     {
         if (fit_image_get_data_size(fit, node, &length))
-            return -1;
+            goto __get_entry;
 
-        start_offset = ALIGN_DOWN(offset, info->bl_len);
-        overhead = offset - start_offset;
-        read_length = ALIGN_UP(offset + length, info->bl_len) - start_offset;
-
-        ret = mtd_read(mtd, start_offset, (u8 *)(load_addr - overhead), read_length);
-        if (ret < 0)
+        if (info->dev_type == DEVICE_XIPNOR && load_addr >= 0x60000000)
+            goto __get_entry;
+        else
         {
-            printf("mtd read external_data error\n");
-            return -1;
+            start_us =  aic_get_time_us();
+            ret = spl_read(info, offset, (u8 *)load_addr, length);
+            show_speed("spl read", length, aic_get_time_us() - start_us);
+
+#ifdef CRC32_MTD_READ
+            unsigned int crc32_val = crc32(0, NULL, 0);
+            crc32_val = crc32(crc32_val, (u8 *)load_addr, length);
+            printf("mtd read crc32 = 0x%x KB/s\n", crc32_val);
+#endif
+
+            if (ret < 0)
+            {
+                printf("spl read external_data error\n");
+                return -1;
+            }
         }
     }
     else
@@ -285,6 +337,7 @@ int spl_load_fit_image(struct spl_load_info *info, struct spl_fit_info *ctx, int
         return -1;
     }
 
+__get_entry:
     if (entry_point)
     {
         if (fit_image_get_entry(fit, node, entry_point))
@@ -299,37 +352,51 @@ int spl_load_fit_image(struct spl_load_info *info, struct spl_fit_info *ctx, int
 
 int spl_load_simple_fit(struct spl_load_info *info, ulong *entry_point)
 {
-    struct fdt_header header;
+    struct fdt_header *header;
     struct spl_fit_info ctx;
     void *buf = NULL;
-    int size, ret = 0;
+    int size, buf_size, ret = 0;
     int index = 0, node = -1;
-    struct mtd_dev *mtd = (struct mtd_dev *)info->dev;
 
-    ret = mtd_read(mtd, 0, (void *)&header, sizeof(header));
+    header = aicos_malloc(MEM_DEFAULT,
+                          ALIGN_UP(sizeof(struct fdt_header), info->bl_len));
+    if (!header)
+    {
+        printf("No space to malloc for header\n");
+        return -1;
+    }
+
+    /* read itb tree header, to parse itb tree totalsize */
+    ret = spl_read(info, 0, (void *)header, sizeof(struct fdt_header));
     if (ret < 0)
     {
-        printf("mtd read header error\n");
-        return -1;
+        printf("spl read header error\n");
+        goto __exit_header;
     }
 
-    if (fdt_magic(&header) != FDT_MAGIC)
+    if (fdt_magic(header) != FDT_MAGIC)
     {
         printf("Not found FIT\n");
-        return -1;
+        goto __exit_header;
     }
 
-    size = FIT_ALIGN(fdt_totalsize(&header), 4);
+    size = FIT_ALIGN(fdt_totalsize(header), 4);
     ctx.ext_data_offset = size;
+
+    if (info->dev_type == DEVICE_MMC) {
+        buf_size = ROUNDUP(size, info->bl_len);
+        size = buf_size;
+    }
 
     buf = aicos_malloc(MEM_DEFAULT, size);
     if (!buf)
     {
         printf("No space to malloc for itb\n");
-        return -1;
+        goto __exit_header;
     }
 
-    ret = mtd_read(mtd, 0, buf, size);
+    /* read itb tree */
+    ret = spl_read(info, 0, buf, size);
     if (ret < 0)
     {
         printf("mtd read itb error\n");
@@ -376,5 +443,7 @@ int spl_load_simple_fit(struct spl_load_info *info, ulong *entry_point)
 
 __exit:
     aicos_free(MEM_DEFAULT, buf);
+__exit_header:
+    aicos_free(MEM_DEFAULT, header);
     return ret;
 }

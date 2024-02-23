@@ -36,14 +36,14 @@ irqreturn_t sdcard_detect_irq_handler(int irq, void *args)
         mmc_deinit(1);
 #if defined(LPKG_USING_DFS_ELMFAT) && defined(AIC_SDMC_DRV)
         if (dfs_unmount("/sdcard") < 0)
-            printf("Failed to umount sdmc with FatFS\n");
+            printf("Failed to umount SD Card with FatFS\n");
 #endif
     } else {
         printf("card insertion detected!\n");
         mmc_init(1);
 #if defined(LPKG_USING_DFS_ELMFAT) && defined(AIC_SDMC_DRV)
-        if (dfs_mount("sdmc", "/sdcard", "elm", 0, (const void *)SDMC_DISK) < 0)
-            printf("Failed to mount sdmc with FatFS\n");
+        if (dfs_mount("sd1", "/sdcard", "elm", 0, DEVICE_TYPE_SDMC_DISK) < 0)
+            printf("Failed to mount SD Card with FatFS\n");
 #endif
     }
 

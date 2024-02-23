@@ -1,0 +1,84 @@
+{
+    "mmc": { // Device, The name should be the same with string in image:info:media:type
+        "size": "8G", // Size of SD/eMMC
+        "partitions": {
+            "spl":        { "offset": "0x4400", "size": "256k" },
+            "os":         { "size": "1m" },
+            "rodata":     { "size": "3m" },
+            "data":       { "size": "5m" }
+        },
+    },
+    "image": {
+        "info": { // Header information about image
+            "platform": "d13x",
+            "product": "demo88-mmc",
+            "version": "1.0.0",
+            "media": {
+                "type": "mmc",
+                "device_id": 0,
+            }
+        },
+        "updater": { // Image writer which is downloaded to RAM by USB
+            "spl": {
+                "file": "bootloader.aic",
+                "attr": ["required", "run"],
+                "ram": "0x30100000"
+            },
+	    "env": {
+                "file": "env.bin",
+                "attr": ["required"],
+                "ram": "0x40140000"
+            },
+        },
+        "target": { // Image components which will be burn to device's partitions
+            "spl": {
+                "file": "bootloader.aic",
+                "attr": ["required"],
+                "part": ["spl"]
+            },
+            "os": {
+                "file": "d13x_os.itb",
+                "attr": ["block", "required"],
+                "part": ["os"]
+            },
+            "rodata": {
+                "file": "data.fatfs",
+                "attr": ["block", "optional"],
+                "part": ["rodata"]
+            },
+            "data": {
+                "file": "data.ext4",
+                "attr": ["block", "optional"],
+                "part": ["data"]
+            },
+        },
+    },
+    "temporary": { // Pre-proccess to generate image components from raw data
+        "aicboot": {
+            "bootloader.aic": {
+                "head_ver": "0x00010001",
+                "loader": {
+                    "file": "bootloader.bin",
+                    "load address": "0x30100000",
+                    "entry point":  "0x30100100",
+                },
+                "resource": {
+                    "private": "pbp_cfg.bin",
+                    "pbp": "d13x.pbp",
+                },
+            },
+        },
+        "itb": {
+            "d13x_os.itb": {
+                "its": "d13x_os.its"
+            },
+        },
+	"uboot_env": {
+            "env.bin": {
+                "file": "env.txt",
+                "size": "4096",
+                "redundant": "enable",
+            },
+        },
+    },
+}

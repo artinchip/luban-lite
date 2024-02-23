@@ -1,3 +1,11 @@
+/*
+ * Copyright (c) 2024, ArtInChip Technology Co., Ltd
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Authors: Xuan.Wen <xuan.wen@artinchip.com>
+ */
+
 #ifndef _AIC_QSPI_SLAVE_
 #define _AIC_QSPI_SLAVE_
 

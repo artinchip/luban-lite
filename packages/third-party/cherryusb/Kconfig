@@ -115,6 +115,8 @@ if LPKG_USING_CHERRYUSB
                     bool "mouse"
                 config LPKG_CHERRYUSB_DEVICE_HID_KEYBOARD_TEMPLATE
                     bool "keyboard"
+                config LPKG_CHERRYUSB_DEVICE_HID_IO_TEMPLATE
+                    bool "custom input/output device"
             endchoice
         endif
 
@@ -223,7 +225,7 @@ if LPKG_USING_CHERRYUSB
 
         if LPKG_CHERRYUSB_HOST_EHCI
             choice
-                prompt "Select chip with EHCI usb ip to set usb base and irq name,if not set,use default setting.Only support hs usb ip"
+                prompt "Select chip with EHCI usb ip"
                 default LPKG_CHERRYUSB_HOST_EHCI_AIC
                 config LPKG_CHERRYUSB_HOST_EHCI_AIC
                     bool "AIC"
@@ -240,10 +242,17 @@ if LPKG_USING_CHERRYUSB
             prompt "Enable usb hid driver"
             default n
 
-        config LPKG_CHERRYUSB_HOST_MSC
+        menuconfig LPKG_CHERRYUSB_HOST_MSC
             bool
             prompt "Enable usb msc driver"
             default n
+
+        if LPKG_CHERRYUSB_HOST_MSC
+            config LPKG_CHERRYUSB_HOST_MSC_TEMPLATE
+                bool
+                prompt "Use msc template"
+                default n
+        endif
 
         config LPKG_CHERRYUSB_HOST_RNDIS
             bool
@@ -255,10 +264,4 @@ if LPKG_USING_CHERRYUSB
             prompt "Use usb host template"
             default n
     endif
-
-    config LPKG_CHERRYUSB_EXMAPLE
-        bool
-        prompt "Enable usb example"
-        default n
-
 endif

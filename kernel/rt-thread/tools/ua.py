@@ -40,7 +40,7 @@ def PrefixPath(prefix, path):
     return False
 
 def PrepareUA(project, RTT_ROOT, BSP_ROOT):
-    if os.environ.has_key("PRJ_OUT_DIR"):
+    if 'PRJ_OUT_DIR' in os.environ:
         prj_out_dir = os.environ["PRJ_OUT_DIR"]
         aic_root = os.environ["AIC_ROOT"]
         ua_file = os.path.join(aic_root, prj_out_dir, 'rtua.py')

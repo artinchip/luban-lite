@@ -75,6 +75,7 @@ struct upg_internal {
     int dev_type;
     int dev_id;
     struct upg_cfg cfg;
+    struct upg_init init;
 };
 
 /* FWC meta data will bie aligned to 512 */
@@ -114,6 +115,7 @@ struct fwc_info {
     u32 calc_partition_crc;
     s32 burn_result;
     s32 run_result;
+    u32 start_us;
     void *priv;
 };
 

@@ -228,7 +228,7 @@ static OMX_ERRORTYPE OMX_ClockConfigTimeClockState(OMX_HANDLETYPE hComponent,OMX
         return OMX_ErrorUndefined;
     }
     memcpy(&pClockDataType->sClockState,pClockState,sizeof(OMX_TIME_CONFIG_CLOCKSTATETYPE));
-    printf("[%s:%d]nWaitMask:0x%x,sClockState:%d\n",__FUNCTION__,__LINE__,pClockDataType->sClockState.nWaitMask,pClockDataType->sClockState.eState);
+    printf("[%s:%d]nWaitMask:0x%"PRIx32",sClockState:%d\n",__FUNCTION__,__LINE__,pClockDataType->sClockState.nWaitMask,pClockDataType->sClockState.eState);
     //pClockDataType->sClockState.eState = OMX_TIME_ClockStateWaitingForStartTime;
 
     return OMX_ErrorNone;
@@ -249,15 +249,15 @@ static OMX_ERRORTYPE OMX_ClockConfigTimeClientStartTime(OMX_HANDLETYPE hComponen
     }
 
     if (pClockDataType->sClockState.nWaitMask) {
-        logd("nPortIndex:%d,nTimestamp:%ld\n",pTimeStamp->nPortIndex,pTimeStamp->nTimestamp);
+        logd("nPortIndex:%"PRIx32",nTimestamp:%"PRId64"\n",pTimeStamp->nPortIndex,pTimeStamp->nTimestamp);
         if (pTimeStamp->nPortIndex == CLOCK_PORT_OUT_VIDEO) {
             pClockDataType->sClockState.nWaitMask &= ~OMX_CLOCKPORT0;
             pClockDataType->sPortStartTime[CLOCK_PORT_OUT_VIDEO] = pTimeStamp->nTimestamp;
-            logd("CLOCK_PORT_OUT_VIDEO nWaitMask:0x%x,nTimestamp:%ld\n",pClockDataType->sClockState.nWaitMask,pTimeStamp->nTimestamp);
+            logd("CLOCK_PORT_OUT_VIDEO nWaitMask:0x%"PRIx32",nTimestamp:%"PRId64"\n",pClockDataType->sClockState.nWaitMask,pTimeStamp->nTimestamp);
         } else if (pTimeStamp->nPortIndex == CLOCK_PORT_OUT_AUDIO) {
             pClockDataType->sClockState.nWaitMask &= ~OMX_CLOCKPORT1;
             pClockDataType->sPortStartTime[CLOCK_PORT_OUT_AUDIO] = pTimeStamp->nTimestamp;
-            logd("CLOCK_PORT_OUT_AUDIO nWaitMask:0x%x,nTimestamp:%ld\n",pClockDataType->sClockState.nWaitMask,pTimeStamp->nTimestamp);
+            logd("CLOCK_PORT_OUT_AUDIO nWaitMask:0x%"PRIx32",nTimestamp:%"PRId64"\n",pClockDataType->sClockState.nWaitMask,pTimeStamp->nTimestamp);
         } else {
             return OMX_ErrorBadPortIndex;
         }
@@ -275,7 +275,7 @@ static OMX_ERRORTYPE OMX_ClockConfigTimeClientStartTime(OMX_HANDLETYPE hComponen
         pClockDataType->sWallTimeBase = OMX_ClockGetSystemTime();
         pClockDataType->sPauseTimeDurtion = 0;
         pClockDataType->sClockState.eState = OMX_TIME_ClockStateRunning;
-        printf("[%s:%d]sRefClockTimeBase:%ld,sWallTimeBase:%ld\n",__FUNCTION__,__LINE__,pClockDataType->sRefClockTimeBase,pClockDataType->sWallTimeBase);
+        printf("[%s:%d]sRefClockTimeBase:%"PRId64",sWallTimeBase:%"PRId64"\n",__FUNCTION__,__LINE__,pClockDataType->sRefClockTimeBase,pClockDataType->sWallTimeBase);
         OMX_SetConfig(pVideoTunneledInfo->pTunneledComp, OMX_IndexConfigTimeClockState,&pClockDataType->sClockState);
         OMX_SetConfig(pAudioTunneledInfo->pTunneledComp, OMX_IndexConfigTimeClockState,&pClockDataType->sClockState);
     }
@@ -688,7 +688,7 @@ static void OMX_ClockStateChangeToExcuting(CLOCK_DATA_TYPE * pClockDataType)
     } else if (pClockDataType->state == OMX_StatePause) {
         OMX_S64 nCurMeidaTime;
         pClockDataType->sPauseTimeDurtion += (OMX_ClockGetSystemTime() - pClockDataType->sPauseTimePoint);
-        printf("[%s:%d]OMX_ClockGetSystemTime:%ld,sPauseTimePoint:%ld,sPauseTimeDurtion:%ld,sWallTimeBase:%ld,sRefClockTimeBase:%ld\n"
+        printf("[%s:%d]OMX_ClockGetSystemTime:%"PRId64",sPauseTimePoint:%"PRId64",sPauseTimeDurtion:%"PRId64",sWallTimeBase:%"PRId64",sRefClockTimeBase:%"PRId64"\n"
             ,__FUNCTION__,__LINE__
             ,OMX_ClockGetSystemTime()
             ,pClockDataType->sPauseTimePoint
@@ -697,7 +697,7 @@ static void OMX_ClockStateChangeToExcuting(CLOCK_DATA_TYPE * pClockDataType)
             ,pClockDataType->sRefClockTimeBase);
 
         nCurMeidaTime = (OMX_ClockGetSystemTime() - pClockDataType->sWallTimeBase - pClockDataType->sPauseTimeDurtion) + pClockDataType->sRefClockTimeBase;
-        printf("[%s:%d]pClockDataType->sPauseTimeDurtion:%ld,nCurMeidaTime:%ld\n" ,__FUNCTION__,__LINE__,pClockDataType->sPauseTimeDurtion,nCurMeidaTime);
+        printf("[%s:%d]pClockDataType->sPauseTimeDurtion:%"PRId64",nCurMeidaTime:%"PRId64"\n" ,__FUNCTION__,__LINE__,pClockDataType->sPauseTimeDurtion,nCurMeidaTime);
     } else {
         OMX_ClockEventNotify(pClockDataType
                             ,OMX_EventError
@@ -727,7 +727,7 @@ static void OMX_ClockStateChangeToPause(CLOCK_DATA_TYPE * pClockDataType)
 
     } else if (pClockDataType->state == OMX_StateExecuting) {
         OMX_S64 nCurMeidaTime;
-        printf("[%s:%d]OMX_ClockGetSystemTime:%ld,sPauseTimePoint:%ld,sPauseTimeDurtion:%ld,sWallTimeBase:%ld,sRefClockTimeBase:%ld\n"
+        printf("[%s:%d]OMX_ClockGetSystemTime:%"PRId64",sPauseTimePoint:%"PRId64",sPauseTimeDurtion:%"PRId64",sWallTimeBase:%"PRId64",sRefClockTimeBase:%"PRId64"\n"
             ,__FUNCTION__,__LINE__
             ,OMX_ClockGetSystemTime()
             ,pClockDataType->sPauseTimePoint
@@ -735,7 +735,7 @@ static void OMX_ClockStateChangeToPause(CLOCK_DATA_TYPE * pClockDataType)
             ,pClockDataType->sWallTimeBase
             ,pClockDataType->sRefClockTimeBase);
         nCurMeidaTime = (OMX_ClockGetSystemTime() - pClockDataType->sWallTimeBase - pClockDataType->sPauseTimeDurtion) + pClockDataType->sRefClockTimeBase;
-        printf("[%s:%d]OMX_ClockGetSystemTime:%ld,sPauseTimePoint:%ld,sPauseTimeDurtion:%ld,sWallTimeBase:%ld,sRefClockTimeBase:%ld,nCurMeidaTime:%ld\n"
+        printf("[%s:%d]OMX_ClockGetSystemTime:%"PRId64",sPauseTimePoint:%"PRId64",sPauseTimeDurtion:%"PRId64",sWallTimeBase:%"PRId64",sRefClockTimeBase:%"PRId64",nCurMeidaTime:%"PRId64"\n"
             ,__FUNCTION__,__LINE__
             ,OMX_ClockGetSystemTime()
             ,pClockDataType->sPauseTimePoint

@@ -7,10 +7,7 @@ CPPPATH = [cwd, ]
 src = []
 
 if GetDepend('KERNEL_BAREMETAL') and GetDepend('LPKG_MPP') and GetDepend('AIC_VE_TEST'):
-    src += Glob('pic_dec_test.c')
-    src += Glob('test_pic1.c')
-    src += Glob('test_pic2.c')
-    src += Glob('test_pic3.c')
+    src += Glob('test_pic_dec.c')
 
 CFLAGS = ' -c -ffunction-sections'
 

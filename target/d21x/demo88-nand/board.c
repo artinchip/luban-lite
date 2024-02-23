@@ -165,14 +165,21 @@ const struct dfs_mount_tbl mount_table[] = {
 #ifdef LPKG_RAMDISK_TYPE_INITDATA
     {"ramdisk0", "/ram", "elm", 0, 0, 0},
 #endif
+#ifndef AIC_AB_SYSTEM_INTERFACE
 #if (defined(AIC_USING_FS_IMAGE_TYPE_FATFS_FOR_0) || defined(AIC_USING_FS_IMAGE_TYPE_FATFS_FOR_1))
     {"blk_rodata", "/rodata", "elm", 0, 0, 0},
 #endif
+#endif
+
+#if (defined(AIC_USING_FS_IMAGE_TYPE_FATFS_FOR_0) || defined(AIC_USING_FS_IMAGE_TYPE_FATFS_FOR_1))
+    {"blk_data", "/data", "elm", 0, 0, 1},
+#endif
+
 #ifdef LPKG_USING_DFS_UFFS
     {"data", "/data", "uffs", 0, 0, 1},
 #endif
+
 #ifdef AIC_USING_SDMC1
-    {"sd0p0", "/sdcard", "elm", 0, 0, 0},
     {"sd0", "/sdcard", "elm", 0, 0, 0},
 #endif
 #if (defined(AIC_USING_USB0_HOST) || defined(AIC_USING_USB1_HOST))

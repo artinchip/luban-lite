@@ -3,7 +3,7 @@ Import('PRJ_KERNEL')
 from building import *
 
 cwd = GetCurrentDir()
-src = Glob('*.c')
+src = []
 CPPPATH = []
 
 if GetDepend('AIC_I2S_CODEC_SELECT'):
@@ -13,6 +13,10 @@ if GetDepend('AIC_I2S_CODEC_SELECT'):
 if GetDepend('AIC_I2S_CODEC_ES8388'):
     CPPPATH.append(cwd + 'es8388/')
     src += Glob('es8388/*.c')
+
+if GetDepend('AIC_I2S_CODEC_TLV320'):
+    CPPPATH.append(cwd + 'tlv320aic3101/')
+    src += Glob('tlv320aic3101/*.c')
 
 group = DefineGroup('codec', src, depend = [''], CPPPATH = CPPPATH)
 

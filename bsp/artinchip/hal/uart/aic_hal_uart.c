@@ -57,64 +57,6 @@
 
 #define USART_NULL_PARAM_CHK(para) HANDLE_PARAM_CHK(para, ERR_USART(DRV_ERROR_PARAMETER))
 
-/* UART register bit definitions */
-
-#define USR_UART_BUSY           0x01
-#define USR_UART_TFE            0x04
-#define USR_UART_RFNE           0x08
-#define LSR_DATA_READY          0x01
-#define LSR_THR_EMPTY           0x20
-#define IER_RDA_INT_ENABLE      0x01
-#define IER_THRE_INT_ENABLE     0x02
-#define IIR_RECV_LINE_ENABLE    0x04
-#define IIR_NO_ISQ_PEND         0x01
-
-#define FCR_FIFO_EN             0x01
-#define FCR_RX_FIFO_RST         0x02
-#define FCR_TX_FIFO_RST         0x04
-#define FCR_DMA_MODE            0x08
-
-#define LCR_SET_DLAB            0x80    /* enable r/w DLR to set the baud rate */
-#define LCR_PARITY_ENABLE       0x08    /* parity enabled */
-#define LCR_PARITY_EVEN         0x10    /* Even parity enabled */
-#define LCR_PARITY_ODD          0xef    /* Odd parity enabled */
-#define LCR_WORD_SIZE_5         0xfc    /* the data length is 5 bits */
-#define LCR_WORD_SIZE_6         0x01    /* the data length is 6 bits */
-#define LCR_WORD_SIZE_7         0x02    /* the data length is 7 bits */
-#define LCR_WORD_SIZE_8         0x03    /* the data length is 8 bits */
-#define LCR_STOP_BIT1           0xfb    /* 1 stop bit */
-#define LCR_STOP_BIT2           0x04    /* 1.5 stop bit */
-
-#define HALT_CHCFG_AT_BUSY      0x02
-#define HALT_CHANGE_UPDATE      0x04
-
-#define AIC_LSR_PFE             0x80
-#define AIC_LSR_TEMT            0x40
-#define AIC_LSR_THRE            0x40
-#define AIC_LSR_BI              0x10
-#define AIC_LSR_FE              0x08
-#define AIC_LSR_PE              0x04
-#define AIC_LSR_OE              0x02
-#define AIC_LSR_DR              0x01
-#define AIC_LSR_TRANS_EMPTY     0x20
-
-#define AIC_IIR_THR_EMPTY       0x02    /* threshold empty */
-#define AIC_IIR_RECV_DATA       0x04    /* received data available */
-#define AIC_IIR_RECV_LINE       0x06    /* receiver line status */
-#define AIC_IIR_CHAR_TIMEOUT    0x0c    /* character timeout */
-
-/* ArtInChip specific register fields */
-#define AIC_UART_MCR_SIRE       0x40
-#define AIC_UART_MCR_RS485      0x80
-#define AIC_UART_MCR_RS485S     0xC0
-#define AIC_UART_MCR_UART       0x00
-#define AIC_UART_MCR_FUNC_MASK  0x3F
-
-#define AIC_UART_EXREG          0xB8    /* RS485 DE Time */
-#define AIC_UART_RS485_CTL_MODE 0x80;
-#define AIC_UART_RS485_RXBFA    0x08;
-#define AIC_UART_RS485_RXAFA    0x04;
-
 typedef struct
 {
     union
@@ -198,11 +140,9 @@ int32_t hal_usart_config_baudrate(usart_handle_t handle, uint32_t baud)
     /* baudrate=(seriak clock freq)/(16*divisor); algorithm :rounding*/
     uint32_t divisor = ((hal_clk_get_freq(CLK_UART0 + usart_priv->idx)  * 10) / baud) >> 4;
 
-    if ((divisor % 10) >= 5)
-    {
+    if ((divisor % 10) >= 5) {
         divisor = (divisor / 10) + 1;
-    } else
-    {
+    } else {
         divisor = divisor / 10;
     }
 
@@ -435,7 +375,7 @@ int32_t hal_usart_getchar(usart_handle_t handle, uint8_t *ch)
     aic_usart_priv_t *usart_priv = handle;
     aic_usart_reg_t *addr = (aic_usart_reg_t *)(usart_priv->base);
 
-    while (!(addr->LSR & LSR_DATA_READY));
+    while (!(addr->LSR & LSR_DATA_READY)) {};
 
     *ch = addr->RBR;
 
@@ -511,17 +451,16 @@ void hal_usart_intr_threshold_empty(int32_t idx, aic_usart_priv_t *usart_priv)
     volatile int i = 500;
     aic_usart_reg_t *addr = (aic_usart_reg_t *)(usart_priv->base);
 
-    if (usart_priv->tx_cnt >= usart_priv->tx_total_num)
-    {
+    if (usart_priv->tx_cnt >= usart_priv->tx_total_num) {
         addr->IER &= (~IER_THRE_INT_ENABLE);
         usart_priv->last_tx_num = usart_priv->tx_total_num;
 
         /* fix hardware bug */
-        while (addr->USR & USR_UART_BUSY);
+        while (addr->USR & USR_UART_BUSY) {};
 
         i = 500;
 
-        while (i--);
+        while (i--) {};
 
         usart_priv->tx_cnt = 0;
         usart_priv->tx_busy = 0;
@@ -532,14 +471,13 @@ void hal_usart_intr_threshold_empty(int32_t idx, aic_usart_priv_t *usart_priv)
         {
             usart_priv->cb_event(idx, USART_EVENT_SEND_COMPLETE);
         }
-    } else
-    {
+    } else {
         /* fix hardware bug */
-        while (addr->USR & USR_UART_BUSY);
+        while (addr->USR & USR_UART_BUSY) {};
 
         i = 500;
 
-        while (i--);
+        while (i--) {};
 
         addr->THR = *((uint8_t *)usart_priv->tx_buf);
         usart_priv->tx_cnt++;
@@ -671,11 +609,9 @@ static void hal_usart_intr_char_timeout(int32_t idx, aic_usart_priv_t *usart_pri
         return;
     }
 
-    if (usart_priv->cb_event)
-    {
+    if (usart_priv->cb_event) {
         usart_priv->cb_event(idx, USART_EVENT_RECEIVED);
-    } else
-    {
+    } else {
         aic_usart_reg_t *addr = (aic_usart_reg_t *)(usart_priv->base);
 
         uint32_t timecount = 0;
@@ -733,6 +669,16 @@ void hal_usart_irqhandler(int32_t idx)
     }
 }
 
+uint8_t hal_usart_get_irqstatus(int32_t idx)
+{
+    aic_usart_priv_t *usart_priv = &usart_instance[idx];
+    aic_usart_reg_t *addr = (aic_usart_reg_t *)(usart_priv->base);
+
+    uint8_t intr_state = addr->IIR & 0xf;
+
+    return intr_state;
+}
+
 /**
   \brief       Get driver capabilities.
   \param[in]   idx usart index
@@ -765,12 +711,12 @@ usart_handle_t hal_usart_initialize(int32_t idx, usart_event_cb_t cb_event, void
     usart_priv->idx = idx;
     aic_usart_reg_t *addr = (aic_usart_reg_t *)(usart_priv->base);
 
-    /* enable received data available */
-    addr->IER = IER_RDA_INT_ENABLE | IIR_RECV_LINE_ENABLE;
-
     if (handler != NULL) {
+        addr->IER = 0;
         aicos_request_irq(usart_priv->irq, handler, 0, "uart", NULL);
         aicos_irq_enable(usart_priv->irq);
+    } else {
+        addr->IER = 0;
     }
 
     return usart_priv;
@@ -1127,8 +1073,7 @@ int32_t hal_usart_flush(usart_handle_t handle, usart_flush_type_e type)
                 return ERR_USART(DRV_ERROR_TIMEOUT);
             }
         }
-    } else if (type == USART_FLUSH_READ)
-    {
+    } else if (type == USART_FLUSH_READ) {
         while (addr->LSR & 0x1) {
             timecount++;
 
@@ -1137,8 +1082,7 @@ int32_t hal_usart_flush(usart_handle_t handle, usart_flush_type_e type)
                 return ERR_USART(DRV_ERROR_TIMEOUT);
             }
         }
-    } else
-    {
+    } else {
         return ERR_USART(DRV_ERROR_PARAMETER);
     }
 
@@ -1162,28 +1106,22 @@ int32_t hal_usart_set_interrupt(usart_handle_t handle, usart_intr_type_e type, i
     switch (type)
     {
         case USART_INTR_WRITE:
-            if (flag == 0)
-            {
+            if (flag == 0) {
                 addr->IER &= ~IER_THRE_INT_ENABLE;
-            } else if (flag == 1)
-            {
+            } else if (flag == 1) {
                 addr->IER |= IER_THRE_INT_ENABLE;
-            } else
-            {
+            } else {
                 return ERR_USART(DRV_ERROR_PARAMETER);
             }
 
             break;
 
         case USART_INTR_READ:
-            if (flag == 0)
-            {
+            if (flag == 0) {
                 addr->IER &= ~IER_RDA_INT_ENABLE;
-            } else if (flag == 1)
-            {
+            } else if (flag == 1) {
                 addr->IER |= IER_RDA_INT_ENABLE;
-            } else
-            {
+            } else {
                 return ERR_USART(DRV_ERROR_PARAMETER);
             }
 
@@ -1208,11 +1146,9 @@ uint32_t hal_usart_get_tx_count(usart_handle_t handle)
 
     aic_usart_priv_t *usart_priv = handle;
 
-    if (usart_priv->tx_busy)
-    {
+    if (usart_priv->tx_busy) {
         return usart_priv->tx_cnt;
-    } else
-    {
+    } else {
         return usart_priv->last_tx_num;
     }
 }
@@ -1227,11 +1163,9 @@ uint32_t hal_usart_get_rx_count(usart_handle_t handle)
     USART_NULL_PARAM_CHK(handle);
     aic_usart_priv_t *usart_priv = handle;
 
-    if (usart_priv->rx_busy)
-    {
+    if (usart_priv->rx_busy) {
         return usart_priv->rx_cnt;
-    } else
-    {
+    } else {
         return usart_priv->last_rx_num;
     }
 }

@@ -8,6 +8,7 @@
 
 #define LOG_TAG "png_decoder"
 
+#include <aic_core.h>
 #include <stdlib.h>
 #include <inttypes.h>
 #include "mpp_codec.h"
@@ -17,6 +18,7 @@
 #include "ve.h"
 #include "mpp_mem.h"
 #include "mpp_log.h"
+
 
 #define SHOW_TAG(a,b,c,d) ((a) | ((b) << 8) | ((c) << 16) | ((unsigned)(d) << 24))
 #define ALIGN_8B(x) (((x) + (7)) & ~(7))
@@ -58,7 +60,14 @@ static int alloc_phy_buffer(struct png_dec_ctx *s, int width, int height)
 		}
 	}
 
+#if defined(AIC_CHIP_D12X)
+	s->lz77_mpp_buf = (struct ve_buffer *)mpp_alloc(sizeof(struct ve_buffer));
+	s->lz77_mpp_buf->phy_addr = 0x30040000;
+	aicos_dcache_clean_invalid_range((unsigned long *)(ulong)0x30040000, LZ77_WINDOW_SIZE);
+#else
 	s->lz77_mpp_buf = ve_buffer_alloc(s->ve_buf_handle, LZ77_WINDOW_SIZE, 0);
+#endif
+
 	s->filter_mpp_buf = ve_buffer_alloc(s->ve_buf_handle, width * 4, 0);
 	s->idat_mpp_buf = ve_buffer_alloc(s->ve_buf_handle, bitstream_size, ALLOC_NEED_VIR_ADDR);
 
@@ -81,10 +90,17 @@ static int free_phy_buffer(struct png_dec_ctx *s) {
 		s->palette_mpp_buf = NULL;
 	}
 
+#if defined(AIC_CHIP_D12X)
+	if (s->lz77_mpp_buf) {
+		mpp_free(s->lz77_mpp_buf);
+		s->lz77_mpp_buf = NULL;
+	}
+#else
 	if (s->lz77_mpp_buf) {
 		ve_buffer_free(s->ve_buf_handle, s->lz77_mpp_buf);
 		s->lz77_mpp_buf = NULL;
 	}
+#endif
 
 	if (s->filter_mpp_buf) {
 		ve_buffer_free(s->ve_buf_handle, s->filter_mpp_buf);

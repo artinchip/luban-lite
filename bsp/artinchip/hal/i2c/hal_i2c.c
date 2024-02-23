@@ -15,7 +15,7 @@
 #define gen_reg(val) (volatile void *)(val)
 #define USEC_PER_SEC (1000000)
 
-int aic_i2c_init(uint32_t i2c_idx)
+int aic_i2c_init(int32_t i2c_idx)
 {
     int ret = 0;
     ret = hal_clk_enable_deassertrst(CLK_I2C0 + i2c_idx);
@@ -208,7 +208,7 @@ static int32_t aic_i2c_wait_iic_transmit(unsigned long reg_base,
     int32_t ret = I2C_OK;
 
     do {
-        uint32_t timecount = timeout + aic_get_time_ms();
+        uint64_t timecount = timeout + aic_get_time_ms();
 
         while ((aic_i2c_get_transmit_fifo_num(reg_base) != 0U) &&
                (ret == EOK)) {
@@ -234,7 +234,7 @@ static int32_t aic_i2c_wait_receive(unsigned long reg_base,
     int32_t ret = I2C_OK;
 
     do {
-        uint32_t timecount = timeout + aic_get_time_ms();
+        uint64_t timecount = timeout + aic_get_time_ms();
 
         while ((aic_i2c_get_receive_fifo_num(reg_base) < wait_data_num) &&
                (ret == I2C_OK)) {
@@ -263,6 +263,7 @@ int32_t aic_i2c_master_send_msg(unsigned long reg_base, struct aic_i2c_msg *msg)
     uint32_t stop_time = 0;
     uint32_t timeout = 1000;
     uint32_t reg_val;
+    uint16_t idx = 0;
 
     aic_i2c_module_disable(reg_base);
     aic_i2c_target_addr(reg_base, msg->addr);
@@ -288,66 +289,50 @@ int32_t aic_i2c_master_send_msg(unsigned long reg_base, struct aic_i2c_msg *msg)
         }
     }
 
-    while (1) {
-        if (size < I2C_FIFO_DEPTH) {
-            for (uint16_t len = 0; len < msg->len - 1; len++) {
-                aic_i2c_transmit_data(reg_base, msg->buf[len]);
+    while (size > 0) {
+        uint16_t send_num = size > I2C_FIFO_DEPTH ? I2C_FIFO_DEPTH : size;
+        if (send_num < I2C_FIFO_DEPTH) {
+            for (uint16_t i = 0; i < send_num - 1; i++) {
+                aic_i2c_transmit_data(reg_base, msg->buf[idx]);
+                idx++;
             }
             aic_i2c_transmit_data_with_stop_bit(reg_base,
-                                                msg->buf[msg->len - 1]);
-
-            ret = aic_i2c_wait_iic_transmit(reg_base, timeout);
-            if (ret != I2C_OK) {
-                send_count = ret;
-                break;
-            }
-
-            send_count += size;
+                                            msg->buf[idx]);
         } else {
-            while (send_count < size) {
-                uint8_t send_num =
-                    I2C_FIFO_DEPTH - aic_i2c_get_transmit_fifo_num(reg_base);
-
-                for (uint8_t idx = 0; idx < send_num - 1; idx++) {
-                    aic_i2c_transmit_data(reg_base, msg->buf[idx]);
-                }
-                aic_i2c_transmit_data_with_stop_bit(reg_base,
-                                                    msg->buf[msg->len - 1]);
-
-                send_count += send_num;
-
-                if (aic_get_time_ms() >= timeout) {
-                    ret = I2C_TIMEOUT;
-                    break;
-                }
-            }
-
-            if (ret != I2C_OK) {
-                break;
+            for (uint16_t i = 0; i < send_num; i++) {
+                aic_i2c_transmit_data(reg_base, msg->buf[idx]);
+                idx++;
             }
         }
+        size -= send_num;
+        send_count += send_num;
 
-        if ((send_count == size) && (ret == I2C_OK)) {
-            while (!(aic_i2c_get_raw_interrupt_state(reg_base) &
-                     I2C_INTR_STOP_DET)) {
-                stop_time++;
-
-                if (stop_time > I2C_TIMEOUT_DEF_VAL) {
-                    return I2C_TIMEOUT;
-                }
-            }
-            break;
+        ret = aic_i2c_wait_iic_transmit(reg_base, timeout);
+        if (ret != I2C_OK) {
+            send_count = ret;
+            return I2C_TIMEOUT;
         }
     }
+    if (send_count % I2C_FIFO_DEPTH == 0) {
+        aic_i2c_transfer_stop_bit(reg_base);
+    }
+    if ((send_count == size) && (ret == I2C_OK)) {
+        while (!(aic_i2c_get_raw_interrupt_state(reg_base) & I2C_INTR_STOP_DET)) {
+            stop_time++;
 
+            if (stop_time > I2C_TIMEOUT_DEF_VAL) {
+                return I2C_TIMEOUT;
+            }
+        }
+    }
     return send_count;
 }
 
 /**
-  \brief       aic_i2c_master_send_msg
+  \brief       aic_i2c_master_receive_msg
   \param[in]   reg_base
   \param[in]
-  \return      state
+  \return      bytes of read msg
 */
 int32_t aic_i2c_master_receive_msg(unsigned long reg_base,
                                    struct aic_i2c_msg *msg)
@@ -358,66 +343,44 @@ int32_t aic_i2c_master_receive_msg(unsigned long reg_base,
     uint16_t size = msg->len;
     uint32_t read_count = 0;
     uint8_t *receive_data = msg->buf;
-    uint32_t timeout = 100;
-
+    uint32_t timeout = 1000;
+    int idx = 0;
     CHECK_PARAM(receive_data, -EINVAL);
 
     aic_i2c_module_disable(reg_base);
     aic_i2c_target_addr(reg_base, msg->addr);
     aic_i2c_module_enable(reg_base);
 
-    if (size < I2C_FIFO_DEPTH) {
-        for (uint16_t len = 0; len < size - 1; len++) {
+    while (size > 0) {
+        int32_t recv_num = size > I2C_FIFO_DEPTH ? I2C_FIFO_DEPTH : size;
+        for (uint16_t len = 0; len < recv_num; len++) {
             aic_i2c_read_data_cmd(reg_base);
         }
-        aic_i2c_read_data_cmd_with_stop_bit(reg_base);
+        if (recv_num < I2C_FIFO_DEPTH)
+            aic_i2c_read_data_cmd_with_stop_bit(reg_base);
 
-        ret = aic_i2c_wait_receive(reg_base, size, timeout);
+        size -= recv_num;
+        read_count += recv_num;
+        ret = aic_i2c_wait_receive(reg_base, recv_num, timeout);
         if (ret == I2C_OK) {
-            for (read_count = 0; read_count < (int32_t)size; read_count++) {
-                *(receive_data++) = aic_i2c_get_receive_data(reg_base);
-                //                pr_notice("receive count %d:[%02x]\n", read_count, *receive_data);
+            for (uint16_t i = 0; i < recv_num; i++) {
+                receive_data[idx] = aic_i2c_get_receive_data(reg_base);
+                idx++;
             }
         } else {
             read_count = (int32_t)ret;
-            //            pr_err("ret : %d\n", ret);
+            break;
         }
+    }
+    if (read_count % I2C_FIFO_DEPTH == 0) {
+        aic_i2c_transfer_stop_bit(reg_base);
+    }
+    uint32_t timecount = timeout + aic_get_time_ms();
 
-    } else {
-        read_count = 0;
-        uint32_t cmd_num = 0;
-
-        for (cmd_num = size; cmd_num > (size - I2C_FIFO_DEPTH); cmd_num--)
-            aic_i2c_read_data_cmd(reg_base);
-
-        while (read_count < size) {
-            ret = aic_i2c_wait_receive(reg_base, 1U, timeout);
-
-            if (ret != I2C_OK) {
-                read_count = (int32_t)ret;
-                break;
-            }
-
-            *(receive_data++) = aic_i2c_get_receive_data(reg_base);
-            read_count++;
-
-            if (cmd_num > 0U) {
-                if (cmd_num == 1)
-                    aic_i2c_read_data_cmd_with_stop_bit(reg_base);
-                else
-                    aic_i2c_read_data_cmd(reg_base);
-                cmd_num--;
-            }
-        }
-
-        uint32_t timecount = timeout + aic_get_time_ms();
-
-        while (
-            !(aic_i2c_get_raw_interrupt_state(reg_base) & I2C_INTR_STOP_DET)) {
-            if (aic_get_time_ms() >= timecount) {
-                ret = I2C_TIMEOUT;
-                break;
-            }
+    while (!(aic_i2c_get_raw_interrupt_state(reg_base) & I2C_INTR_STOP_DET)) {
+        if (aic_get_time_ms() >= timecount) {
+            return I2C_TIMEOUT;
+            break;
         }
     }
     return read_count;

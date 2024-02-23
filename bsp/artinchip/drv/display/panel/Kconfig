@@ -33,6 +33,11 @@ menu "Display Panels"
         bool "ArtInChip MIPI DBI ili9486l panel"
         depends on AIC_DISP_MIPI_DBI
 
+    config AIC_PANEL_RGB_ST7701S
+        bool "ArtInChip rgb st7701s panel"
+        depends on AIC_DISP_RGB
+        select AIC_PANEL_SPI_EMULATION
+
     config AIC_PANEL_SRGB_HX8238
         bool "ArtInChip srgb hx8238 panel"
         depends on AIC_DISP_RGB

@@ -36,6 +36,12 @@ menu "Drivers"
         select AIC_XSPI_DRV
         source bsp/artinchip/drv_bare/psram/Kconfig.dev
 
+    config AIC_BOOTLOADER_AXICFG_SUPPORT
+        bool "AXICFG support"
+        default n
+        select AIC_AXICFG_DRV
+        source bsp/artinchip/hal/axicfg/Kconfig.dev
+
     config AIC_BOOT_USB_DRV
         bool "USB device driver support"
         default n
@@ -59,10 +65,6 @@ menu "Components"
 endmenu # "Components"
 
 menu "Upgrading"
-    config AIC_BOOTLOADER_UPGBOOT_PIN
-        string "PIN to enter upgrading mode"
-        default "PA.0"
-
     config AICUPG_UART_ENABLE
         bool "Upgrading by UART"
         default n
@@ -94,6 +96,11 @@ menu "Upgrading"
         default n
         select AIC_BOOTLOADER_UDISK_SUPPORT
         select AIC_BOOTLOADER_FATFS_SUPPORT
+
+    config AICUPG_UDISK_VERSION3_SUPPORT
+        bool  "Support USB 3.0 Udisk"
+        default n
+        depends on AICUPG_UDISK_ENABLE
 
     config AICUPG_USB_CONTROLLER_MAX_NUM
         int  "USB Host controller count"
@@ -154,6 +161,10 @@ menu "Commands"
 
     config AIC_BOOTLOADER_CMD_MEM
         bool "mem"
+        default y
+
+    config AIC_BOOTLOADER_CMD_PART
+        bool "part"
         default y
 
     config AIC_BOOTLOADER_CMD_PROGRESS_BAR

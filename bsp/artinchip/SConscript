@@ -163,6 +163,7 @@ if GetDepend('AIC_SDMC_DRV'):
         src += Glob('hal/sdmc/*.c')
     if GetDepend('DRIVER_BARE_DRV_EN'):
         src += Glob('drv_bare/sdmc/*.c')
+        src += Glob('drv_bare/block/*.c')
 
 # bare MTD driver
 if GetDepend('AIC_MTD_BARE_DRV'):
@@ -241,6 +242,9 @@ if GetDepend('AIC_PANEL_DBI_ST77903'):
 if GetDepend('AIC_PANEL_DBI_ILI9486L'):
     src += Glob('drv/display/panel/panel_dbi_ili9486l.c')
 
+if GetDepend('AIC_PANEL_RGB_ST7701S'):
+    src += Glob('drv/display/panel/panel_rgb_st7701s.c')
+
 if GetDepend('AIC_PANEL_SRGB_HX8238'):
     src += Glob('drv/display/panel/panel_srgb_hx8238.c')
 
@@ -309,6 +313,18 @@ if GetDepend('AIC_HRTIMER_DRV'):
     if GetDepend('DRIVER_HAL_EN'):
         src += Glob('hal/pwmcs/hal_cap.c')
 
+if GetDepend('AIC_CAP_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/cap/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/pwmcs/hal_cap.c')
+
+if GetDepend('AIC_EPWM_DRV'):
+    if GetDepend('DRIVER_DRV_EN'):
+        src += Glob('drv/epwm/*.c')
+    if GetDepend('DRIVER_HAL_EN'):
+        src += Glob('hal/pwmcs/hal_epwm.c')
+
 # CAN driver
 if GetDepend('AIC_CAN_DRV'):
     if GetDepend('DRIVER_DRV_EN'):
@@ -341,12 +357,7 @@ if GetDepend('AIC_CE_DRV'):
     if GetDepend('DRIVER_HAL_EN'):
         src += Glob('hal/ce/*.c')
 
-if GetDepend('AIC_LPCE_DRV'):
-    if GetDepend('DRIVER_DRV_EN'):
-        src += Glob('drv/lpce/*.c')
-    if GetDepend('DRIVER_HAL_EN'):
-        src += Glob('hal/lpce/*.c')
-
+# I2S driver
 if GetDepend('AIC_I2S_DRV'):
     if GetDepend('DRIVER_DRV_EN'):
         src += Glob('drv/i2s/*.c')

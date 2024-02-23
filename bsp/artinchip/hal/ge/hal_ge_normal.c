@@ -27,6 +27,10 @@
 #define ALIGN_128B(x) ALIGN_UP(x, 128)
 #define GE_TIMEOUT (1000 * 2) //second
 #define HW_RUNNING_EVENT        0x02
+#define BIT_SHIFT(bit) (1 << (bit))
+#define INIT_PHASE(step) (((step) >= BIT_SHIFT(16)) ? \
+                         (((step) >> 1) - BIT_SHIFT(15)) :\
+                         ((step) >> 1))
 
 #ifdef AIC_GE_DRV_V11
 #define GE_CLOCK   (150000000)
@@ -56,6 +60,11 @@ struct aic_ge_data {
 };
 
 struct aic_ge_data *g_data;
+static int ge_clk_enable(struct aic_ge_data *data);
+
+#ifdef CTRL_GE_CLK_IN_FRAME
+static int ge_clk_disable(struct aic_ge_data *data);
+#endif
 
 static inline int ge_check_buf(struct aic_ge_data   *data,
                    struct mpp_buf *video_buf)
@@ -579,19 +588,15 @@ static int ge_config_scaler(struct aic_ge_data *data,
         } else {
             dx[0] = (in_w[0] << 16) / out_w;
             dy[0] = (in_h[0] << 16) / out_h;
-            h_phase[0] = (dx[0] >= 65536) ?
-                     ((dx[0] >> 1) - 32768) :
-                     (dx[0] >> 1);
-            v_phase[0] = (dy[0] >= 65536) ?
-                     ((dy[0] >> 1) - 32768) :
-                     (dy[0] >> 1);
+            h_phase[0] = INIT_PHASE(dx[0]);
+            v_phase[0] = INIT_PHASE(dy[0]);
         }
         break;
     case MPP_FMT_YUV400:
         dx[0] = (in_w[0] << 16) / out_w;
         dy[0] = (in_h[0] << 16) / out_h;
-        h_phase[0] = dx[0] >> 1;
-        v_phase[0] = dy[0] >> 1;
+        h_phase[0] = INIT_PHASE(dx[0]);
+        v_phase[0] = INIT_PHASE(dy[0]);
         break;
     case MPP_FMT_YUV420P:
     case MPP_FMT_NV12:
@@ -602,8 +607,8 @@ static int ge_config_scaler(struct aic_ge_data *data,
 
         dx[0] = (in_w[0] << 16) / out_w;
         dy[0] = (in_h[0] << 16) / out_h;
-        h_phase[0] = dx[0] >> 1;
-        v_phase[0] = dy[0] >> 1;
+        h_phase[0] = INIT_PHASE(dx[0]);
+        v_phase[0] = INIT_PHASE(dy[0]);
 
         dx[0] = dx[0] & (~1);
         dy[0] = dy[0] & (~1);
@@ -638,8 +643,8 @@ static int ge_config_scaler(struct aic_ge_data *data,
 
         dx[0] = (in_w[0] << 16) / out_w;
         dy[0] = (in_h[0] << 16) / out_h;
-        h_phase[0] = dx[0] >> 1;
-        v_phase[0] = dy[0] >> 1;
+        h_phase[0] = INIT_PHASE(dx[0]);
+        v_phase[0] = INIT_PHASE(dy[0]);
 
         dx[0] = dx[0] & (~1);
         h_phase[0] = h_phase[0] & (~1);
@@ -661,8 +666,8 @@ static int ge_config_scaler(struct aic_ge_data *data,
 
         dx[0] = (in_w[0] << 16) / out_w;
         dy[0] = (in_h[0] << 16) / out_h;
-        h_phase[0] = dx[0] >> 1;
-        v_phase[0] = dy[0] >> 1;
+        h_phase[0] = INIT_PHASE(dx[0]);
+        v_phase[0] = INIT_PHASE(dy[0]);
 
         dx[1] = dx[0];
         dy[1] = dy[0];
@@ -1477,7 +1482,13 @@ int hal_ge_control(struct aic_ge_client *clt, int cmd, void *arg)
         struct ge_fillrect fill;
 
         memcpy(&fill, arg, sizeof(fill));
+#ifdef CTRL_GE_CLK_IN_FRAME
+        ge_clk_enable(g_data);
+#endif
         ret = ge_fillrect(g_data, &fill);
+#ifdef CTRL_GE_CLK_IN_FRAME
+        ge_clk_disable(g_data);
+#endif
     }
     break;
     case IOC_GE_BITBLT:
@@ -1485,7 +1496,13 @@ int hal_ge_control(struct aic_ge_client *clt, int cmd, void *arg)
         struct ge_bitblt blt;
 
         memcpy(&blt, arg,  sizeof(blt));
+#ifdef CTRL_GE_CLK_IN_FRAME
+        ge_clk_enable(g_data);
+#endif
         ret = ge_bitblt(g_data, &blt);
+#ifdef CTRL_GE_CLK_IN_FRAME
+        ge_clk_disable(g_data);
+#endif
     }
     break;
     case IOC_GE_ROTATE:
@@ -1493,7 +1510,13 @@ int hal_ge_control(struct aic_ge_client *clt, int cmd, void *arg)
         struct ge_rotation rot;
 
         memcpy(&rot, arg, sizeof(rot));
+#ifdef CTRL_GE_CLK_IN_FRAME
+        ge_clk_enable(g_data);
+#endif
         ret = ge_rotate(g_data, &rot);
+#ifdef CTRL_GE_CLK_IN_FRAME
+        ge_clk_disable(g_data);
+#endif
     }
     break;
     default:
@@ -1530,6 +1553,15 @@ static int ge_clk_enable(struct aic_ge_data *data)
 
     return 0;
 }
+
+#ifdef CTRL_GE_CLK_IN_FRAME
+static int ge_clk_disable(struct aic_ge_data *data)
+{
+    hal_clk_disable(CLK_GE);
+    hal_reset_assert(RESET_GE);
+    return 0;
+}
+#endif
 
 struct aic_ge_client *hal_ge_open(void)
 {
@@ -1574,7 +1606,7 @@ int hal_ge_init(void)
     data->lock = aicos_mutex_create();
 
 #ifdef AIC_GE_DITHER
-    int dither_line_len = ALIGN_128B(((MAX_WIDTH * 4) + 127));
+    int dither_line_len = (MAX_WIDTH * 4) + 128 + CACHE_LINE_SIZE;
     data->dither_line_ptr = (u8 *)aicos_malloc(GE_CMA,  dither_line_len);
     if (!data->dither_line_ptr) {
         hal_log_err("failed to malloc dither line buffer\n");
@@ -1582,14 +1614,16 @@ int hal_ge_init(void)
     }
     data->dither_line_phys = ALIGN_128B((uintptr_t)data->dither_line_ptr);
 
-    aicos_dcache_clean_invalid_range((unsigned long *)(data->dither_line_phys), (MAX_WIDTH * 4));
+    int dither_line_size_align = ALIGN_UP((MAX_WIDTH * 4), CACHE_LINE_SIZE);
+    aicos_dcache_clean_invalid_range((unsigned long *)(data->dither_line_phys), dither_line_size_align);
 
     hal_log_info("dither line phys :0X0%08x\n", (u32)data->dither_line_phys);
 #endif
     g_data = data;
 
+#ifndef CTRL_GE_CLK_IN_FRAME
     ge_clk_enable(data);
-
+#endif
     hal_log_info("%s() end\n", __func__);
 
     return 0;

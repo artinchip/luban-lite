@@ -9,29 +9,21 @@
 #include "inc/spinand.h"
 #include "inc/manufacturer.h"
 
-#define SPINAND_MFR_MACRONIX		0xC2
-
-struct spi_nand_cmd_cfg macronix_cmd_cfg_table[] = {
-    /*opcode    opcode_bits addr_bytes	addr_bits	dummy_bytes	data_nbits*/
-    { SPINAND_CMD_READ_FROM_CACHE, 1, 2, 1, 1, 1 },
-    { SPINAND_CMD_READ_FROM_CACHE_X2, 1, 2, 1, 1, 2 },
-    { SPINAND_CMD_READ_FROM_CACHE_X4, 1, 2, 1, 1, 4 },
-    { SPINAND_CMD_PROG_LOAD, 1, 2, 1, 0, 1 },
-    { SPINAND_CMD_PROG_LOAD_X4, 1, 2, 1, 0, 4 },
-    { SPINAND_CMD_END },
-};
+#define SPINAND_MFR_MACRONIX 0xC2
 
 const struct aic_spinand_info macronix_spinand_table[] = {
-    /*devid page_size oob_size block_per_lun pages_per_eraseblock is_die_select*/
+    /*devid page_size oob_size block_per_lun pages_per_eraseblock planes_per_lun
+    is_die_select*/
     /*MX35LF2G14AC-Z4I*/
-    { 0x20, 2048, 64, 2048, 64, 0, "macronix 256MB: 2048+64@64@2048",
-      macronix_cmd_cfg_table },
+    { DEVID(0x20), PAGESIZE(2048), OOBSIZE(64), BPL(2048), PPB(64), PLANENUM(2),
+      DIE(0), "macronix 256MB: 2048+64@64@2048", cmd_cfg_table },
     /*MX35LF1G24AD-Z4I*/
-    { 0x14, 2048, 128, 1024, 64, 0, "macronix 128MB: 2048+128@64@1024",
-      macronix_cmd_cfg_table },
+    { DEVID(0x14), PAGESIZE(2048), OOBSIZE(128), BPL(1024), PPB(64),
+      PLANENUM(1), DIE(0), "macronix 128MB: 2048+128@64@1024", cmd_cfg_table },
 };
 
-const struct aic_spinand_info *macronix_spinand_detect(struct aic_spinand *flash)
+const struct aic_spinand_info *
+macronix_spinand_detect(struct aic_spinand *flash)
 {
     u8 *Id = flash->id.data;
 

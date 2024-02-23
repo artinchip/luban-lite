@@ -34,7 +34,7 @@
 
 int hal_efuse_init(void)
 {
-    int ret = 0;
+    int ret = 0, val = EFUSE_TIMING_VALUE;
 
     ret = hal_clk_enable(CLK_SID);
     if (ret < 0) {
@@ -47,6 +47,8 @@ int hal_efuse_init(void)
         hal_log_err("Failed to reset SID deassert.\n");
         return -EFAULT;
     }
+
+    writel(val, EFUSE_REG_TIMING);
 
     return 0;
 }
@@ -97,7 +99,9 @@ int hal_efuse_read(u32 wid, u32 *wval)
         writel(val, EFUSE_REG_CTL);
 
         /* Wait read finish */
-        while(readl(EFUSE_REG_CTL) & (1 << 4));
+        while(readl(EFUSE_REG_CTL) & (1 << 4)) {
+            continue;
+        }
 
         rval |= readl(EFUSE_REG_RDATA);
     }
@@ -130,7 +134,9 @@ int hal_efuse_write(u32 wid, u32 wval)
         writel(val, EFUSE_REG_CTL);
 
         /* Wait write finish */
-        while(readl(EFUSE_REG_CTL) & (1 << 0));
+        while(readl(EFUSE_REG_CTL) & (1 << 0)) {
+            continue;
+        }
     }
 
     return 0;

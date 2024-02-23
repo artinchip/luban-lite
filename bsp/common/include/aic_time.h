@@ -15,8 +15,8 @@ extern "C" {
 void aic_udelay(u32 us);
 void aic_mdelay(u32 ms);
 u64 aic_get_ticks(void);
-u32 aic_get_time_us(void);
-u32 aic_get_time_ms(void);
+u64 aic_get_time_us(void);
+u64 aic_get_time_ms(void);
 
 #ifdef __cplusplus
 }

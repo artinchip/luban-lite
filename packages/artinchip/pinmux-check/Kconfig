@@ -1,0 +1,10 @@
+menuconfig LPKG_USING_PINMUX_CHECHK
+    bool "aic-pinmux-check"
+    default n
+
+if LPKG_USING_PINMUX_CHECHK
+config AIC_PINMUX_CHECK
+    bool "Enable pinmux check tools"
+    depends on LPKG_USING_PINMUX_CHECHK
+    default n
+endif

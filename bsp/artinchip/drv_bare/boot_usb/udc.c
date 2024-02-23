@@ -77,7 +77,7 @@ void aic_udc_bulk_ep_reset(void)
  * USB Reset from HOST.
  * This is the first interrupt when device connect to host.
  */
-static void reset_intr_proc(void)
+void reset_intr_proc(void)
 {
     struct aic_udc *udc = &aic_udc;
     u32 i, setup_pkt_max, pkt_cnt, xfersiz;

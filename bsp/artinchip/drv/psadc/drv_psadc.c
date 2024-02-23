@@ -169,11 +169,11 @@ static rt_err_t drv_psadc_enabled(struct rt_adc_device *dev, rt_uint32_t ch,
     if (!chan)
         return -RT_EINVAL;
     if (enabled) {
-        aich_psadc_ch_init(chan, g_psadc_pclk_rate);
+        hal_psadc_ch_init(chan, g_psadc_pclk_rate);
         if (chan->mode == AIC_PSADC_MODE_SINGLE)
             chan->complete = aicos_sem_create(0);
     } else {
-        aich_psadc_qc_irq_enable(0);
+        hal_psadc_qc_irq_enable(0);
         if (chan->mode == AIC_PSADC_MODE_SINGLE) {
             aicos_sem_delete(chan->complete);
             chan->complete = NULL;
@@ -191,7 +191,7 @@ static rt_err_t drv_psadc_convert(struct rt_adc_device *dev, rt_uint32_t ch,
     if (!chan)
         return -RT_EINVAL;
 
-    return aich_psadc_read(chan, (u32 *)value, AIC_PSADC_TIMEOUT);
+    return hal_psadc_read(chan, (u32 *)value, AIC_PSADC_TIMEOUT);
 }
 
 static rt_uint8_t drv_gpai_resolution(struct rt_adc_device *dev)
@@ -211,11 +211,13 @@ static int drv_psadc_init(void)
     struct rt_adc_device *dev = NULL;
     s32 ret = 0;
 
+#ifdef AIC_PSADC_DRV_V11
     ret = hal_clk_set_freq(CLK_PSADC, AIC_PSADC_CLK_RATE);
     if (ret < 0) {
             LOG_E("PSADC clk freq set failed!");
             return -RT_ERROR;
     }
+#endif
 
     ret = hal_clk_enable(CLK_PSADC);
     if (ret < 0) {
@@ -229,15 +231,15 @@ static int drv_psadc_init(void)
         return -RT_ERROR;
     }
 
-    aic_psadc_single_queue_mode(1);
+    hal_psadc_single_queue_mode(1);
 
-    ret = aicos_request_irq(PSADC_IRQn, aich_psadc_isr, 0, NULL, NULL);
+    ret = aicos_request_irq(PSADC_IRQn, hal_psadc_isr, 0, NULL, NULL);
       if (ret < 0) {
         LOG_E("PSADC irq enable failed!");
         return -RT_ERROR;
     }
 
-    aich_psadc_enable(1);
+    hal_psadc_enable(1);
     hal_psadc_set_ch_num(ARRAY_SIZE(aic_psadc_chs));
     g_psadc_pclk_rate = hal_clk_get_freq(hal_clk_get_parent(CLK_PSADC));
 
@@ -313,7 +315,7 @@ static void cmd_psadc(int argc, char **argv)
         return;
 
     if (show_status) {
-        aich_psadc_status_show(chan);
+        hal_psadc_status_show(chan);
         return;
     }
 

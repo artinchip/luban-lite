@@ -11,30 +11,21 @@
 
 #define SPINAND_MFR_FORESEE 0xCD
 
-struct spi_nand_cmd_cfg foresee_cmd_cfg_table[] = {
-    /*opcode    opcode_bits addr_bytes	addr_bits	dummy_bytes	data_nbits*/
-    { SPINAND_CMD_READ_FROM_CACHE, 1, 2, 1, 1, 1 },
-    { SPINAND_CMD_READ_FROM_CACHE_X2, 1, 2, 1, 1, 2 },
-    { SPINAND_CMD_READ_FROM_CACHE_X4, 1, 2, 1, 1, 4 },
-    { SPINAND_CMD_PROG_LOAD, 1, 2, 1, 0, 1 },
-    { SPINAND_CMD_PROG_LOAD_X4, 1, 2, 1, 0, 4 },
-    { SPINAND_CMD_END },
-};
-
 const struct aic_spinand_info foresee_spinand_table[] = {
-    /*devid page_size oob_size block_per_lun pages_per_eraseblock is_die_select*/
+    /*devid page_size oob_size block_per_lun pages_per_eraseblock planes_per_lun
+    is_die_select*/
     /*F35SQA512M*/
-    { 0x70, 2048, 64, 512, 64, 0, "foresee 64MB: 2048+64@64@512",
-      foresee_cmd_cfg_table },
+    { DEVID(0x70), PAGESIZE(2048), OOBSIZE(64), BPL(512), PPB(64), PLANENUM(1),
+      DIE(0), "foresee 64MB: 2048+64@64@512", cmd_cfg_table },
     /*F35SQA001G*/
-    { 0x71, 2048, 64, 1024, 64, 0, "foresee 128MB: 2048+64@64@1024",
-      foresee_cmd_cfg_table },
+    { DEVID(0x71), PAGESIZE(2048), OOBSIZE(64), BPL(1024), PPB(64), PLANENUM(1),
+      DIE(0), "foresee 128MB: 2048+64@64@1024", cmd_cfg_table },
     /*F35SQA002G*/
-    { 0x72, 2048, 64, 2048, 64, 0, "foresee 256MB: 2048+64@64@2048",
-      foresee_cmd_cfg_table },
+    { DEVID(0x72), PAGESIZE(2048), OOBSIZE(64), BPL(2048), PPB(64), PLANENUM(1),
+      DIE(0), "foresee 256MB: 2048+64@64@2048", cmd_cfg_table },
     /*FS35ND04G*/
-    { 0xEC, 2048, 64, 4096, 64, 0, "foresee 512MB: 2048+64@64@4096",
-      foresee_cmd_cfg_table },
+    { DEVID(0xEC), PAGESIZE(2048), OOBSIZE(64), BPL(4096), PPB(64), PLANENUM(1),
+      DIE(0), "foresee 512MB: 2048+64@64@4096", cmd_cfg_table },
 };
 
 const struct aic_spinand_info *foresee_spinand_detect(struct aic_spinand *flash)

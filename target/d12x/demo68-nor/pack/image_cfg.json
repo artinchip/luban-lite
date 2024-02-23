@@ -1,0 +1,86 @@
+{
+    "spi-nor": { // Device, The name should be the same with string in image:info:media:type
+        "size": "16m", // Size of SPI NAND
+        "partitions": {
+            "spl":        { "size": "256k" },
+            "os":         { "size": "2m" },
+            "rodata":     { "size": "6m" },
+            "data":       { "size": "7m" }
+        },
+    },
+    "image": {
+        "info": { // Header information about image
+            "platform": "d12x",
+            "product": "demo68-nor",
+            "version": "1.0.0",
+            "media": {
+                "type": "spi-nor",
+                "device_id": 0,
+            }
+        },
+        "updater": { // Image writer which is downloaded to RAM by USB/UART
+            "psram": {
+                "file": "uartupg-psram-init.aic",
+                "attr": ["required", "run"],
+                "ram": "0x30043000"
+            },
+            "spl": {
+                "file": "bootloader.aic",
+                "attr": ["required", "run"],
+                "ram": "0x40100000"
+            },
+        },
+        "target": { // Image components which will be burn to device's partitions
+            "spl": {
+                "file": "bootloader.aic",
+                "attr": ["mtd", "required"],
+                "part": ["spl"]
+            },
+            "os": {
+                "file": "d12x_os.itb",
+                "attr": ["mtd", "required"],
+                "part": ["os"]
+            },
+            "rodata": {
+                "file": "rodata.fatfs",
+                "attr": ["mtd", "optional"],
+                "part": ["rodata"]
+            },
+            "data": {
+                "file": "data.lfs",
+                "attr": ["mtd", "optional"],
+                "part": ["data"]
+            },
+        },
+    },
+    "temporary": { // Pre-proccess to generate image components from raw data
+        "aicboot": {
+            "uartupg-psram-init.aic": { // No loader, only PreBootProgram to initialize PSRAM
+                "head_ver": "0x00010001",
+                "resource": {
+                    "private": "pbp_cfg.bin",
+                    "pbp": "d12x.pbp",
+                },
+            },
+            "bootloader.aic": {
+                "head_ver": "0x00010001",
+                "loader": {
+                    "file": "bootloader.bin",
+                    "load address":     "0x30043000",
+                    "entry point":      "0x30043100",
+                    "load address ext": "0x40300000",
+                    "entry point ext":  "0x40300100",
+                },
+                "resource": {
+                    "private": "pbp_cfg.bin",
+                    "pbp": "d12x.pbp",
+                },
+            },
+        },
+        "itb": {
+            "d12x_os.itb": {
+                "its": "d12x_os.its"
+            },
+        },
+    },
+}

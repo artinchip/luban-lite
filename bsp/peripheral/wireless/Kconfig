@@ -1,7 +1,10 @@
-config WLAN_REALTEK
-       bool "RealTek"
-       default n
+menuconfig AIC_WLAN_REALTEK
+    bool "Using Realtek wlan driver"
+    default n
+    depends on AIC_WIRELESS_LAN
+    select RT_USING_TIMER_SOFT
+    select AIC_USING_REALTEK_WLAN0
 
-if WLAN_REALTEK
-source "bsp/peripheral/wireless/rtl8733/Kconfig"
-endif #WLAN_REALTEK
+    if AIC_WLAN_REALTEK
+    source "bsp/peripheral/wireless/realtek/Kconfig"
+    endif

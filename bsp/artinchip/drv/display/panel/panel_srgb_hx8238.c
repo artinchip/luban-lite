@@ -16,7 +16,7 @@ static struct gpio_desc scl;
 static struct gpio_desc cs;
 static struct gpio_desc reset;
 
-static void HX8238_send_cmd(unsigned char cmd)
+static void hx8238_send_cmd(unsigned char cmd)
 {
     int i;
 
@@ -36,7 +36,7 @@ static void HX8238_send_cmd(unsigned char cmd)
     }
 }
 
-static void HX8238_send_data(unsigned int data)
+static void hx8238_send_data(unsigned int data)
 {
     int i;
 
@@ -56,7 +56,7 @@ static void HX8238_send_data(unsigned int data)
     }
 }
 
-static void HX8238_write(unsigned char code,unsigned int data)
+static void hx8238_write(unsigned char code,unsigned int data)
 {
     panel_gpio_set_value(&sda, 1);
     panel_gpio_set_value(&scl, 1);
@@ -66,8 +66,8 @@ static void HX8238_write(unsigned char code,unsigned int data)
     panel_gpio_set_value(&cs, 0);
     aic_delay_us(50);
 
-    HX8238_send_cmd(code);
-    HX8238_send_data(data);
+    hx8238_send_cmd(code);
+    hx8238_send_data(data);
 
     panel_gpio_set_value(&scl, 0);
     aic_delay_us(5);
@@ -77,7 +77,7 @@ static void HX8238_write(unsigned char code,unsigned int data)
     panel_gpio_set_value(&cs, 1);
 }
 
-void HX8238_init(void)
+void hx8238_init(void)
 {
     panel_get_gpio(&sda, SDA_GPIO);
     panel_get_gpio(&scl, SCL_GPIO);
@@ -94,79 +94,79 @@ void HX8238_init(void)
 
     aic_delay_us(10);
 
-    HX8238_write(0x70, 0x0001);
-    HX8238_write(0x72, 0x6300);
+    hx8238_write(0x70, 0x0001);
+    hx8238_write(0x72, 0x6300);
 
-    HX8238_write(0x70, 0x0002);
-    HX8238_write(0x72, 0x0200);
+    hx8238_write(0x70, 0x0002);
+    hx8238_write(0x72, 0x0200);
 
-    HX8238_write(0x70, 0x0003);
-    HX8238_write(0x72, 0x6364);
+    hx8238_write(0x70, 0x0003);
+    hx8238_write(0x72, 0x6364);
 
-    HX8238_write(0x70, 0x0004);
-    HX8238_write(0x72, 0x0489);
+    hx8238_write(0x70, 0x0004);
+    hx8238_write(0x72, 0x0489);
 
-    HX8238_write(0x70, 0x0005);
-    HX8238_write(0x72, 0xBCC4);
+    hx8238_write(0x70, 0x0005);
+    hx8238_write(0x72, 0xBCC4);
 
-    HX8238_write(0x70, 0x000A);
-    HX8238_write(0x72, 0x4008);
+    hx8238_write(0x70, 0x000A);
+    hx8238_write(0x72, 0x4008);
 
-    HX8238_write(0x70, 0x000B);
-    HX8238_write(0x72, 0xD400);
+    hx8238_write(0x70, 0x000B);
+    hx8238_write(0x72, 0xD400);
 
-    HX8238_write(0x70, 0x000D);
-    HX8238_write(0x72, 0x3229);
+    hx8238_write(0x70, 0x000D);
+    hx8238_write(0x72, 0x3229);
 
-    HX8238_write(0x70, 0x000E);
-    HX8238_write(0x72, 0x3200);
+    hx8238_write(0x70, 0x000E);
+    hx8238_write(0x72, 0x3200);
 
-    HX8238_write(0x70, 0x000F);
-    HX8238_write(0x72, 0x0000);
+    hx8238_write(0x70, 0x000F);
+    hx8238_write(0x72, 0x0000);
 
-    HX8238_write(0x70, 0x0016);
-    HX8238_write(0x72, 0x9F80);
+    hx8238_write(0x70, 0x0016);
+    hx8238_write(0x72, 0x9F80);
 
-    HX8238_write(0x70, 0x0017);
-    HX8238_write(0x72, 0x2212);
+    hx8238_write(0x70, 0x0017);
+    hx8238_write(0x72, 0x2212);
 
-    HX8238_write(0x70, 0x001E);
-    HX8238_write(0x72, 0x00D2);
+    hx8238_write(0x70, 0x001E);
+    hx8238_write(0x72, 0x00D2);
 
-    HX8238_write(0x70, 0x0030);
-    HX8238_write(0x72, 0x0000);
+    hx8238_write(0x70, 0x0030);
+    hx8238_write(0x72, 0x0000);
 
-    HX8238_write(0x70, 0x0031);
-    HX8238_write(0x72, 0x0407);
+    hx8238_write(0x70, 0x0031);
+    hx8238_write(0x72, 0x0407);
 
-    HX8238_write(0x70, 0x0032);
-    HX8238_write(0x72, 0x0202);
+    hx8238_write(0x70, 0x0032);
+    hx8238_write(0x72, 0x0202);
 
-    HX8238_write(0x70, 0x0033);
-    HX8238_write(0x72, 0x0000);
+    hx8238_write(0x70, 0x0033);
+    hx8238_write(0x72, 0x0000);
 
-    HX8238_write(0x70, 0x0034);
-    HX8238_write(0x72, 0x0505);
+    hx8238_write(0x70, 0x0034);
+    hx8238_write(0x72, 0x0505);
 
-    HX8238_write(0x70, 0x0035);
-    HX8238_write(0x72, 0x0003);
+    hx8238_write(0x70, 0x0035);
+    hx8238_write(0x72, 0x0003);
 
-    HX8238_write(0x70, 0x0036);
-    HX8238_write(0x72, 0x0707);
+    hx8238_write(0x70, 0x0036);
+    hx8238_write(0x72, 0x0707);
 
-    HX8238_write(0x70, 0x0037);
-    HX8238_write(0x72, 0x0000);
+    hx8238_write(0x70, 0x0037);
+    hx8238_write(0x72, 0x0000);
 
-    HX8238_write(0x70, 0x003A);
-    HX8238_write(0x72, 0x0904);
+    hx8238_write(0x70, 0x003A);
+    hx8238_write(0x72, 0x0904);
 
-    HX8238_write(0x70, 0x003B);
-    HX8238_write(0x72, 0x0904);
+    hx8238_write(0x70, 0x003B);
+    hx8238_write(0x72, 0x0904);
 }
 
 static int panel_prepare(void)
 {
-    HX8238_init();
+    hx8238_init();
 
     return panel_default_prepare();
 }
@@ -180,7 +180,7 @@ static struct aic_panel_funcs panel_funcs = {
 };
 
 static struct display_timing hx8238_timing = {
-    .pixelclock = 15000000,
+    .pixelclock = 8000000,
     .hactive = 320,
     .hfront_porch = 20,
     .hback_porch = 12,

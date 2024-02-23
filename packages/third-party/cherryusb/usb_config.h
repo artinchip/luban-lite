@@ -7,8 +7,8 @@
 #define CHERRYUSB_CONFIG_H
 
 #include <aic_core.h>
-
-#define CHERRYUSB_VERSION 0x001000
+#define CHERRYUSB_VERSION     0x010000
+#define CHERRYUSB_VERSION_STR "v1.0.0"
 
 /* ================ USB common Configuration ================ */
 
@@ -32,8 +32,14 @@
 #define USB_NOCACHE_RAM_SECTION
 #define CONFIG_USB_ALIGN_SIZE CACHE_LINE_SIZE
 #else
-#define USB_NOCACHE_RAM_SECTION __attribute__((section(".noncacheable")))
+
+/* data align size when use dma */
+#ifndef CONFIG_USB_ALIGN_SIZE
 #define CONFIG_USB_ALIGN_SIZE 4
+#endif
+
+/* attribute data into no cache ram */
+#define USB_NOCACHE_RAM_SECTION __attribute__((section(".noncacheable")))
 #endif
 
 /* ================= USB Device Stack Configuration ================ */
@@ -50,29 +56,8 @@
 /* Enable test mode */
 // #define CONFIG_USBDEV_TEST_MODE
 
-//#define CONFIG_USBDEV_TX_THREAD
-//#define CONFIG_USBDEV_RX_THREAD
-
-#ifdef CONFIG_USBDEV_TX_THREAD
-#ifndef CONFIG_USBDEV_TX_PRIO
-#define CONFIG_USBDEV_TX_PRIO 4
-#endif
-#ifndef CONFIG_USBDEV_TX_STACKSIZE
-#define CONFIG_USBDEV_TX_STACKSIZE 2048
-#endif
-#endif
-
-#ifdef CONFIG_USBDEV_RX_THREAD
-#ifndef CONFIG_USBDEV_RX_PRIO
-#define CONFIG_USBDEV_RX_PRIO 4
-#endif
-#ifndef CONFIG_USBDEV_RX_STACKSIZE
-#define CONFIG_USBDEV_RX_STACKSIZE 2048
-#endif
-#endif
-
-#ifndef CONFIG_USBDEV_MSC_BLOCK_SIZE
-#define CONFIG_USBDEV_MSC_BLOCK_SIZE 512
+#ifndef CONFIG_USBDEV_MSC_MAX_BUFSIZE
+#define CONFIG_USBDEV_MSC_MAX_BUFSIZE 512
 #endif
 
 #ifndef CONFIG_USBDEV_MSC_MANUFACTURER_STRING
@@ -85,6 +70,16 @@
 
 #ifndef CONFIG_USBDEV_MSC_VERSION_STRING
 #define CONFIG_USBDEV_MSC_VERSION_STRING "0.01"
+#endif
+
+// #define CONFIG_USBDEV_MSC_THREAD
+
+#ifndef CONFIG_USBDEV_MSC_PRIO
+#define CONFIG_USBDEV_MSC_PRIO 4
+#endif
+
+#ifndef CONFIG_USBDEV_MSC_STACKSIZE
+#define CONFIG_USBDEV_MSC_STACKSIZE 2048
 #endif
 
 #ifndef CONFIG_USBDEV_RNDIS_RESP_BUFFER_SIZE
@@ -107,11 +102,17 @@
 
 /* ================ USB HOST Stack Configuration ================== */
 
+#if defined(AIC_USING_USB0_HOST) && defined(AIC_USING_USB1_HOST)
+#define CONFIG_USBHOST_MAX_BUS              2
+#else
+#define CONFIG_USBHOST_MAX_BUS              1
+#endif
+
 #define CONFIG_USBHOST_MAX_RHPORTS          1
 #define CONFIG_USBHOST_MAX_EXTHUBS          1
 #define CONFIG_USBHOST_MAX_EHPORTS          4
-#define CONFIG_USBHOST_MAX_INTERFACES       6
-#define CONFIG_USBHOST_MAX_INTF_ALTSETTINGS 1
+#define CONFIG_USBHOST_MAX_INTERFACES       8
+#define CONFIG_USBHOST_MAX_INTF_ALTSETTINGS 8
 #define CONFIG_USBHOST_MAX_ENDPOINTS        4
 
 #define CONFIG_USBHOST_MAX_CDC_ACM_CLASS 4
@@ -119,18 +120,20 @@
 #define CONFIG_USBHOST_MAX_MSC_CLASS     2
 #define CONFIG_USBHOST_MAX_AUDIO_CLASS   1
 #define CONFIG_USBHOST_MAX_VIDEO_CLASS   1
-#define CONFIG_USBHOST_MAX_RNDIS_CLASS   1
 
 #define CONFIG_USBHOST_DEV_NAMELEN 16
 
 #ifndef CONFIG_USBHOST_PSC_PRIO
-#define CONFIG_USBHOST_PSC_PRIO 4
+#define CONFIG_USBHOST_PSC_PRIO 0
 #endif
 #ifndef CONFIG_USBHOST_PSC_STACKSIZE
 #define CONFIG_USBHOST_PSC_STACKSIZE 2048
 #endif
 
 //#define CONFIG_USBHOST_GET_STRING_DESC
+
+// #define CONFIG_USBHOST_MSOS_ENABLE
+#define CONFIG_USBHOST_MSOS_VENDOR_CODE 0x00
 
 /* Ep0 max transfer buffer */
 #define CONFIG_USBHOST_REQUEST_BUFFER_LEN 512
@@ -169,30 +172,13 @@
 
 /* ================ EHCI Configuration ================ */
 
-#if defined(AIC_USING_USB0_HOST)
-#define CONFIG_USB_EHCI_HCCR_BASE       (USB_HOST0_BASE)
-#define CONFIG_USB_EHCI_HCOR_BASE       (USB_HOST0_BASE + 0x10)
-#define CONFIG_USB_EHCI_CLK             (CLK_USBH0)
-#define CONFIG_USB_EHCI_RESET           (RESET_USBH0)
-#define CONFIG_USB_EHCI_PHY_CLK         (CLK_USB_PHY0)
-#define CONFIG_USB_EHCI_PHY_RESET       (RESET_USBPHY0)
-#define CONFIG_USB_EHCI_IRQ_NUM         (USB_HOST0_EHCI_IRQn)
-#elif defined(AIC_USING_USB1_HOST)
-#define CONFIG_USB_EHCI_HCCR_BASE       (USB_HOST1_BASE)
-#define CONFIG_USB_EHCI_HCOR_BASE       (USB_HOST1_BASE + 0x10)
-#define CONFIG_USB_EHCI_CLK             (CLK_USBH1)
-#define CONFIG_USB_EHCI_RESET           (RESET_USBH1)
-#define CONFIG_USB_EHCI_PHY_CLK         (CLK_USB_PHY1)
-#define CONFIG_USB_EHCI_PHY_RESET       (RESET_USBPHY1)
-#define CONFIG_USB_EHCI_IRQ_NUM         (USB_HOST1_EHCI_IRQn)
-#else
-#define CONFIG_USB_EHCI_HCCR_BASE       (0x20072000)
-#define CONFIG_USB_EHCI_HCOR_BASE       (0x20072000 + 0x10)
-#endif
+#define CONFIG_USB_EHCI_HCCR_OFFSET     (0x0)
+#define CONFIG_USB_EHCI_HCOR_OFFSET     (0x10)
 #define CONFIG_USB_EHCI_FRAME_LIST_SIZE 1024
 // #define CONFIG_USB_EHCI_INFO_ENABLE
-// #define CONFIG_USB_ECHI_HCOR_RESERVED_DISABLE
+// #define CONFIG_USB_EHCI_HCOR_RESERVED_DISABLE
 #define CONFIG_USB_EHCI_CONFIGFLAG
 #define CONFIG_USB_EHCI_PORT_POWER
+// #define CONFIG_USB_EHCI_PRINT_HW_PARAM
 
 #endif

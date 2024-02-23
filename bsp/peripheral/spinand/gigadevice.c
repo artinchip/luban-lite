@@ -8,45 +8,62 @@
 #include "spinand.h"
 #include "manufacturer.h"
 
-#define SPINAND_MFR_GIGADEVICE    0xC8
+#define SPINAND_MFR_GIGADEVICE 0xC8
 
 #define GD5FXGQXXEXXG_REG_STATUS2 0xf0
 
-#define GIGADEVICE                _CFG_QUAD_ENABLE BIT(0)
+#define GIGADEVICE _CFG_QUAD_ENABLE BIT(0)
 
-struct spi_nand_cmd_cfg gigadevice_cmd_cfg_table[] = {
-    /*opcode    opcode_bits addr_bytes	addr_bits	dummy_bytes	data_nbits*/
-    { SPINAND_CMD_READ_FROM_CACHE, 1, 2, 1, 1, 1 },
-    { SPINAND_CMD_READ_FROM_CACHE_X2, 1, 2, 1, 1, 2 },
-    { SPINAND_CMD_READ_FROM_CACHE_X4, 1, 2, 1, 1, 4 },
-    { SPINAND_CMD_PROG_LOAD, 1, 2, 1, 0, 1 },
-    { SPINAND_CMD_PROG_LOAD_X4, 1, 2, 1, 0, 4 },
-    { SPINAND_CMD_END },
-};
+
+static int gd5f1gm7ue_ecc_get_status(struct aic_spinand *flash, u8 status)
+{
+    switch (status & STATUS_ECC_MASK) {
+        case STATUS_ECC_NO_BITFLIPS:
+            return 0;
+        case STATUS_ECC_HAS_1_4_BITFLIPS:
+            return 4;
+        case STATUS_ECC_UNCOR_ERROR:
+            return -SPINAND_ERR_ECC;
+        case STATUS_ECC_MASK:
+            return 8;
+        default:
+            break;
+    }
+
+    return -SPINAND_ERR;
+}
 
 const struct aic_spinand_info gigadevice_spinand_table[] = {
-    /*devid page_size oob_size block_per_lun pages_per_eraseblock is_die_select*/
+    /*devid page_size oob_size block_per_lun pages_per_eraseblock planes_per_lun
+    is_die_select*/
     /*GD5F2GM7UE*/
-    { 0x92, 2048, 128, 2048, 64, 0, "GIGADEVICE 256MB: 2048+128@64@2048",
-      gigadevice_cmd_cfg_table },
+    { DEVID(0x92), PAGESIZE(2048), OOBSIZE(128), BPL(2048), PPB(64),
+      PLANENUM(1), DIE(0), "GIGADEVICE 256MB: 2048+128@64@2048",
+      cmd_cfg_table },
     /*GD5F4GM8UE*/
-    { 0x95, 2048, 128, 4096, 64, 0, "GIGADEVICE 512MB: 2048+128@64@4096",
-      gigadevice_cmd_cfg_table },
+    { DEVID(0x95), PAGESIZE(2048), OOBSIZE(128), BPL(4096), PPB(64),
+      PLANENUM(1), DIE(0), "GIGADEVICE 512MB: 2048+128@64@4096",
+      cmd_cfg_table },
     /*GD5F1GQ5UE*/
-    { 0x51, 2048, 128, 1024, 64, 0, "GIGADEVICE 128MB: 2048+128@64@1024",
-      gigadevice_cmd_cfg_table },
+    { DEVID(0x51), PAGESIZE(2048), OOBSIZE(128), BPL(1024), PPB(64),
+      PLANENUM(1), DIE(0), "GIGADEVICE 128MB: 2048+128@64@1024",
+      cmd_cfg_table },
     /*GD5F1GM7UE*/
-    { 0x91, 2048, 128, 1024, 64, 0, "GIGADEVICE 128MB: 2048+128@64@1024",
-      gigadevice_cmd_cfg_table },
+    { DEVID(0x91), PAGESIZE(2048), OOBSIZE(128), BPL(1024), PPB(64),
+      PLANENUM(1), DIE(0), "GIGADEVICE 128MB: 2048+128@64@1024",
+      cmd_cfg_table, gd5f1gm7ue_ecc_get_status},
     /*GD5F2GQ5UE*/
-    { 0x52, 2048, 128, 2048, 64, 0, "GIGADEVICE 256MB: 2048+128@64@2048",
-      gigadevice_cmd_cfg_table },
+    { DEVID(0x52), PAGESIZE(2048), OOBSIZE(128), BPL(2048), PPB(64),
+      PLANENUM(1), DIE(0), "GIGADEVICE 256MB: 2048+128@64@2048",
+      cmd_cfg_table },
     /*GD5F1GQ5REYIGR*/
-    { 0x41, 2048, 128, 1024, 64, 0, "GIGADEVICE 128MB: 2048+128@64@1024",
-      gigadevice_cmd_cfg_table },
+    { DEVID(0x41), PAGESIZE(2048), OOBSIZE(128), BPL(1024), PPB(64),
+      PLANENUM(1), DIE(0), "GIGADEVICE 128MB: 2048+128@64@1024",
+      cmd_cfg_table },
 };
 
-const struct aic_spinand_info *gigadevice_spinand_detect(struct aic_spinand *flash)
+const struct aic_spinand_info *
+gigadevice_spinand_detect(struct aic_spinand *flash)
 {
     u8 *Id = flash->id.data;
 

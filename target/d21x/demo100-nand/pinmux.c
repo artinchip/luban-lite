@@ -258,7 +258,7 @@ struct aic_pinmux aic_pinmux_config[] = {
     /* clk_out2 */
     {6, PIN_PULL_DIS, 3, "PE.10"},
 #endif
-#ifdef AIC_USING_RTL8733_WLAN0
+#ifdef AIC_WIRELESS_LAN
     {1, PIN_PULL_DIS, 3, "PE.16"},  // PWR
 #endif
 #ifdef AIC_USING_PWM0
@@ -276,6 +276,18 @@ struct aic_pinmux aic_pinmux_config[] = {
 #ifdef AIC_USING_PWM3
     {7, PIN_PULL_DIS, 3, "PC.6"},
     {7, PIN_PULL_DIS, 3, "PC.7"},
+#endif
+#ifdef AIC_USING_EPWM0
+    {7, PIN_PULL_DIS, 3, "PD.8"},
+    {7, PIN_PULL_DIS, 3, "PD.9"},
+#endif
+#ifdef AIC_USING_EPWM1
+    {7, PIN_PULL_DIS, 3, "PD.10"},
+    {7, PIN_PULL_DIS, 3, "PD.11"},
+#endif
+#ifdef AIC_USING_EPWM2
+    {7, PIN_PULL_DIS, 3, "PD.12"},
+    {7, PIN_PULL_DIS, 3, "PD.13"},
 #endif
 #ifdef AIC_USING_GPAI0
     {2, PIN_PULL_DIS, 3, "PA.0"},

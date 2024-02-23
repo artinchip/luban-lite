@@ -35,18 +35,19 @@ struct aic_rt_audio_render{
 
 s32 rt_audio_render_init(struct aic_audio_render *render,s32 dev_id)
 {
-    long ret ;
+    long ret;
     struct aic_rt_audio_render *rt_render = (struct aic_rt_audio_render*)render;
     rt_render->snd_dev = rt_device_find(SOUND_DEVICE_NAME);
-    if(!rt_render->snd_dev){
+    if (!rt_render->snd_dev) {
         loge("rt_device_find error!\n");
         return -1;
     }
     ret = rt_device_open(rt_render->snd_dev, RT_DEVICE_OFLAG_WRONLY);
-    if(ret != 0){
+    if (ret != 0) {
         loge("rt_device_open error!\n");
         return -1;
     }
+    rt_render->status = AIC_AUDIO_STATUS_PLAY;
     return 0;
 }
 
@@ -62,18 +63,13 @@ s32 rt_audio_render_set_attr(struct aic_audio_render *render,struct aic_audio_re
 {
     struct aic_rt_audio_render *rt_render = (struct aic_rt_audio_render*)render;
     struct rt_audio_caps caps = {0};
+
     caps.main_type               = AUDIO_TYPE_OUTPUT;
     caps.sub_type                = AUDIO_DSP_PARAM;
     caps.udata.config.samplerate = attr->sample_rate;
     caps.udata.config.channels   = attr->channels;
     caps.udata.config.samplebits = 16;
     rt_device_control(rt_render->snd_dev, AUDIO_CTL_CONFIGURE, &caps);
-
-    caps.main_type               = AUDIO_TYPE_MIXER;
-    caps.sub_type                = AUDIO_MIXER_VOLUME;
-    caps.udata.value = 65;
-    rt_device_control(rt_render->snd_dev, AUDIO_CTL_CONFIGURE, &caps);
-
     return 0;
 
 }
@@ -83,14 +79,30 @@ s32 rt_audio_render_get_attr(struct aic_audio_render *render,struct aic_audio_re
     return 0;
 }
 
+#ifdef RT_AUDIO_REPLAY_MP_BLOCK_SIZE
+    #define BLOCK_SIZE RT_AUDIO_REPLAY_MP_BLOCK_SIZE
+#else
+    #define BLOCK_SIZE (2*1024)
+#endif
+
 s32 rt_audio_render_rend(struct aic_audio_render *render, void* pData, s32 nDataSize)
 {
     struct aic_rt_audio_render *rt_render = (struct aic_rt_audio_render*)render;
     s32 w_len;
-    w_len = rt_device_write(rt_render->snd_dev, 0, pData, nDataSize);
-    if(w_len != nDataSize){
-        loge("rt_device_write w_len:%d,nDataSize:%d!\n",w_len,nDataSize);
-     }
+    s32 count = 0;
+    s32 pos = 0;
+
+    count = nDataSize;
+    while(count > 0) {
+        w_len = rt_device_write(rt_render->snd_dev,0, pData+pos,(count > BLOCK_SIZE)?(BLOCK_SIZE):(count));
+        if (w_len <= 0) {
+            loge("rt_device_write w_len:%d,nDataSize:%d!\n",w_len,nDataSize);
+            return -1;
+        }
+        count -= w_len;
+        pos += w_len;
+    }
+
     return 0;
 }
 
@@ -105,6 +117,20 @@ s64 rt_audio_render_get_cached_time(struct aic_audio_render *render)
 
 s32 rt_audio_render_pause(struct aic_audio_render *render)
 {
+    int pause;
+    struct aic_rt_audio_render *rt_render = (struct aic_rt_audio_render*)render;
+
+    if (rt_render->status == AIC_AUDIO_STATUS_PLAY) {
+        pause = 1;
+        rt_device_control(rt_render->snd_dev, AUDIO_CTL_PAUSE, &pause);
+        rt_render->status = AIC_AUDIO_STATUS_PAUSE;
+    } else if (rt_render->status == AIC_AUDIO_STATUS_PAUSE) {
+        pause = 0;
+        rt_device_control(rt_render->snd_dev, AUDIO_CTL_PAUSE, &pause);
+        rt_render->status = AIC_AUDIO_STATUS_PLAY;
+    } else {
+        return -1;
+    }
     return 0;
 }
 
@@ -141,7 +167,7 @@ s32 aic_audio_render_create(struct aic_audio_render **render)
 {
     struct aic_rt_audio_render * rt_render;
     rt_render = mpp_alloc(sizeof(struct aic_rt_audio_render));
-    if(rt_render == NULL){
+    if (rt_render == NULL) {
         loge("mpp_alloc alsa_render fail!!!\n");
         *render = NULL;
         return -1;

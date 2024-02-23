@@ -109,6 +109,7 @@ struct hal_xspi_state {
 
 
 int hal_xspi_init(hal_xspi_handle *h, struct hal_xspi_config *cfg);
+int hal_xspi_reset_clk(hal_xspi_handle *h, u32 reset_clock);
 int hal_xspi_set_cmd_width(hal_xspi_handle *h, u8 ddr_sdr_mode, u8 lines);
 int hal_xspi_set_cmd_width(hal_xspi_handle *h, u8 ddr_sdr_mode, u8 lines);
 int hal_xspi_set_cmd(hal_xspi_handle *h, u8 ddr_sdr_mode, u8 cmd);
@@ -128,6 +129,7 @@ int hal_xspi_set_phase_sel(hal_xspi_handle *h, u8 sel, u8 phase_sel);
 int hal_xspi_set_cs(hal_xspi_handle *h, u8 sel);
 int hal_xspi_set_boudary(hal_xspi_handle *h, u8 by);
 int hal_xspi_set_parallel_mode(hal_xspi_handle *h, u8 mode);
+int hal_xspi_set_timeout(hal_xspi_handle *h, u32 timeout);
 
 #ifdef __cplusplus
 }

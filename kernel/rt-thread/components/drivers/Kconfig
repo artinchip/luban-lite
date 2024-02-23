@@ -305,7 +305,7 @@ config RT_USING_AUDIO
     if RT_USING_AUDIO
         config RT_AUDIO_REPLAY_MP_BLOCK_SIZE
             int "Replay memory pool block size"
-            default 16384
+            default 2048
 
         config RT_AUDIO_REPLAY_MP_BLOCK_COUNT
             int "Replay memory pool block count"

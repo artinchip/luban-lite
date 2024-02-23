@@ -11,6 +11,7 @@
 
 #include <aic_core.h>
 #include <hal_sdmc.h>
+#include <aic_partition.h>
 
 struct aic_sdmc_pdata {
     ulong base;
@@ -18,7 +19,7 @@ struct aic_sdmc_pdata {
     int clk;
     u32 is_sdio;
     u8 id;
-    u8 buswidth8;
+    u8 buswidth;
     u8 drv_phase;
     u8 smp_phase;
 };
@@ -33,7 +34,7 @@ struct aic_sdmc_dev {
     u32 bus_width;
     u32 clock;
     u32 card_caps;
-    u32 card_capacity;
+    u32 card_capacity; /* unit: KB*/
     u32 host_caps;
     u32 valid_ocr;
     u32 scr[2];
@@ -42,6 +43,7 @@ struct aic_sdmc_dev {
     u32 boot_bus_cond;
     u32 part_num;
     u32 read_bl_len;
+    u32 erase_grp_size; /* in 512-byte sectors */
     u32 blk_max;
     u32 sdmc_id;
     u32 max_seg_size;
@@ -67,13 +69,6 @@ struct aic_sdmc_data {
     u32 blks;
     u32 blksize;
     int err;
-};
-
-struct aic_partition {
-    char name[32];
-    u64 start;
-    u64 size;
-    struct aic_partition *next;
 };
 
 /**
@@ -102,7 +97,6 @@ struct aic_sdmc {
     unsigned int clock;
     unsigned int sclk_rate;
     unsigned int div;
-    int buswidth;
     int ddr_mode;
 
     /* use fifo mode to read and write data */
@@ -199,7 +193,8 @@ struct aic_sdmc {
 #define OCR_VOLTAGE_MASK 0x00FFFF80
 #define OCR_ACCESS_MODE  0x60000000
 
-#define SECURE_ERASE 0x80000000
+#define MMC_ERASE_ARG    0x00000000
+#define MMC_SECURE_ERASE 0x80000000
 
 #define MMC_STATUS_MASK         (~0x0206BF7F)
 #define MMC_STATUS_RDY_FOR_DATA (1 << 8)
@@ -321,10 +316,15 @@ s32 mmc_init(int id);
 s32 mmc_deinit(int id);
 u32 mmc_bread(void *priv, u32 start, u32 blkcnt, u8 *dst);
 u32 mmc_bwrite(struct aic_sdmc *host, u32 start, u32 blkcnt, const u8 *src);
+u32 mmc_berase(struct aic_sdmc *host, u32 start, u32 blkcnt);
 struct aic_sdmc *find_mmc_dev_by_index(int id);
 struct aic_partition *mmc_new_partition(char *s, u64 start);
 void mmc_free_partition(struct aic_partition *part);
 struct aic_partition *mmc_create_gpt_part(void);
 void sdcard_hotplug_init(void);
+int mmc_block_init(struct aic_sdmc *host);
+int mmc_block_refresh(struct aic_sdmc *host);
+int mmc_block_deinit(struct aic_sdmc *host);
+
 
 #endif /* _AIC_MMC_H_ */

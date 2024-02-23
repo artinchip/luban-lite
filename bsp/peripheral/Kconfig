@@ -1,15 +1,7 @@
 
 source "bsp/peripheral/spinand/Kconfig"
 source "bsp/peripheral/spinor_sfud/Kconfig"
-
-config AIC_WIRELESS_LAN
-       bool "Wireless Lan"
-       default n
-
-if AIC_WIRELESS_LAN
-source "bsp/peripheral/wireless/Kconfig"
-endif
-
+source "bsp/peripheral/nftl/Kconfig"
 
 #--------------------------------------------
 # touch panel driver global option
@@ -17,6 +9,9 @@ endif
 
 menu "Touch Panel Support"
 source "bsp/peripheral/touch/gt911/Kconfig"
+source "bsp/peripheral/touch/ft7411/Kconfig"
+source "bsp/peripheral/touch/gsl1680/Kconfig"
+source "bsp/peripheral/touch/rtp/Kconfig"
 endmenu
 
 #--------------------------------------------

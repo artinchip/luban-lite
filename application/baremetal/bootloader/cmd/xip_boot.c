@@ -20,6 +20,7 @@
 #include <boot.h>
 #include <aic_core.h>
 #include <aic_flash_xip_def.h>
+#include "fitimage.h"
 
 #if defined(AIC_BOOTLOADER_CMD_XIP_BOOT) && defined(AIC_QSPI_DRV_V11)
 
@@ -49,7 +50,7 @@ static int aic_xip_init(struct mtd_dev *mtd, u32 msk, u32 val)
     id = ((flash->chip.mf_id << 16) | (flash->chip.type_id << 8) |
           (flash->chip.capacity_id << 0));
 
-    printf("XIP flasd ID: 0x%x\n", id);
+    printf("XIP flash ID: 0x%x\n", id);
 
     xip_cfg = get_xip_device_cfg(id, msk, val);
     if (xip_cfg == NULL) {
@@ -82,34 +83,37 @@ static struct mtd_dev *nor_flash_init(void)
     return mtd;
 }
 
-static void *get_start_entry(struct mtd_dev *mtd)
-{
-    return (void *)((unsigned long)mtd->start + FLASH_XIP_BASE + AIC_HEAD_SIZE);
-}
-
 static int do_xip_boot(int argc, char *argv[])
 {
     int ret = 0;
     struct mtd_dev *mtd;
-    void (*ep)(void);
+    ulong entry_point;
+    struct spl_load_info info;
 
     mtd = nor_flash_init();
     if (!mtd) {
         printf("XIP boot failed ...\n");
     }
 
-    //msk = CMD_PROTO_QIO;  //val = CMD_PROTO_QIO;
     aic_xip_init(mtd, CMD_PROTO_QIO, CMD_PROTO_QIO);
-    ep = get_start_entry(mtd);
 
     // need to delay, otherwise bootup unstable.
     aicos_udelay(1000 * 100);
 
-    printf("XIP boot, start entry: 0x%lx, used %u us...\n", (unsigned long)ep, aic_get_time_us());
+    info.dev = (void *)mtd;
+    info.dev_type = DEVICE_XIPNOR;
+    info.bl_len = 1;
+    info.priv = (void *)((unsigned long)mtd->start + FLASH_XIP_BASE);
+
+    ret = spl_load_simple_fit(&info, &entry_point);
+    if (ret < 0)
+        goto out;
+
     /* boot */
     aicos_dcache_clean();
-    ep();
+    boot_app((void *)entry_point);
 
+out:
     return ret;
 }
 

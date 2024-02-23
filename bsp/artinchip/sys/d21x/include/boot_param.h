@@ -69,10 +69,14 @@ enum boot_controller {
 
 #define BD_BOOTROM BD_USB
 
+typedef int (*nand_read)(void *dev, unsigned long offset, void *buf,
+                         unsigned long len);
 enum boot_reason aic_get_boot_reason(void);
 enum boot_device aic_get_boot_device(void);
 enum boot_controller aic_get_boot_controller(void);
 int aic_get_boot_image_id(void);
 unsigned long aic_timer_get_us(void);
-
+void *aic_get_boot_resource(void);
+void *aic_get_boot_resource_from_nand(void *dev, unsigned long pagesize,
+                                      nand_read fn);
 #endif /* __BOOT_PARAM_H__ */

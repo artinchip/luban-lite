@@ -63,6 +63,19 @@ struct aic_pwm_arg {
     enum pwm_polarity polarity;
 };
 
+enum aic_pwm_int_event {
+    PWM_CMPA_UP = 0,
+    PWM_CMPA_DOWN,
+    PWM_CMPB_UP,
+    PWM_CMPB_DOWN
+};
+
+struct aic_pwm_pulse_para {
+    u32 prd_ns;
+    u32 duty_ns;
+    u32 pulse_cnt;
+};
+
 void hal_pwm_ch_init(u32 ch, enum aic_pwm_mode mode, u32 default_level,
                      struct aic_pwm_action *a0, struct aic_pwm_action *a1);
 int hal_pwm_set(u32 ch, u32 duty_ns, u32 period_ns);
@@ -70,6 +83,9 @@ int hal_pwm_get(u32 ch, u32 *duty_ns, u32 *period_ns);
 int hal_pwm_set_polarity(u32 ch, enum pwm_polarity polarity);
 int hal_pwm_enable(u32 ch);
 int hal_pwm_disable(u32 ch);
+u32 hal_pwm_int_sts(void);
+void hal_pwm_clr_int(u32 stat);
+void hal_pwm_int_config(u32 ch, u8 irq_mode, u8 enable);
 
 int hal_pwm_init(void);
 int hal_pwm_deinit(void);

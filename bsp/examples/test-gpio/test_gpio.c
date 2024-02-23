@@ -36,13 +36,13 @@ static void test_gpio_usage(char *program)
     printf("Example： \n");
     printf("         %s -i \n", program);
     printf("    or\n");
-    printf("         %s -iPD.15 \n", program);
+    printf("         %s -iPD.4 \n", program);
 }
 
 static void test_gpio_input_irq_handler(void *args)
 {
-    static rt_uint32_t cnt = 0;
-    printf("Key pressed, cnt:%ld\n", cnt++);
+    static u32 cnt = 0;
+    printf("Key pressed, cnt:%d\n", cnt++);
 }
 
 
@@ -54,18 +54,14 @@ static void test_gpio_input_irq_handler(void *args)
  *          other:  pin number
  *
  */
-static rt_uint8_t test_gpio_pin_check(char *arg_pin)
+static u32 test_gpio_pin_check(char *arg_pin)
 {
-    rt_uint8_t pin;
+    u32 pin;
 
     if (arg_pin == RT_NULL || strlen(arg_pin) == 0) {
         printf("pin set default PD.15\n");
         pin = rt_pin_get(INPUT_KEY_PIN);
     } else {
-#if (defined AIC_DISP_RGB_DRV || defined AIC_PM_DRV || defined AIC_I2S_DRV)
-        printf("RGB or PowerManagement or I2S might cause pinmux-conflict!!\n");
-        return 0;
-#endif
         printf("pin set: [%s]\n", arg_pin);
         pin = rt_pin_get(arg_pin);
     }
@@ -76,7 +72,7 @@ static rt_uint8_t test_gpio_pin_check(char *arg_pin)
 static void test_gpio_input_pin_cfg(char *arg_pin)
 {
     // 1.get pin number
-    rt_uint8_t pin = test_gpio_pin_check(arg_pin);
+    u32 pin = test_gpio_pin_check(arg_pin);
 
     // 2.set pin mode to Input-PullUp
     rt_pin_mode(pin, PIN_MODE_INPUT_PULLUP);
@@ -91,7 +87,7 @@ static void test_gpio_input_pin_cfg(char *arg_pin)
 static void test_gpio_output_pin(char *arg_pin)
 {
     // 1.get pin number
-    rt_uint8_t pin = test_gpio_pin_check(arg_pin);
+    u32 pin = test_gpio_pin_check(arg_pin);
 
     // 2.set pin mode to Output
     rt_pin_mode(pin, PIN_MODE_OUTPUT);

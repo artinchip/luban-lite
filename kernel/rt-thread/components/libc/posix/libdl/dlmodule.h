@@ -18,6 +18,8 @@
 #define RT_DLMODULE_STAT_CLOSING    0x02
 #define RT_DLMODULE_STAT_CLOSED     0x03
 
+#define RT_DLMODULE_DEAMON          0xDEA305
+
 struct rt_dlmodule;
 typedef void* rt_addr_t;
 

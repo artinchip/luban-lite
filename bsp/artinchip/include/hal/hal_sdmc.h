@@ -218,6 +218,7 @@ int hal_sdmc_idma_start(struct aic_sdmc_host *host, u32 size, u32 read,
 int hal_sdmc_idma_stop(struct aic_sdmc_host *host,
                        struct bounce_buffer *bbstate, u32 read);
 void hal_sdmc_idma_disable(struct aic_sdmc_host *host);
+u8 hal_sdmc_get_idma_status(struct aic_sdmc_host *host);
 void hal_sdmc_idma_prepare(struct aic_sdmc_host *host,
                            u32 blksize, u32 blks,
                            struct aic_sdmc_idma_desc *cur_idma,

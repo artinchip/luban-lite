@@ -22,21 +22,20 @@
 #define XSPI_DDR_MODE 1
 #define XSPI_SDR_MODE 0
 
-#define XSPI_MODE_XCCELA    0
-#define XSPI_MODE_HYPERBUS  1
-#define XSPI_MODE_OPI       2
-#define XSPI_MODE_SPI       3
+#define XSPI_MODE_XCCELA   0
+#define XSPI_MODE_HYPERBUS 1
+#define XSPI_MODE_OPI      2
+#define XSPI_MODE_SPI      3
 
-#define XSPI_IO_1   0x0
-#define XSPI_IO_2   0x1
-#define XSPI_IO_4   0x2
-#define XSPI_IO_8   0x3
+#define XSPI_IO_1 0x0
+#define XSPI_IO_2 0x1
+#define XSPI_IO_4 0x2
+#define XSPI_IO_8 0x3
 
 #define XSPI_PARALLEL_MODE 1
-#define XSPI_SINGLE_MODE 0
+#define XSPI_SINGLE_MODE   0
 
-#define BASE_PSRAM  0x40000000
-
+#define BASE_PSRAM 0x40000000
 
 // usually config by menuconfig
 #ifndef AIC_XSPI_PSRAM_CLK
@@ -48,9 +47,6 @@
 #ifndef AIC_XSPI_PSRAM_CS1_PINS
 #define AIC_XSPI_PSRAM_CS1_PINS 0
 #endif
-
-
-
 
 static struct aic_xspi aic_xspi_controller[] = {
     {
@@ -79,7 +75,6 @@ static struct aic_xspi *aic_get_xspi_by_index(u32 idx)
 
 static u32 aic_xspi_psram_dev_reset(hal_xspi_handle *handle)
 {
-
     hal_xspi_set_cmd_width(handle, XSPI_DDR_MODE, XSPI_IO_8);
     hal_xspi_set_cmd(handle, XSPI_DDR_MODE, 0xff);
     hal_xspi_set_addr_width(handle, XSPI_DDR_MODE, XSPI_IO_8, 3);
@@ -97,57 +92,124 @@ static u32 aic_xspi_psram_dev_reset(hal_xspi_handle *handle)
     return 0;
 }
 
+[[maybe_unused]] static u8 aic_xspi_psram_mr4(hal_xspi_handle *handle)
+{
+    u8 data = 0;
+
+    hal_xspi_set_cmd_width(handle, XSPI_DDR_MODE, XSPI_IO_8);
+    hal_xspi_set_cmd(handle, XSPI_DDR_MODE, 0x40);
+    hal_xspi_set_addr_width(handle, XSPI_DDR_MODE, XSPI_IO_8, 3);
+    hal_xspi_set_addr(handle, 0x04);
+    hal_xspi_set_dummy(handle, XSPI_IO_8, 4);
+    hal_xspi_set_read_cnt(handle, XSPI_DDR_MODE, XSPI_IO_8, 1);
+
+    struct hal_xspi_transfer t3;
+    t3.rx_data = (u8 *)&data;
+    t3.tx_data = NULL;
+    t3.data_len = 1;
+    hal_xspi_transfer_cpu_sync(handle, &t3);
+    pr_debug("MA4(0x04) read: 0x%x \n", data);
+
+    return data;
+}
+
 static u32 aic_xspi_psram_dev_init(hal_xspi_handle *handle)
 {
-
+    u8 mr4 = aic_xspi_psram_mr4(handle);
     hal_xspi_set_cmd_width(handle, XSPI_DDR_MODE, XSPI_IO_8);
     hal_xspi_set_cmd(handle, XSPI_DDR_MODE, 0xc0);
     hal_xspi_set_addr_width(handle, XSPI_DDR_MODE, XSPI_IO_8, 3);
     hal_xspi_set_addr(handle, 0x0);
-    hal_xspi_set_dummy(handle, XSPI_IO_8, 0x0);
-    hal_xspi_set_write_cnt(handle, XSPI_DDR_MODE, XSPI_IO_8, 2);
 
-    u8 buf1[2] = {0x19, 0x00};
+    mr4 &= (1 << 7);
+    if (mr4 == 0) {
+        hal_xspi_set_dummy(handle, XSPI_IO_8, 0x0);
+    } else {
+        hal_xspi_set_dummy(handle, XSPI_IO_8, 0x2);
+    }
+
+    hal_xspi_set_write_cnt(handle, XSPI_DDR_MODE, XSPI_IO_8, 1);
+    u8 buf = 0x19;
     struct hal_xspi_transfer t2;
     t2.rx_data = NULL;
-    t2.tx_data = (u8 *)buf1;
-    t2.data_len = 2;
+    t2.tx_data = (u8 *)&buf;
+    t2.data_len = 1;
     hal_xspi_transfer_cpu_sync(handle, &t2);
 
     hal_xspi_set_addr(handle, 0x4);
-    u8 buf11[2] = {0x80, 0x00};
-    struct hal_xspi_transfer t22;
-    t22.rx_data = NULL;
-    t22.tx_data = (u8 *)buf11;
-    t22.data_len = 2;
-    hal_xspi_transfer_cpu_sync(handle, &t22);
+    buf = 0x80;
+    t2.rx_data = NULL;
+    t2.tx_data = (u8 *)&buf;
+    t2.data_len = 1;
+    hal_xspi_transfer_cpu_sync(handle, &t2);
 
     return 0;
 }
 
 [[maybe_unused]] static u32 aic_xspi_psram_read_id(hal_xspi_handle *handle)
 {
-
-    u32 data = 0;
+    u16 data = 0;
 
     hal_xspi_set_cmd_width(handle, XSPI_DDR_MODE, XSPI_IO_8);
     hal_xspi_set_cmd(handle, XSPI_DDR_MODE, 0x40);
     hal_xspi_set_addr_width(handle, XSPI_DDR_MODE, XSPI_IO_8, 3);
-    hal_xspi_set_addr(handle, 0x02);
-    hal_xspi_set_dummy(handle, XSPI_IO_8, 3);
-    hal_xspi_set_read_cnt(handle, XSPI_DDR_MODE, XSPI_IO_8, 4);
+    hal_xspi_set_addr(handle, 0x01);
+    hal_xspi_set_dummy(handle, XSPI_IO_8, 4);
+    hal_xspi_set_read_cnt(handle, XSPI_DDR_MODE, XSPI_IO_8, 2);
 
     struct hal_xspi_transfer t3;
     t3.rx_data = (u8 *)&data;
     t3.tx_data = NULL;
-    t3.data_len = 4;
+    t3.data_len = 2;
     hal_xspi_transfer_cpu_sync(handle, &t3);
     pr_debug("APS3208K_ID= 0x%x\n", data);
 
     return 0;
 }
 
-static u32 aic_xspi_psram_xip(hal_xspi_handle *handle, hal_xspi_proto_cfg_t proto)
+[[maybe_unused]] static u32 aic_xspi_psram_read(hal_xspi_handle *handle)
+{
+    u8 data[2] = { 0 };
+
+    hal_xspi_set_cmd_width(handle, XSPI_DDR_MODE, XSPI_IO_8);
+    hal_xspi_set_cmd(handle, XSPI_DDR_MODE, 0x40);
+    hal_xspi_set_addr_width(handle, XSPI_DDR_MODE, XSPI_IO_8, 3);
+    hal_xspi_set_addr(handle, 0x00);
+    hal_xspi_set_dummy(handle, XSPI_IO_8, 4);
+    hal_xspi_set_read_cnt(handle, XSPI_DDR_MODE, XSPI_IO_8, 2);
+
+    struct hal_xspi_transfer t3;
+    t3.rx_data = (u8 *)data;
+    t3.tx_data = NULL;
+    t3.data_len = 2;
+    hal_xspi_transfer_cpu_sync(handle, &t3);
+    pr_debug("MA(0x00) read: D0=0x%x(MR0), D1=0x%x(MR1), \n", data[0], data[1]);
+
+    hal_xspi_set_addr(handle, 0x01);
+    t3.rx_data = (u8 *)data;
+    t3.tx_data = NULL;
+    t3.data_len = 2;
+    hal_xspi_transfer_cpu_sync(handle, &t3);
+    pr_debug("MA(0x01) read: D0=0x%x(MR1), D1=0x%x(MR2), \n", data[0], data[1]);
+
+    hal_xspi_set_addr(handle, 0x02);
+    t3.rx_data = (u8 *)data;
+    t3.tx_data = NULL;
+    t3.data_len = 2;
+    hal_xspi_transfer_cpu_sync(handle, &t3);
+    pr_debug("MA(0x02) read: D0=0x%x(MR2), D1=0x%x(MR4), \n", data[0], data[1]);
+
+    hal_xspi_set_addr(handle, 0x04);
+    t3.rx_data = (u8 *)data;
+    t3.tx_data = NULL;
+    t3.data_len = 2;
+    hal_xspi_transfer_cpu_sync(handle, &t3);
+    pr_debug("MA(0x04) read: D0=0x%x(MR4), D1=0x%x(MR0), \n", data[0], data[1]);
+    return 0;
+}
+
+static u32 aic_xspi_psram_xip(hal_xspi_handle *handle,
+                              hal_xspi_proto_cfg_t proto)
 {
     hal_xspi_xip_cfg(handle, proto);
     hal_xspi_xip_enable(handle);
@@ -161,52 +223,41 @@ static u8 aic_xspi_psram_mem_test(long address, u32 size)
 
     /**< 32bit test */
     {
-        u32 * p_u32 = (u32 *)address;
-        for(i=0; i<size/sizeof(u32); i++)
-        {
+        u32 *p_u32 = (u32 *)address;
+        for (i = 0; i < size / sizeof(u32); i++) {
             *p_u32++ = (u32)i;
         }
 
         p_u32 = (u32 *)address;
-        for(i=0; i<size/sizeof(u32); i++)
-        {
-            if( *p_u32 != (u32)i )
-            {
-                pr_err("32bit test fail @ 0x%08lX, system halt!!!!!",(long)p_u32);
+        for (i = 0; i < size / sizeof(u32); i++) {
+            if (*p_u32 != (u32)i) {
                 return 1;
             }
             p_u32++;
         }
-        pr_debug("32bit test pass!!\r\n");
     }
 
     /**< 32bit Loopback test */
     {
-        u32 * p_u32 = (u32 *)address;
-        for(i=0; i<size/sizeof(u32); i++)
-        {
-            *p_u32  = (long)p_u32;
+        u32 *p_u32 = (u32 *)address;
+        for (i = 0; i < size / sizeof(u32); i++) {
+            *p_u32 = (long)p_u32;
             p_u32++;
         }
 
         p_u32 = (u32 *)address;
-        for(i=0; i<size/sizeof(u32); i++)
-        {
-            if( *p_u32 != (long)p_u32 )
-            {
-                pr_err("32bit Loopback test fail @ 0x%08lX", (long)p_u32);
-                pr_err(" data:0x%08X, ", (u32)*p_u32);
-                pr_err("system halt!!!!!\n");
+        for (i = 0; i < size / sizeof(u32); i++) {
+            if (*p_u32 != (long)p_u32) {
                 return 1;
             }
             p_u32++;
         }
-        pr_debug("32bit Loopback test pass!!\r\n");
     }
     return 0;
 }
 
-u32 aic_xspi_psram_training(hal_xspi_handle *h, u8 sel, u8 reg_icp, void *psram_buf, u32 len)
+u32 aic_xspi_psram_training(hal_xspi_handle *h, u8 sel, u8 reg_icp,
+                            void *psram_buf, u32 len)
 {
     u8 temp = 0;
     u8 temp1 = 0;
@@ -220,12 +271,13 @@ u32 aic_xspi_psram_training(hal_xspi_handle *h, u8 sel, u8 reg_icp, void *psram_
     hal_xspi_set_dll_ctl(h, sel, reg_icp, 3);
 
     aicos_dcache_clean();
-    for(u8 i=0; i<15; i++){
+    for (u8 i = 0; i < 15; i++) {
         hal_xspi_set_phase_sel(h, sel, i);
         aic_udelay(5);
         temp1 = i;
         ret_memtest = aic_xspi_psram_mem_test((long)psram_buf, len);
-        if (!ret_memtest) break;
+        if (!ret_memtest)
+            break;
     }
     if (temp1 == 15) {
         hal_log_err("Trainning failed...\n");
@@ -233,23 +285,25 @@ u32 aic_xspi_psram_training(hal_xspi_handle *h, u8 sel, u8 reg_icp, void *psram_
     }
 
     aicos_dcache_clean();
-    for(u8 i=14; i>=0; i--){
+    for (u8 i = 14; i >= 0; i--) {
         hal_xspi_set_phase_sel(h, sel, i);
         aic_udelay(5);
         temp2 = i;
         ret_memtest = aic_xspi_psram_mem_test((long)psram_buf, len);
-        if (!ret_memtest) break;
+        if (!ret_memtest)
+            break;
     }
 
-    temp = (temp1 + temp2)/2;
+    temp = (temp1 + temp2) / 2;
     hal_xspi_set_dll_ctl(h, sel, reg_icp, temp);
-    pr_err(" %s:%d cs=%d, temp=%d, temp1=%d, temp2=%d...\n", __FUNCTION__, __LINE__, sel, temp, temp1, temp2);
+    pr_err(" %s:%d cs=%d, temp=%d, temp1=%d, temp2=%d...\n", __FUNCTION__,
+           __LINE__, sel, temp, temp1, temp2);
     return 0;
 }
 
-#define AIC_XSPI_ICP_50_100M    0
-#define AIC_XSPI_ICP_100_150M   1
-#define AIC_XSPI_ICP_150_200M   2
+#define AIC_XSPI_ICP_50_100M  0
+#define AIC_XSPI_ICP_100_150M 1
+#define AIC_XSPI_ICP_150_200M 2
 u32 aic_xspi_psram_icp_calc(u32 clk_in_hz)
 {
     if ((clk_in_hz >= 99000000) && (clk_in_hz <= 198000000)) {
@@ -271,10 +325,10 @@ u32 aic_xspi_psram_init(void)
 
     xspi = aic_get_xspi_by_index(0);
     if (!xspi)
-        return -1;
+        return PSRAM_INIT_FAILED;
 
     if (xspi->inited)
-        return 0;
+        return PSRAM_INIT_OK;
 
     memset(&cfg, 0, sizeof(cfg));
     cfg.idx = xspi->idx;
@@ -286,14 +340,13 @@ u32 aic_xspi_psram_init(void)
     ret = hal_xspi_init(&xspi->handle, &cfg);
     if (ret) {
         pr_err("xspi init failed.\n");
-        return ret;
+        return PSRAM_INIT_FAILED;
     }
 
     hal_xspi_set_cs(&xspi->handle, 0);
     aic_xspi_psram_dev_reset(&xspi->handle);
     aic_udelay(100);
     aic_xspi_psram_dev_init(&xspi->handle);
-
 
     hal_xspi_set_cs(&xspi->handle, 1);
     aic_xspi_psram_dev_reset(&xspi->handle);
@@ -303,7 +356,7 @@ u32 aic_xspi_psram_init(void)
     // set Boundary_Control = 2k.
     hal_xspi_set_boudary(&xspi->handle, BOUNDARY_2K);
 
-    hal_xspi_proto_cfg_t psram_proto_cfg = {0};
+    hal_xspi_proto_cfg_t psram_proto_cfg = { 0 };
     psram_proto_cfg.mode = XSPI_MODE_OPI;
     psram_proto_cfg.clk_mode = XSPI_DDR_MODE;
     psram_proto_cfg.parallel_mode = XSPI_SINGLE_MODE;
@@ -321,27 +374,27 @@ u32 aic_xspi_psram_init(void)
     psram_proto_cfg.rd_cmd_lines = XSPI_IO_8;
     psram_proto_cfg.rd_cmd_val = 0x00;
 
-
     aic_xspi_psram_xip(&xspi->handle, psram_proto_cfg);
 
-    void *psram_training_buf = (u32*)(BASE_PSRAM);
+    void *psram_training_buf = (u32 *)(BASE_PSRAM);
     u32 len = 1024 * 64;
     u32 icp_t = aic_xspi_psram_icp_calc(cfg.clk_in_hz);
 
-    ret = aic_xspi_psram_training(&xspi->handle, 0, icp_t, psram_training_buf, len);
+    ret = aic_xspi_psram_training(&xspi->handle, 0, icp_t, psram_training_buf,
+                                  len);
     if (ret) {
         pr_err("xspi cs0 trainning failed.\n");
-        while(1);
+        return PSRAM_INIT_FAILED;
     }
 
-    ret = aic_xspi_psram_training(&xspi->handle, 1, icp_t, psram_training_buf, len);
+    ret = aic_xspi_psram_training(&xspi->handle, 1, icp_t, psram_training_buf,
+                                  len);
     if (ret) {
         pr_err("xspi cs0 trainning failed.\n");
-        while(1);
+        return PSRAM_INIT_FAILED;
     }
 
     hal_xspi_set_parallel_mode(&xspi->handle, XSPI_PARALLEL_MODE);
 
-    return 0;
-
+    return PSRAM_INIT_OK;
 }

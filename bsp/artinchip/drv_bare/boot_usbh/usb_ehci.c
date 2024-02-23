@@ -172,17 +172,14 @@ void dump_qh(struct usb_ehci_qh_s *qh)
 #else
 void dump_hcor(volatile struct ehci_hcor_s *hcor)
 {
-    ;
 }
 
 void dump_qtd(struct usb_ehci_qtd_s *qtd)
 {
-    ;
 }
 
 void dump_qh(struct usb_ehci_qh_s *qh)
 {
-    ;
 }
 #endif
 
@@ -256,7 +253,7 @@ int usb_hc_hw_init(int id)
     g_asynchead.hw.overlay.token = (QH_TOKEN_HALTED);
     g_asynchead.fqp = (QTD_NQP_T);
     aicos_dcache_clean_range((void *)(uintptr_t)&g_asynchead.hw,
-                             sizeof(struct usb_ehci_qh_s));
+                             ROUNDUP(sizeof(struct usb_ehci_qh_s), CACHE_LINE_SIZE));
 
     /* Host Controller Initialization. Paragraph 4.1 */
 
@@ -459,20 +456,16 @@ static int usb_ehci_qh_foreach(struct usb_ehci_qh_s *qh, u32 **bp,
         if ((physaddr & QH_HLP_T) != 0) {
             /* Set the next pointer to NULL.  This will terminate the loop. */
             next = NULL;
-        }
-
-        /* Is the next QH the asynchronous list head which will always be at
-         * the end of the asynchronous queue?
-         */
-        else if ((physaddr & QH_HLP_MASK) == (u32)(uintptr_t)&g_asynchead) {
+        } else if ((physaddr & QH_HLP_MASK) == (u32)(uintptr_t)&g_asynchead) {
+            /* Is the next QH the asynchronous list head which will always be at
+             * the end of the asynchronous queue?
+             */
             /* That will also terminate the loop */
             next = NULL;
-        }
-
-        /* Otherwise, there is a QH structure after this one that describes
-         * another transaction.
-         */
-        else {
+        } else {
+            /* Otherwise, there is a QH structure after this one that describes
+             * another transaction.
+             */
             physaddr = (qh->hw.hlp) & QH_HLP_MASK;
             next = (struct usb_ehci_qh_s *)(uintptr_t)(physaddr);
         }
@@ -566,7 +559,7 @@ static int usb_ehci_qtd_foreach(struct usb_ehci_qh_s *qh, foreach_qtd_t handler,
 static int usb_ehci_qtd_discard(struct usb_ehci_qtd_s *qtd, u32 **bp, void *arg)
 {
     aicos_dcache_clean_invalid_range((void *)&qtd->hw,
-                                     sizeof(struct usb_ehci_qtd_s));
+                                     ROUNDUP(sizeof(struct usb_ehci_qtd_s), CACHE_LINE_SIZE));
     /* Remove the qTD from the list by updating the forward pointer to skip
      * around this qTD.  We do not change that pointer because are repeatedly
      * removing the aTD at the head of the QH list.
@@ -584,7 +577,7 @@ static int usb_ehci_qh_discard(struct usb_ehci_qh_s *qh)
     int ret;
 
     aicos_dcache_clean_invalid_range((void *)&qh->hw,
-                                     sizeof(struct usb_ehci_qh_s));
+                                     ROUNDUP(sizeof(struct usb_ehci_qh_s), CACHE_LINE_SIZE));
     /* Free all of the qTD's attached to the QH */
     ret = usb_ehci_qtd_foreach(qh, usb_ehci_qtd_discard, NULL);
 
@@ -735,7 +728,7 @@ int usbh_ep_free(usbh_epinfo_t ep)
 static int usb_ehci_reset(int id)
 {
     u32 regval = 0;
-    u32 start_us;
+    u64 start_us;
     volatile struct ehci_hcor_s *hcor;
 
     hcor = (struct ehci_hcor_s *)USB_EHCI_HCOR_BASE(id);
@@ -839,8 +832,15 @@ static int usb_ehci_wait_usbsts(int id, u32 maskbits, u32 donebits, u32 timeout)
 
 int usbh_portchange_wait(int id)
 {
-    u32 usbsts, pending, regval, start_us;
+    u32 usbsts, pending, regval, timeout;
+    u64 start_us;
     volatile struct ehci_hcor_s *hcor;
+
+#ifdef AICUPG_UDISK_VERSION3_SUPPORT
+    timeout = 150000; // Some Udisk need to wait for more than 1s
+#else
+    timeout = 1000;
+#endif
 
     hcor = (struct ehci_hcor_s *)USB_EHCI_HCOR_BASE(id);
 
@@ -860,7 +860,7 @@ int usbh_portchange_wait(int id)
             pr_warn("Port status changed.\n");
             return 0;
         }
-    } while ((aic_get_time_us() - start_us) < 1000);
+    } while ((aic_get_time_us() - start_us) < timeout);
 
     return -1;
 }
@@ -904,7 +904,7 @@ int usbh_get_port_connect_status(int id, int port)
 
 int usbh_reset_port(int port, int id)
 {
-    u32 start_us;
+    u64 start_us;
     u32 regval;
     volatile struct ehci_hcor_s *hcor;
 
@@ -985,7 +985,7 @@ static int usb_ehci_qtd_addbpl(struct usb_ehci_qtd_s *qtd, const void *buffer,
 {
     u32 physaddr, nbytes, next, ndx;
 
-    aicos_dcache_clean_invalid_range((void *)buffer, buflen);
+    aicos_dcache_clean_invalid_range((void *)buffer, ROUNDUP(buflen, CACHE_LINE_SIZE));
     physaddr = (u32)(uintptr_t)buffer;
     for (ndx = 0; ndx < 5; ndx++) {
         /* Write the physical address of the buffer into the qTD buffer
@@ -1183,7 +1183,7 @@ static int usb_ehci_qtd_flush(struct usb_ehci_qtd_s *qtd, u32 **bp, void *arg)
     */
 
     aicos_dcache_clean_invalid_range((void *)(uintptr_t)&qtd->hw,
-                                     sizeof(struct ehci_qtd_s));
+                                     ROUNDUP(sizeof(struct ehci_qtd_s), CACHE_LINE_SIZE));
 
     return 0;
 }
@@ -1195,7 +1195,8 @@ static int usb_ehci_qh_flush(struct usb_ehci_qh_s *qh)
     * be reloaded from D-Cache.
     */
 
-    aicos_dcache_clean_invalid_range((void *)(uintptr_t)&qh->hw, sizeof(struct ehci_qh_s));
+    aicos_dcache_clean_invalid_range((void *)(uintptr_t)&qh->hw,
+                                     ROUNDUP(sizeof(struct ehci_qh_s), CACHE_LINE_SIZE));
 
     /* Then flush all of the qTD entries in the queue */
 
@@ -1226,7 +1227,8 @@ static void usb_ehci_qh_enqueue(struct usb_ehci_qh_s *qhead,
 
     physaddr = (u32)(uintptr_t)qh;
     qhead->hw.hlp = (physaddr | QH_HLP_TYP_QH);
-    aicos_dcache_clean_range((void *)(uintptr_t)&qhead->hw, sizeof(struct ehci_qh_s));
+    aicos_dcache_clean_range((void *)(uintptr_t)&qhead->hw,
+                             ROUNDUP(sizeof(struct ehci_qh_s), CACHE_LINE_SIZE));
 }
 
 static int usb_ehci_ioc_setup(struct usb_ehci_epinfo_s *epinfo)
@@ -1251,7 +1253,7 @@ static int usb_ehci_qtd_ioccheck(struct usb_ehci_qtd_s *qtd, u32 **bp,
     struct usb_ehci_epinfo_s *epinfo = (struct usb_ehci_epinfo_s *)arg;
 
     aicos_dcache_invalid_range((void *)(uintptr_t)&qtd->hw,
-                               sizeof(struct usb_ehci_qtd_s));
+                               ROUNDUP(sizeof(struct usb_ehci_qtd_s), CACHE_LINE_SIZE));
     /* Remove the qTD from the list
      *
      * NOTE that we don't check if the qTD is active nor do we check if there
@@ -1284,7 +1286,8 @@ static int usb_ehci_qh_ioccheck(struct usb_ehci_qh_s *qh, u32 **bp, void *arg)
     u32 token;
     int ret;
 
-    aicos_dcache_invalid_range((void *)(uintptr_t)&qh->hw, sizeof(struct ehci_qh_s));
+    aicos_dcache_invalid_range((void *)(uintptr_t)&qh->hw,
+                               ROUNDUP(sizeof(struct ehci_qh_s), CACHE_LINE_SIZE));
     /* Get the endpoint info pointer from the extended QH data.  Only the
      * g_asynchead QH can have a NULL epinfo field.
      */
@@ -1328,7 +1331,8 @@ static int usb_ehci_qh_ioccheck(struct usb_ehci_qh_s *qh, u32 **bp, void *arg)
          */
 
         *bp = &qh->hw.hlp;
-        aicos_dcache_clean_range((void *)(uintptr_t)bp, sizeof(uint32_t));
+        aicos_dcache_clean_range((void *)(uintptr_t)bp,
+                                 ROUNDUP(sizeof(uint32_t), CACHE_LINE_SIZE));
         return 0;
     }
 

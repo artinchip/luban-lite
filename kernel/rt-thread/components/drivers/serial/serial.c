@@ -605,6 +605,9 @@ static rt_err_t rt_serial_open(struct rt_device *dev, rt_uint16_t oflag)
     RT_ASSERT(dev != RT_NULL);
     serial = (struct rt_serial_device *)dev;
 
+    /* this device has more reference count */
+    if (dev->ref_count > 0) return RT_EOK;
+
     LOG_D("open serial device: 0x%08x with open flag: 0x%04x",
         dev, oflag);
     /* check device flag with the open flag */
@@ -751,7 +754,7 @@ static rt_err_t rt_serial_close(struct rt_device *dev)
     serial = (struct rt_serial_device *)dev;
 
     /* this device has more reference count */
-    if (dev->ref_count > 1) return RT_EOK;
+    if (dev->ref_count > 0) return RT_EOK;
 
     if (dev->open_flag & RT_DEVICE_FLAG_INT_RX)
     {
@@ -834,7 +837,6 @@ static rt_err_t rt_serial_close(struct rt_device *dev)
 #endif /* RT_SERIAL_USING_DMA */
 
     serial->ops->control(serial, RT_DEVICE_CTRL_CLOSE, RT_NULL);
-    dev->flag &= ~RT_DEVICE_FLAG_ACTIVATED;
 
     return RT_EOK;
 }

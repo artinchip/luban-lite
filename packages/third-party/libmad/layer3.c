@@ -1626,7 +1626,7 @@ void III_aliasreduce(mad_fixed_t xr[576], int lines)
     MAD_F_MLA(hi, lo, -b, ca[i]);
 
     //xr[-1 - i] = MAD_F_MLZ(hi, lo);
-    tmp[-1 - i] = MAD_F_MLZ(hi, lo);
+    tmp[17 - i] = MAD_F_MLZ(hi, lo);
     MAD_F_ML0(hi, lo,  b, cs[i]);
     MAD_F_MLA(hi, lo,  a, ca[i]);
 

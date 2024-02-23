@@ -104,7 +104,7 @@ static void ge_cal_height(enum mpp_pixel_format fmt, int input_height, int heigh
         height[0] = input_height;
         height[1] = 0;
         height[2] = 0;
-        return ;
+        return;
     }
 
     switch (fmt) {
@@ -169,11 +169,10 @@ struct ge_buf * ge_buf_malloc(int width, int height, enum mpp_pixel_format fmt)
     int i = 0;
     int cal_height[3] = {0};
     int buf_size[3] = {0};
+    int raw_buf_size = 0;
 
     struct ge_buf * buffer;
-
     buffer = (struct ge_buf *)aicos_malloc(MEM_CMA, sizeof(struct ge_buf));
-
     memset(buffer, 0, sizeof(struct ge_buf));
 
     ge_cal_stride(fmt, width, (int *)buffer->buf.stride);
@@ -186,8 +185,9 @@ struct ge_buf * ge_buf_malloc(int width, int height, enum mpp_pixel_format fmt)
 
     /* alignment of the physical address of malloc */
     for (i = 0; i < 3 && buffer->buf.stride[i] != 0; i++) {
-        buf_size[i] = (buffer->buf.stride[i] * cal_height[i]) + CACHE_LINE_SIZE;
-        buffer->use_buf_size[i] = buf_size[i]- CACHE_LINE_SIZE; /* actual memory size used */
+        raw_buf_size = buffer->buf.stride[i] * cal_height[i];
+        buf_size[i] = raw_buf_size + CACHE_LINE_SIZE * 2;
+        buffer->use_buf_size[i] = BYTE_ALIGN(raw_buf_size, CACHE_LINE_SIZE); /* actual memory size used */
     }
 
     for (i = 0; i < 3 && buf_size[i] != 0; i++) {

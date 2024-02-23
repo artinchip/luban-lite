@@ -1,7 +1,7 @@
 #include "usbd_core.h"
 #include "usbd_dfu.h"
 
-#define USBD_VID           0x0483
+#define USBD_VID           0x33C3
 #define USBD_PID           0xDF11
 #define USBD_MAX_POWER     100
 #define USBD_LANGID_STRING 1033

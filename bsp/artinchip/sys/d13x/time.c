@@ -35,16 +35,28 @@ u64 aic_get_ticks(void)
     return (((u64)csi_coret_get_valueh() << 32U) | csi_coret_get_value());
 }
 
-u32 aic_get_time_us(void)
+u64 aic_get_time_us(void)
 {
-    u32 cnt = (drv_get_sys_freq() / 1000000U);
+    u64 cnt = (drv_get_sys_freq() / 1000000U);
 
-    return (u32)(aic_get_ticks() / cnt);
+    return (aic_get_ticks() / cnt);
 }
 
-u32 aic_get_time_ms(void)
+u64 aic_get_time_ms(void)
 {
     return aic_get_time_us() / 1000;
+}
+
+u64 aic_get_time_us64(void)
+{
+  u64 us_cnt = drv_get_sys_freq() / 1000000U;
+
+  return (u64)(aic_get_ticks() / us_cnt);;
+}
+
+u64 aic_get_time_ms64(void)
+{
+  return aic_get_time_us64() / 1000;
 }
 
 #ifdef KERNEL_RTTHREAD

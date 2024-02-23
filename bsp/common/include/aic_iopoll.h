@@ -34,7 +34,7 @@ extern "C" {
  */
 #define read_poll_timeout(op, addr, val, cond, sleep_us, timeout_us)    \
 ({ \
-    u32 timeout = aic_get_time_us() + timeout_us; \
+    u64 timeout = aic_get_time_us() + timeout_us; \
     for (;;) { \
         (val) = op(addr); \
         if (cond) \

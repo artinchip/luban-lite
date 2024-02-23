@@ -1,0 +1,48 @@
+#-----------------------------
+# realtek wlan devices local parameter
+#-----------------------------
+
+# wlan0 parameter
+
+config AIC_USING_REALTEK_WLAN0
+    bool
+    default n
+
+config REALTEK_WLAN_INTF_SDIO
+    bool
+    default n
+
+config REALTEK_WLAN_INTF_USB
+    bool
+    default n
+
+choice
+    prompt "Select realtek wlan0 modul"
+    default AIC_USING_RTL8733_WLAN0
+    config AIC_USING_RTL8733_WLAN0
+        bool "rtl8733"
+        select REALTEK_WLAN_INTF_SDIO
+
+    config AIC_USING_RTL8189_WLAN0
+        bool "rtl8189"
+        select REALTEK_WLAN_INTF_SDIO
+endchoice
+
+menu "realtek wlan Parameter"
+
+    config AIC_DEV_REALTEK_WLAN0_PWR_GPIO
+        string "realtek wlan0 power on gpio"
+
+    config AIC_DEV_REALTEK_WLAN0_IPADDR
+        string "wlan0 ip addr"
+        default "192.168.1.200"
+
+    config AIC_DEV_REALTEK_WLAN0_GW
+        string "wlan0 gateway addr"
+        default "192.168.1.1"
+
+    config AIC_DEV_REALTEK_WLAN0_NETMASK
+        string "wlan0 netmask"
+        default "255.255.255.0"
+
+endmenu

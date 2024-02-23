@@ -16,6 +16,17 @@
 #include <timers.h>
 #include <event_groups.h>
 #include <aic_errno.h>
+#include <aic_tlsf.h>
+
+//--------------------------------------------------------------------+
+// Interrupt Define
+//--------------------------------------------------------------------+
+
+extern unsigned int g_aicos_irq_nested_cnt;
+static inline int aicos_in_irq(void)
+{
+    return g_aicos_irq_nested_cnt;
+}
 
 //--------------------------------------------------------------------+
 // Timeout Define
@@ -284,17 +295,33 @@ static inline void aicos_msleep(uint32_t delay)
 static inline void *aicos_malloc(unsigned int mem_type, size_t size)
 {
     if (mem_type == MEM_DEFAULT)
-        return rt_malloc(size);
+        return pvPortMalloc(size);
     else
-        return aic_memheap_malloc(mem_type, size);
+        return aic_tlsf_malloc(mem_type, size);
 }
 
 static inline void aicos_free(unsigned int mem_type, void *mem)
 {
     if (mem_type == MEM_DEFAULT)
-        rt_free(mem);
+        vPortFree(mem);
     else
-        aic_memheap_free(mem_type, mem);
+        aic_tlsf_free(mem_type, mem);
+}
+
+static inline void *aicos_malloc_align(uint32_t mem_type, size_t size, size_t align)
+{
+    if (mem_type == MEM_DEFAULT)
+        return _aicos_malloc_align_(size, align, 0xFFFF, (void *)pvPortMalloc);
+    else
+        return aic_tlsf_malloc_align(mem_type, size, align);
+}
+
+static inline void aicos_free_align(uint32_t mem_type, void *mem)
+{
+    if (mem_type == MEM_DEFAULT)
+        _aicos_free_align_(mem, 0xFFFF, (void *)vPortFree);
+    else
+        aic_tlsf_free_align(mem_type, mem);
 }
 
 #ifdef __cplusplus

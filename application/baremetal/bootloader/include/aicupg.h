@@ -43,7 +43,11 @@ extern "C" {
 /* "UPGR" */
 #define UPG_CMD_RESP_MAGIC (0x52475055)
 
+#ifdef AIC_BOOTLOADER_PSRAM_EN
 #define DATA_WRITE_ONCE_SIZE (1024 * 1024)
+#else
+#define DATA_WRITE_ONCE_SIZE (64 * 1024)
+#endif
 
 struct cmd_header {
     u32 magic; /* "UPGC" */
@@ -84,16 +88,28 @@ struct image_header_pack {
     char pad[2048 - sizeof(struct image_header_upgrade)];
 };
 
-#define UPG_MODE_FULL_DISK_UPGRADE 0x00
-#define UPG_MODE_PARTITION_UPGRADE 0x01
-#define UPG_MODE_BURN_USER_ID      0x02
-#define UPG_MODE_DUMP_PARTITION    0x03
+enum upg_mode {
+    UPG_MODE_FULL_DISK_UPGRADE = 0x00,
+    UPG_MODE_PARTITION_UPGRADE,
+    UPG_MODE_BURN_USER_ID,
+    UPG_MODE_DUMP_PARTITION,
+    UPG_MODE_BURN_IMG_FORCE,
+    UPG_MODE_BURN_FROZEN,
+    UPG_MODE_INVALID,
+};
 
 struct upg_cfg {
     u8 mode;
     u8 reserved[31];
 };
 
+#define INIT_MODE(mode) (1 << (mode))
+
+struct upg_init {
+    u8 mode;
+};
+
+s32 aicupg_initialize(struct upg_init *param);
 s32 aicupg_set_upg_cfg(struct upg_cfg *cfg);
 s32 aicupg_get_upg_mode(void);
 s32 aicupg_data_packet_write(u8 *data, s32 len);

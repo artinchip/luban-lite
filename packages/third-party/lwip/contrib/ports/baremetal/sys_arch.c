@@ -48,7 +48,7 @@ void sys_arch_assert(const char *file, int line)
 
 u32_t sys_jiffies(void)
 {
-    return aic_get_time_ms();
+    return (u32)aic_get_time_ms();
 }
 
 u32_t sys_now(void)

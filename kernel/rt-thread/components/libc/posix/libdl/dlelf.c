@@ -69,7 +69,7 @@ rt_err_t dlmodule_load_shared_object(struct rt_dlmodule* module, void *module_pt
             if (phdr[index].p_vaddr > vend_addr + 16)
             {
                 /* There should not be too much padding in the object files. */
-                LOG_W("warning: too much padding before segment %d", index);
+                LOG_D("warning: too much padding before segment %d", index);
             }
 
             vend_addr = phdr[index].p_vaddr + phdr[index].p_memsz;
@@ -94,6 +94,7 @@ rt_err_t dlmodule_load_shared_object(struct rt_dlmodule* module, void *module_pt
     module->nref = 0;
 
     /* allocate module space */
+    module_size = ALIGN_UP(module_size, CACHE_LINE_SIZE);
     module->mem_space = rt_malloc_align(module_size, CACHE_LINE_SIZE);
     if (module->mem_space == RT_NULL)
     {
@@ -311,6 +312,7 @@ rt_err_t dlmodule_load_relocated_object(struct rt_dlmodule* module, void *module
     module->vstart_addr = 0;
 
     /* allocate module space */
+    module_size = ALIGN_UP(module_size, CACHE_LINE_SIZE);
     module->mem_space = rt_malloc_align(module_size, CACHE_LINE_SIZE);
     if (module->mem_space == RT_NULL)
     {

@@ -56,7 +56,16 @@ struct dma_slave_config {
     u32 slave_id;
 };
 
-#if defined(AIC_DMA_DRV_V10) || defined(AIC_DMA_DRV_V11)
+struct dma_slave_table {
+    u32 id;
+    u32 burst_num;
+    u32 width_num;
+    const u32 *burst;
+    const u32 *width;
+};
+
+#if defined(AIC_DMA_DRV_V10) || defined(AIC_DMA_DRV_V11) \
+    || defined(AIC_DMA_DRV_V12)
 struct aic_dma_task {
     u32 cfg; /* dma transfer configuration */
     u32 src; /* source address of one transfer package */
@@ -110,7 +119,7 @@ struct aic_dma_chan {
     volatile int lock;
     dma_async_callback callback;
     void *callback_param;
-    struct aic_dma_task * desc;
+    struct aic_dma_task *desc;
 };
 
 #define dma_reg(x)            (volatile void *)(x + DMA_BASE)
@@ -138,6 +147,12 @@ int hal_dma_chan_start(struct aic_dma_chan *chan);
 int hal_dma_chan_stop(struct aic_dma_chan *chan);
 int hal_dma_chan_pause(struct aic_dma_chan *chan);
 int hal_dma_chan_resume(struct aic_dma_chan *chan);
+#if defined(AIC_DMA_DRV_V20)
+int hal_dma_chan_link_pause(struct aic_dma_chan *chan);
+int hal_dma_chan_abandon(struct aic_dma_chan *chan);
+int hal_dma_chan_wb_enable(struct aic_dma_chan *chan,
+                        u32 src_addr, u32 dst_addr);
+#endif
 int hal_dma_chan_terminate_all(struct aic_dma_chan *chan);
 int hal_dma_chan_register_cb(struct aic_dma_chan *chan,
                              dma_async_callback callback,

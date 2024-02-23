@@ -113,9 +113,9 @@ static rt_err_t gt911_get_info(struct rt_i2c_client *dev,
 
     info->range_x = (out_info[2] << 8) | out_info[1];
     info->range_y = (out_info[4] << 8) | out_info[3];
-    // info->point_num = out_info[5] & 0x0f;
+    info->point_num = out_info[5] & 0x0f;
     // FIXME: temporarily set to 1, only 1 point data return
-    info->point_num = 1;
+    // info->point_num = 1;
 
     return RT_EOK;
 }
@@ -236,6 +236,8 @@ static rt_size_t gt911_read_point(struct rt_touch_device *touch, void *buf,
 
     static rt_uint8_t pre_touch = 0;
     static int8_t pre_id[GT911_MAX_TOUCH] = { 0 };
+
+    rt_memset(buf, 0, sizeof(struct rt_touch_data) * read_num);
 
     /* point status register */
     cmd[0] = (rt_uint8_t)((GT911_READ_STATUS >> 8) & 0xFF);

@@ -43,7 +43,7 @@ int hal_i2s_init(aic_i2s_ctrl *i2s, uint32_t i2s_idx)
 
     ret = hal_clk_enable_deassertrst(i2s->clk_id);
     if (ret)
-        hal_log_err("I2S%u init error!\n", i2s_idx);
+        hal_log_err("I2S%lu init error!\n", i2s_idx);
 
     return ret;
 }
@@ -54,7 +54,7 @@ int hal_i2s_uninit(aic_i2s_ctrl *i2s)
 
     ret = hal_clk_disable_assertrst(i2s->clk_id);
     if (ret)
-        hal_log_err("I2S%u uninit error!\n", i2s->idx);
+        hal_log_err("I2S%lu uninit error!\n", i2s->idx);
 
     return ret;
 }
@@ -126,6 +126,7 @@ int hal_i2s_protocol_select(aic_i2s_ctrl *i2s, i2s_protocol_t protocol)
         writel(rx_offset, i2s->reg_base + I2S_RXCHSEL_REG);
         break;
     default:
+        hal_log_err("Unsupported I2S protocol\n");
         ret = -EINVAL;
         break;
     }
@@ -141,12 +142,74 @@ int hal_i2s_sample_width_select(aic_i2s_ctrl *i2s, i2s_sample_width_t width)
     uint8_t reg_val, width_select;
 
     reg_val = readl(i2s->reg_base + I2S_FMT0_REG);
-    reg_val &= ~(I2S_FMT0_SR_MASK | I2S_FMT0_SW_MASK);
+    reg_val &= ~(I2S_FMT0_SR_MASK);
     width_select = (width - 8) / 4 + 1;
 
-    /* configure slot width equal to sample wodth */
-    reg_val |= I2S_FMT0_SR(width_select) | I2S_FMT0_SW(width_select);
+    reg_val |= I2S_FMT0_SR(width_select);
     writel(reg_val, i2s->reg_base + I2S_FMT0_REG);
+    return 0;
+}
+
+int hal_i2s_slot_width_select(aic_i2s_ctrl *i2s, i2s_sample_width_t slot_width)
+{
+    CHECK_PARAM(!(slot_width < 8 || slot_width > 32), -EINVAL);
+    CHECK_PARAM(!(slot_width % 4), -EINVAL);
+
+    uint8_t reg_val, width_select;
+
+    reg_val = readl(i2s->reg_base + I2S_FMT0_REG);
+    reg_val &= ~(I2S_FMT0_SW_MASK);
+    width_select = (slot_width - 8) / 4 + 1;
+
+    reg_val |= I2S_FMT0_SW(width_select);
+    writel(reg_val, i2s->reg_base + I2S_FMT0_REG);
+    return 0;
+}
+
+static uint32_t hal_i2s_get_module_rate_by_sample(i2s_sample_rate_t sample_rate)
+{
+    uint32_t module_rate;
+
+    switch (sample_rate) {
+    case I2S_SAMPLE_RATE_44100:
+    case I2S_SAMPLE_RATE_22050:
+    case I2S_SAMPLE_RATE_11025:
+        module_rate = 22579200;
+        break;
+    case I2S_SAMPLE_RATE_256000:
+    case I2S_SAMPLE_RATE_192000:
+    case I2S_SAMPLE_RATE_96000:
+    case I2S_SAMPLE_RATE_48000:
+    case I2S_SAMPLE_RATE_32000:
+    case I2S_SAMPLE_RATE_24000:
+    case I2S_SAMPLE_RATE_16000:
+    case I2S_SAMPLE_RATE_12000:
+    case I2S_SAMPLE_RATE_8000:
+    default:
+        module_rate = 24576000;
+        break;
+    }
+
+    return module_rate;
+}
+
+static int hal_i2s_sample_rate_set(aic_i2s_ctrl *i2s, i2s_sample_rate_t sample_rate)
+{
+    uint32_t module_rate;
+    unsigned int pclk_id;
+
+    module_rate = hal_i2s_get_module_rate_by_sample(sample_rate);
+
+    pclk_id = hal_clk_get_parent(i2s->clk_id);
+#ifdef AIC_I2S_DRV_V10
+    /* Set I2S parent clock rate */
+    hal_clk_set_freq(pclk_id, module_rate * 20);
+    /* Set I2S module clock rate */
+    hal_clk_set_rate(i2s->clk_id, module_rate, module_rate * 20);
+#elif defined(AIC_I2S_DRV_V11)
+    /* I2S has the same frequency with AUDIO_SCLK  */
+    hal_clk_set_freq(pclk_id, module_rate);
+#endif
     return 0;
 }
 
@@ -155,7 +218,9 @@ int hal_i2s_mclk_set(aic_i2s_ctrl *i2s, i2s_sample_rate_t sample_rate,
 {
     uint32_t mclk_div, module_rate, reg_val, i;
 
-    module_rate = hal_clk_get_freq(i2s->clk_id);
+    hal_i2s_sample_rate_set(i2s, sample_rate);
+
+    module_rate = hal_i2s_get_module_rate_by_sample(sample_rate);
 
     mclk_div = module_rate / sample_rate / mclk_nfs;
 
@@ -166,8 +231,10 @@ int hal_i2s_mclk_set(aic_i2s_ctrl *i2s, i2s_sample_rate_t sample_rate,
         }
     }
 
-    if (i == ARRAY_SIZE(i2s_bmclk_div))
+    if (i == ARRAY_SIZE(i2s_bmclk_div)) {
+        hal_log_err("I2S mclk set error\n");
         return -EINVAL;
+    }
 
     reg_val = readl(i2s->reg_base + I2S_CLKD_REG);
     reg_val &= ~I2S_CLKD_MCLKDIV_MASK;
@@ -193,7 +260,9 @@ int hal_i2s_sclk_set(aic_i2s_ctrl *i2s, i2s_sample_rate_t sample_rate,
 {
     uint32_t module_rate, reg_val, bclk_div, i;
 
-    module_rate = hal_clk_get_freq(i2s->clk_id);
+    hal_i2s_sample_rate_set(i2s, sample_rate);
+
+    module_rate = hal_i2s_get_module_rate_by_sample(sample_rate);
 
     /* calculate lrck period */
     reg_val = readl(i2s->reg_base + I2S_CTL_REG);
@@ -221,8 +290,10 @@ int hal_i2s_sclk_set(aic_i2s_ctrl *i2s, i2s_sample_rate_t sample_rate,
         }
     }
 
-    if (i == ARRAY_SIZE(i2s_bmclk_div))
+    if (i == ARRAY_SIZE(i2s_bmclk_div)) {
+        hal_log_err("I2S sclk set error\n");
         return -EINVAL;
+    }
 
     reg_val = readl(i2s->reg_base + I2S_CLKD_REG);
     reg_val &= ~I2S_CLKD_BCLKDIV_MASK;
@@ -236,61 +307,62 @@ void hal_i2s_channel_select(aic_i2s_ctrl *i2s,
 {
     uint32_t reg_val;
 
-    switch(channel) {
-    case I2S_LEFT_CHANNEL:
-        /* left channel */
-        writel(0, i2s->reg_base + I2S_CHCFG_REG);
-        if (!stream) {
-            reg_val = readl(i2s->reg_base + I2S_TXCHSEL_REG);
-            reg_val &= ~(I2S_TXCHSEL_TXCHEN_MASK | I2S_TXCHSEL_TXCHSEL_MASK);
-            reg_val |= (I2S_TXCHSEL_TXCHEN(1) | I2S_TXCHSEL_TXCHSEL(1));
-            writel(reg_val, i2s->reg_base + I2S_TXCHSEL_REG);
-            writel(0, i2s->reg_base + I2S_TXCHMAP1_REG);
-        } else {
-            reg_val = readl(i2s->reg_base + I2S_RXCHSEL_REG);
-            reg_val &= ~I2S_RXCHSEL_RXCHSEL_MASK;
-            writel(reg_val, i2s->reg_base + I2S_RXCHSEL_REG);
-            writel(0, i2s->reg_base + I2S_RXCHMAP1_REG);
-        }
-        break;
-    case I2S_RIGHT_CHANNEL:
-        /* right channel */
-        writel(0, i2s->reg_base + I2S_CHCFG_REG);
-        if (!stream) {
-            reg_val = readl(i2s->reg_base + I2S_TXCHSEL_REG);
-            reg_val &= ~(I2S_TXCHSEL_TXCHEN_MASK | I2S_TXCHSEL_TXCHSEL_MASK);
-            reg_val |= ((1 << 1) | I2S_TXCHSEL_TXCHSEL(1));
-            writel(reg_val, i2s->reg_base + I2S_TXCHSEL_REG);
-            /* Map channel1 to first sample data */
-            writel(0, i2s->reg_base + I2S_TXCHMAP1_REG);
-        } else {
-            reg_val = readl(i2s->reg_base + I2S_RXCHSEL_REG);
-            reg_val &= ~I2S_RXCHSEL_RXCHSEL_MASK;
-            writel(reg_val, i2s->reg_base + I2S_RXCHSEL_REG);
-            writel(0, i2s->reg_base + I2S_RXCHMAP1_REG);
-        }
-        break;
-    case I2S_LEFT_RIGHT_CHANNEL:
-    default:
-        writel(0x11, i2s->reg_base + I2S_CHCFG_REG);
-        /* left right channel */
-        if (!stream) {
-            reg_val = readl(i2s->reg_base + I2S_TXCHSEL_REG);
-            reg_val &= ~(I2S_TXCHSEL_TXCHEN_MASK | I2S_TXCHSEL_TXCHSEL_MASK);
-            reg_val |= (I2S_TXCHSEL_TXCHEN(2) | I2S_TXCHSEL_TXCHSEL(2));
-            writel(reg_val, i2s->reg_base + I2S_TXCHSEL_REG);
-            /* Map channel*/
-            writel(0x10, i2s->reg_base + I2S_TXCHMAP1_REG);
-        } else {
-            reg_val = readl(i2s->reg_base + I2S_RXCHSEL_REG);
-            reg_val &= ~I2S_RXCHSEL_RXCHSEL_MASK;
-            reg_val |= I2S_RXCHSEL_RXCHSEL(2);
-            writel(reg_val, i2s->reg_base + I2S_RXCHSEL_REG);
-            /* Map channel*/
-            writel(0x10, i2s->reg_base + I2S_RXCHMAP1_REG);
-        }
-        break;
+    if (!stream)
+    {
+        /* Playback */
+        /* Enable TX channel */
+        reg_val = readl(i2s->reg_base + I2S_TXCHSEL_REG);
+        reg_val &= ~(I2S_TXCHSEL_TXCHEN_MASK | I2S_TXCHSEL_TXCHSEL_MASK);
+        reg_val |= I2S_TXCHSEL_TXCHSEL(channel) | I2S_TXCHSEL_TXCHEN(channel);
+        writel(reg_val, i2s->reg_base + I2S_TXCHSEL_REG);
+        /* Set TX slot number */
+        reg_val = readl(i2s->reg_base + I2S_CHCFG_REG);
+        reg_val &= ~(I2S_CHCFG_TXSLOTNUM_MASK);
+        reg_val |= I2S_CHCFG_TXSLOTNUM(channel);
+        writel(reg_val, i2s->reg_base + I2S_CHCFG_REG);
+        /* Map channel */
+        writel(0xFEDCBA98, i2s->reg_base + I2S_TXCHMAP0_REG);
+        writel(0x76543210, i2s->reg_base + I2S_TXCHMAP1_REG);
     }
+    else
+    {
+        /* Capture */
+        /* Enable RX channel */
+        reg_val = readl(i2s->reg_base + I2S_RXCHSEL_REG);
+        reg_val &= ~(I2S_RXCHSEL_RXCHSEL_MASK);
+        reg_val |= I2S_RXCHSEL_RXCHSEL(channel);
+        writel(reg_val, i2s->reg_base + I2S_RXCHSEL_REG);
+        /* Set RX slot number */
+        reg_val = readl(i2s->reg_base + I2S_CHCFG_REG);
+        reg_val &= ~(I2S_CHCFG_RXSLOTNUM_MASK);
+        reg_val |= I2S_CHCFG_RXSLOTNUM(channel);
+        writel(reg_val, i2s->reg_base + I2S_CHCFG_REG);
+        /* Map channel */
+        writel(0xFEDCBA98, i2s->reg_base + I2S_RXCHMAP0_REG);
+        writel(0x76543210, i2s->reg_base + I2S_RXCHMAP1_REG);
+    }
+}
+
+int hal_i2s_set_format(aic_i2s_ctrl *i2s, i2s_format_t *fmt)
+{
+    int ret;
+
+    hal_i2s_master_mode(i2s);
+    ret = hal_i2s_protocol_select(i2s, fmt->protocol);
+    if (ret)
+        return ret;
+
+    hal_i2s_polarity_set(i2s, fmt->polarity);
+    hal_i2s_sample_width_select(i2s, fmt->width);
+    hal_i2s_slot_width_select(i2s, fmt->slot_width);
+    hal_i2s_channel_select(i2s, fmt->channel, fmt->stream);
+    ret = hal_i2s_sclk_set(i2s, fmt->rate, fmt->sclk_nfs);
+    if (ret)
+        return ret;
+
+    ret = hal_i2s_mclk_set(i2s, fmt->rate, fmt->mclk_nfs);
+
+    return ret;
 }
 
 static void i2s_dma_transfer_period_callback(void *arg)
@@ -344,7 +416,7 @@ void hal_i2s_playback_start(aic_i2s_ctrl *i2s, i2s_format_t *format)
         config.dst_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
         break;
     default:
-        hal_log_err("I2S%u not support %u sample rate\n",
+        hal_log_err("I2S%lu not support %u sample rate\n",
                     i2s->idx, format->width);
         return;
     }
@@ -355,7 +427,7 @@ void hal_i2s_playback_start(aic_i2s_ctrl *i2s, i2s_format_t *format)
 
     info->dma_chan = hal_request_dma_chan();
     if (!info->dma_chan) {
-        hal_log_err("I2S%u request dma channel error\n", i2s->idx);
+        hal_log_err("I2S%lu request dma channel error\n", i2s->idx);
         return;
     }
 
@@ -375,6 +447,7 @@ void hal_i2s_playback_start(aic_i2s_ctrl *i2s, i2s_format_t *format)
     hal_i2s_mclk_out_enable(i2s);
     /* configure TXFIFO input mode */
     hal_i2s_txfifo_input_mode(i2s);
+    hal_i2s_module_enable(i2s);
     hal_i2s_enable_tx_block(i2s);
     hal_i2s_enable_data_out(i2s);
     hal_i2s_enable_tx_drq(i2s);
@@ -410,7 +483,7 @@ void hal_i2s_record_start(aic_i2s_ctrl *i2s, i2s_format_t *format)
         config.dst_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
         break;
     default:
-        hal_log_err("I2S%u not support %u sample rate\n",
+        hal_log_err("I2S%lu not support %u sample rate\n",
                     i2s->idx, format->width);
         return;
     }
@@ -421,7 +494,7 @@ void hal_i2s_record_start(aic_i2s_ctrl *i2s, i2s_format_t *format)
 
     info->dma_chan = hal_request_dma_chan();
     if (!info->dma_chan) {
-        hal_log_err("I2S%u request dma channel error\n", i2s->idx);
+        hal_log_err("I2S%lu request dma channel error\n", i2s->idx);
         return;
     }
 
@@ -441,6 +514,7 @@ void hal_i2s_record_start(aic_i2s_ctrl *i2s, i2s_format_t *format)
     hal_i2s_mclk_out_enable(i2s);
     /* configure RXFIFO output mode */
     hal_i2s_rxfifo_output_mode(i2s);
+    hal_i2s_module_enable(i2s);
     /* Enable RX block */
     hal_i2s_enable_rx_block(i2s);
     /* Enable RX DRQ */

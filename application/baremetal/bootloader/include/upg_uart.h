@@ -54,6 +54,7 @@ struct upg_uart_device {
     u8 send_blk_no;
     s32 recv_dma;
     s32 send_dma;
+    s32 first_connect;
 };
 
 struct dma_input {
@@ -63,6 +64,7 @@ struct dma_input {
 
 void aic_upg_uart_init(int id);
 void aic_upg_uart_loop(void);
+bool aic_upg_uart_connect_check(void);
 
 #ifdef __cplusplus
 }

@@ -23,7 +23,10 @@ extern "C" {
 #define GENMASK_UL(h, l)    (((~(0UL)) - ((1UL) << (l)) + 1) & \
                              (~(0UL) >> (BITS_PER_LONG - 1 - (h))))
 
+#define cpu_to_le16(val) (val)
 #define cpu_to_le32(val) (val)
+
+#define le16_to_cpu(val) (val)
 #define le32_to_cpu(val) (val)
 
 #define readb_cpu(c)    ({ u8  __r = __raw_readb(c); __r; })

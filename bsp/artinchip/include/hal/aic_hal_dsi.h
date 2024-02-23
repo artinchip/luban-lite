@@ -317,7 +317,7 @@ void dsi_set_lane_assign(void *base, u32 ln_assign);
 void dsi_set_lane_polrs(void *base, u32 ln_polrs);
 void dsi_set_data_clk_polrs(void *base, u32 dc_inv);
 
-void dsi_set_clk_div(void *base, ulong mclk);
+void dsi_set_clk_div(void *base, ulong mclk, ulong lp_rate);
 void dsi_pkg_init(void *base);
 void dsi_phy_init(void *base, ulong mclk, u32 lane);
 void dsi_hs_clk(void *base, u32 enable);

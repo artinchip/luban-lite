@@ -13,28 +13,35 @@
 
 #define WINBOND_CFG_BUF_READ BIT(3)
 
-struct spi_nand_cmd_cfg winbond_cmd_cfg_table[] = {
-    /*opcode    opcode_bits addr_bytes	addr_bits	dummy_bytes	data_nbits*/
-    { SPINAND_CMD_READ_FROM_CACHE, 1, 2, 1, 1, 1 },
-    { SPINAND_CMD_READ_FROM_CACHE_X2, 1, 2, 1, 1, 2 },
-    { SPINAND_CMD_READ_FROM_CACHE_X4, 1, 2, 1, 1, 4 },
-    { SPINAND_CMD_PROG_LOAD, 1, 2, 1, 0, 1 },
-    { SPINAND_CMD_PROG_LOAD_X4, 1, 2, 1, 0, 4 },
-    { SPINAND_CMD_END },
-};
+int winbond_ecc_get_status(struct aic_spinand *flash, u8 status)
+{
+    switch (status & STATUS_ECC_MASK) {
+        case STATUS_ECC_NO_BITFLIPS:
+            return 0;
+        case STATUS_ECC_HAS_1_4_BITFLIPS:
+            return 4;
+        case STATUS_ECC_UNCOR_ERROR:
+            return -SPINAND_ERR_ECC;
+        default:
+            break;
+    }
+
+    return -SPINAND_ERR;
+}
 
 const struct aic_spinand_info winbond_spinand_table[] = {
-    /*devid page_size oob_size block_per_lun pages_per_eraseblock is_die_select*/
-    { 0xAA, 2048, 64, 1024, 64, 0, "Winbond 128MB: 2048+64@64@1024",
-      winbond_cmd_cfg_table },
-    { 0xBF, 2048, 64, 2048, 64, 0, "Winbond 256MB: 2048+64@64@2048",
-      winbond_cmd_cfg_table },
-    { 0xAB, 2048, 64, 1024, 64, 1, "Winbond 256MB: 2048+64@64@1024, MCP",
-      winbond_cmd_cfg_table },
-    { 0xBA, 2048, 64, 1024, 64, 0, "Winbond 128MB: 2048+64@64@1024",
-      winbond_cmd_cfg_table },
-/*    { 0xAA, 2048, 128, 1024, 64, 1, "Winbond 256MB: 2048+64@64@1024",
-      winbond_cmd_cfg_table },*/
+    /*devid page_size oob_size block_per_lun pages_per_eraseblock planes_per_lun
+    is_die_select*/
+    { DEVID(0xAA), PAGESIZE(2048), OOBSIZE(64), BPL(1024), PPB(64), PLANENUM(1),
+      DIE(0), "Winbond 128MB: 2048+64@64@1024", cmd_cfg_table,
+      winbond_ecc_get_status },
+    { DEVID(0xBF), PAGESIZE(2048), OOBSIZE(64), BPL(2048), PPB(64), PLANENUM(1),
+      DIE(0), "Winbond 256MB: 2048+64@64@2048", cmd_cfg_table, NULL },
+    { DEVID(0xAB), PAGESIZE(2048), OOBSIZE(64), BPL(1024), PPB(64), PLANENUM(1),
+      DIE(0), "Winbond 256MB: 2048+64@64@1024, MCP", cmd_cfg_table,
+      winbond_ecc_get_status },
+    { DEVID(0xBA), PAGESIZE(2048), OOBSIZE(64), BPL(1024), PPB(64), PLANENUM(1),
+      DIE(0), "Winbond 128MB: 2048+64@64@1024", cmd_cfg_table, NULL },
 };
 
 const struct aic_spinand_info *winbond_spinand_detect(struct aic_spinand *flash)

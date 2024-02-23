@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <inttypes.h>
 
 #include "mpp_log.h"
 #include "mpp_list.h"
@@ -54,6 +55,10 @@ typedef struct AUDIO_RENDER_IN_FRAME {
 #ifdef AUDIO_RENDRE_DUMP_ENABLE
 #define  AUDIO_RENDRE_DUMP_FILEPATH "/sdcard/audio.pcm"
 #endif
+
+#define AUDIO_RENDER_WAIT_FRAME_INTERVAL (10*1000*1000)
+
+#define AUDIO_RENDER_WAIT_FRAME_MAX_TIME (8*1000*1000)
 
 typedef struct AUDIO_RENDER_DATA_TYPE {
     OMX_STATETYPE state;
@@ -107,7 +112,6 @@ typedef struct AUDIO_RENDER_DATA_TYPE {
     OMX_S8  *pDumpAudioFilePath;
 #endif
 
-    pthread_mutex_t sWaitReayFrameLock;
     OMX_S32 nWaitReayFrameFlag;
 
 }AUDIO_RENDER_DATA_TYPE;

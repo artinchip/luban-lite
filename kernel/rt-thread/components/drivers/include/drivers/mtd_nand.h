@@ -48,6 +48,8 @@ struct rt_mtd_nand_device {
     const struct rt_mtd_nand_driver_ops *ops;
 
     void *priv;
+
+    rt_uint8_t attr;
 };
 typedef struct rt_mtd_nand_device *rt_mtd_nand_t;
 

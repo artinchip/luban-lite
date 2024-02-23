@@ -12,10 +12,16 @@ config AIC_SDMC_IRQ_MODE
 menu "SDMC0 Parameter"
     depends on AIC_USING_SDMC0
 
+choice
+    prompt "Select SDMC0 BUSWIDTH"
+    default AIC_SDMC0_BUSWIDTH4
+    config AIC_SDMC0_BUSWIDTH1
+        bool "sdmc 1-bit mode"
+    config AIC_SDMC0_BUSWIDTH4
+        bool "sdmc 4-bit mode"
     config AIC_SDMC0_BUSWIDTH8
-        bool "SDMC0 support 8 buswidth"
-        default y
-        depends on AIC_SDMC_DRV_V10
+        bool "sdmc 8-bit mode"
+endchoice
 
     config AIC_SDMC0_DRV_PHASE
         int "SDMC0 driver phase"
@@ -33,6 +39,15 @@ endmenu
 
 menu "SDMC1 Parameter"
     depends on AIC_USING_SDMC1
+
+choice
+    prompt "Select SDMC1 BUSWIDTH"
+    default AIC_SDMC1_BUSWIDTH4
+    config AIC_SDMC1_BUSWIDTH1
+        bool "sdmc 1-bit mode"
+    config AIC_SDMC1_BUSWIDTH4
+        bool "sdmc 4-bit mode"
+endchoice
 
     config AIC_SD_USING_HOTPLUG
         bool "Using SDcard hotplug detection"
@@ -59,6 +74,15 @@ endmenu
 
 menu "SDMC2 Parameter"
     depends on AIC_USING_SDMC2
+
+choice
+    prompt "Select SDMC2 BUSWIDTH"
+    default AIC_SDMC2_BUSWIDTH4
+    config AIC_SDMC2_BUSWIDTH1
+        bool "sdmc 1-bit mode"
+    config AIC_SDMC2_BUSWIDTH4
+        bool "sdmc 4-bit mode"
+endchoice
 
     config AIC_SDMC2_IS_SDIO
         bool "SDMC2 connect to a SDIO device"

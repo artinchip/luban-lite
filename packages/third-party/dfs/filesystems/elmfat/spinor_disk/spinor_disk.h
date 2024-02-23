@@ -1,0 +1,94 @@
+/*
+ * Copyright (c) 2023, ArtInChip Technology Co., Ltd
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Authors: xuan.wen <xuan.wen@artinchip.com>
+ */
+
+#ifndef _SPINOR_DISKIO_H_
+#define _SPINOR_DISKIO_H_
+
+#include <stdint.h>
+#include <ff.h>
+#include <rtconfig.h>
+#include "diskio.h"
+#include "mtd.h"
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+struct spinor_blk_device {
+    struct mtd_dev *mtd_device;
+    struct rt_device_blk_geometry info;
+#ifdef AIC_FATFS_ENABLE_WRITE_IN_SPINOR
+    uint32_t length;
+    uint8_t *buf;
+#endif
+};
+
+/*!
+ * @name SPINOR Disk Function
+ * @{
+ */
+
+/*!
+ * @brief Initializes SPINOR disk.
+ *
+ * @param device_name the name of device which includes a file system.
+ * @retval the handle of disk.
+ */
+void *spinor_disk_initialize(const char *device_name);
+
+/*!
+ * Gets SPINOR disk status
+ *
+ * @param hdisk the handle of device which includes a file system.
+ * @retval STA_NOINIT Failed.
+ * @retval RES_OK Success.
+ */
+DSTATUS spinor_disk_status(void *hdisk);
+
+/*!
+ * @brief Reads SPINOR disk.
+ *
+ * @param hdisk the handle of device which includes a file system.
+ * @param buf The data buffer pointer to store read content.
+ * @param sector The start sector number to be read.
+ * @param cnt The sector count to be read.
+ * @retval RES_PARERR Failed.
+ * @retval RES_OK Success.
+ */
+DRESULT spinor_disk_read(void *hdisk, uint8_t *buf, uint32_t sector, uint8_t cnt);
+
+/*!
+ * @brief Writes SPINOR disk.
+ *
+ * @param hdisk the handle of device which includes a file system.
+ * @param buf The data buffer pointer to store write content.
+ * @param sector The start sector number to be written.
+ * @param cnt The sector count to be written.
+ * @retval RES_PARERR Failed.
+ * @retval RES_OK Success.
+ */
+DRESULT spinor_disk_write(void *hdisk, const uint8_t *buf, uint32_t sector, uint8_t cnt);
+
+/*!
+ * @brief SPINOR disk IO operation.
+ *
+ * @param hdisk the handle of device which includes a file system.
+ * @param command The command to be set.
+ * @param buf The buffer to store command result.
+ * @retval RES_PARERR Failed.
+ * @retval RES_OK Success.
+ */
+DRESULT spinor_disk_ioctl(void *hdisk, uint8_t command, void *buf);
+
+/* @} */
+#if defined(__cplusplus)
+}
+#endif
+
+#endif /* _SPINOR_DISKIO_H_ */
+

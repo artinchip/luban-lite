@@ -19,6 +19,7 @@ extern void SysTick_Handler(void);
 
 void * g_irqvector[MAX_IRQ_ENTRY];
 void * g_irqdata[MAX_IRQ_ENTRY];
+u32 g_irqcnt[MAX_IRQ_ENTRY] = {0};
 
 void drv_irq_vectors_init(void)
 {
@@ -48,9 +49,10 @@ void drv_irq_call_isr(uint32_t irq_num)
         return;
 
     func = (irq_handler_t)g_irqvector[irq_num];
-    if (func){
+    if (func) {
         /* Extend gpio pin irq */
-        if (irq_num >= MAX_IRQn){
+        g_irqcnt[irq_num]++;
+        if (irq_num >= MAX_IRQn) {
             pin_func = (pin_irq_handler_t)func;
             pin_func(g_irqdata[irq_num]);
         /* Normal hw irq */
@@ -111,6 +113,7 @@ void drv_irq_register(uint32_t irq_num, void *irq_handler, void *data)
 
     g_irqvector[irq_num] = irq_handler;
     g_irqdata[irq_num] = data;
+    g_irqcnt[irq_num] = 0;
 }
 
 /**
@@ -134,13 +137,13 @@ static int cmd_list_irq(int argc, char **argv)
 {
     int i;
 
-    printf("IRQn Handler    \n");
-    printf("---- ---------- \n");
+    printf("IRQn Handler    Count   \n");
+    printf("---- ---------- ----------\n");
     for (i = 0; i < MAX_IRQ_ENTRY; i++) {
         if (!g_irqvector[i] || g_irqvector[i] == Default_Handler)
             continue;
 
-        printf("%3d: %8p\n", i, g_irqvector[i]);
+        printf("%3d: 0x%08x %10d\n", i, (u32)(ptr_t)&g_irqvector[i], g_irqcnt[i]);
     }
     return 0;
 }

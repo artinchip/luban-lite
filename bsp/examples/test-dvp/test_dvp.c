@@ -32,7 +32,7 @@
 
 #define VID_BUF_NUM             3
 #define VID_BUF_PLANE_NUM       2
-#define VID_SCALE_OFFSET        20
+#define VID_SCALE_OFFSET        0
 
 static const char sopts[] = "f:c:h";
 static const struct option lopts[] = {
@@ -252,7 +252,21 @@ int dvp_stop(void)
     return 0;
 }
 
-#define DVP_SCALE       0
+#define DVP_SCALE       1
+
+int video_layer_disable(void)
+{
+    int ret = 0;
+#ifdef AIC_DISPLAY_DRV
+    struct aicfb_layer_data layer = {0};
+    layer.enable = 0;
+    ret = mpp_fb_ioctl(g_fb, AICFB_UPDATE_LAYER_CONFIG, &layer);
+    if (ret < 0)
+	pr_err("g_fb ioctl AICFB_UPDATE_LAYER_CONFIG failed !");
+
+#endif
+    return ret;
+}
 
 int video_layer_set(struct aic_dvp_data *vdata, int index)
 {
@@ -264,7 +278,7 @@ int video_layer_set(struct aic_dvp_data *vdata, int index)
     layer.layer_id = AICFB_LAYER_TYPE_VIDEO;
     layer.enable = 1;
 #if DVP_SCALE
-#if 0
+#if 1
     layer.scale_size.width = g_fb_info.width - VID_SCALE_OFFSET * 2;
     layer.scale_size.height = g_fb_info.height - VID_SCALE_OFFSET * 2;
     layer.pos.x = VID_SCALE_OFFSET;
@@ -366,8 +380,10 @@ static void test_dvp_thread(void *arg)
     dvp_stop();
     dvp_release_buf(g_vdata.binfo.num_buffers);
     mpp_vin_deinit();
-    if (g_fb)
+    if (g_fb) {
+	video_layer_disable();
         mpp_fb_close(g_fb);
+    }
 }
 
 static void cmd_test_dvp(int argc, char **argv)

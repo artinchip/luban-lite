@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2024, Artinchip Technology Co., Ltd
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ */
 #ifndef __DFS_FOR_BAREMETAL_H__
 #define __DFS_FOR_BAREMETAL_H__
 
@@ -5,6 +11,7 @@
 #include "aic_common.h"
 #include "aic_log.h"
 
+#define DFS_USING_WORKDIR               1
 /* RT-Thread error code definitions */
 #define RT_EOK                          0  /**< There is no error */
 #define RT_ERROR                        1  /**< A generic error happens */

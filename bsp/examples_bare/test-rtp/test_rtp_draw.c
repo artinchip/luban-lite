@@ -12,6 +12,8 @@
 #include <console.h>
 #include <getopt.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "aic_common.h"
 #include "artinchip_fb.h"
@@ -28,6 +30,11 @@
 #define AIC_CALI_ACCURACY       65536.0
 #define AIC_DRAW_POINT_NUM      1000
 #define AIC_CALI_MIN_INTERVAL   150
+#define AIC_CALI_POINT_NUM      7
+#define AIC_INVAILD_POINT_VAL   0xfff
+#define AIC_RTP_PRESSURE_DET    1
+
+#define AIC_POINTERCAL_PATH     "/data/config/rtp_pointercal"
 
 static struct mpp_fb *g_fb = NULL;
 static struct aicfb_screeninfo g_fb_info = {0};
@@ -84,6 +91,25 @@ static int test_get_fb_info(void)
     g_yres = g_fb_info.height;
 
     return ret;
+}
+
+static int rtp_save_cali_param(calibration *cal)
+{
+    int cali_cnt;
+    char cal_buf[sizeof(float) * AIC_CALI_POINT_NUM];
+    int fd = open(AIC_POINTERCAL_PATH, O_WRONLY | O_CREAT);
+
+    if (fd > 0) {
+        for (cali_cnt = 0; cali_cnt < AIC_CALI_POINT_NUM; cali_cnt++) {
+            memcpy(cal_buf + cali_cnt * sizeof(float), &cal->a[cali_cnt],
+                   sizeof(float));
+        }
+        write(fd, cal_buf, AIC_CALI_POINT_NUM * sizeof(float));
+        close(fd);
+    } else {
+        pr_err("open file failed!\n");
+    }
+    return 0;
 }
 
 /* Draw a grid, and each cell size: 200*200 */
@@ -227,6 +253,8 @@ static int rtp_perform_calibration(calibration *cal)
     /* If we got here, we're OK, so assign scaling to a[6] and return */
     cal->a[6] = (int)scaling;
 
+    rtp_save_cali_param(cal);
+
     return 1;
 }
 
@@ -242,7 +270,7 @@ static void rtp_get_valid_point(calibration *cal, int index,
     int sum_x =0;
     int sum_y = 0;
     int ret = 0;
-    u32 start_us, end_us;
+    u64 start_us, end_us;
 
     start_us = aic_get_time_us();
     do {
@@ -253,7 +281,8 @@ redocalibration:
 
         if (ret < 0)
             continue;
-
+        if (e->x == AIC_INVAILD_POINT_VAL && e->y == AIC_INVAILD_POINT_VAL)
+            continue;
         if (e->x > 0 || e->y > 0) {
             start_us = aic_get_time_us();
             x = e->x;
@@ -324,14 +353,14 @@ static int test_rtp_init(void)
     if (hal_rtp_clk_init())
         return -1;
 
-    g_rtp_dev.x_plate = 235;
-    g_rtp_dev.y_plate = 0;
+    g_rtp_dev.x_plate = AIC_RTP_X_PLATE;
+    g_rtp_dev.y_plate = AIC_RTP_Y_PLATE;
     g_rtp_dev.mode = RTP_MODE_AUTO2;
-    g_rtp_dev.max_press = 800;
-    g_rtp_dev.smp_period = 15;
-    g_rtp_dev.pressure_det = 1;
-    g_rtp_dev.pdeb = 0xffffffff;
-    g_rtp_dev.delay = 0x4f00004f;
+    g_rtp_dev.max_press = AIC_RTP_MAX_PRESSURE;
+    g_rtp_dev.smp_period = AIC_RTP_PERIOD_MS;
+    g_rtp_dev.pressure_det = AIC_RTP_PRESSURE_DET;
+    g_rtp_dev.pdeb = AIC_RTP_PDEB;
+    g_rtp_dev.delay = AIC_RTP_DELAY;
 
     aicos_request_irq(RTP_IRQn, hal_rtp_isr, 0, NULL, NULL);
     hal_rtp_enable(&g_rtp_dev, 1);
@@ -352,6 +381,19 @@ static void rtp_draw(int max, struct aic_rtp_event *e, calibration *cal)
     static u32 last_time = 0;
 
     rtp_draw_grid();
+
+    char cal_buf[sizeof(float) * AIC_CALI_POINT_NUM];
+    int cali_cnt;
+
+    int fd = open(AIC_POINTERCAL_PATH, O_RDONLY);
+    if (fd >= 0) {
+        read(fd, cal_buf, AIC_CALI_POINT_NUM * sizeof(float));
+        for (cali_cnt = 0; cali_cnt < AIC_CALI_POINT_NUM; cali_cnt++) {
+            cal->a[cali_cnt] = *(int *)(cal_buf + cali_cnt * sizeof(float));
+        }
+        close(fd);
+    }
+
     pr_info("Try to read %d points from RTP ...\n", max);
 
     do {
@@ -359,7 +401,8 @@ static void rtp_draw(int max, struct aic_rtp_event *e, calibration *cal)
         ret = hal_rtp_ebuf_read(&g_rtp_dev.ebuf, e);
         if (ret < 0)
             continue;
-
+        if (e->x == AIC_INVAILD_POINT_VAL && e->y == AIC_INVAILD_POINT_VAL)
+            continue;
         if (e->x > 0 || e->y > 0) {
             if (e->timestamp == last_time) {
                 continue;
@@ -368,7 +411,6 @@ static void rtp_draw(int max, struct aic_rtp_event *e, calibration *cal)
             test_draw_a_point(cnt, e, cal);
             cnt++;
         }
-        aicos_msleep(100);
     } while (cnt < max);
 }
 

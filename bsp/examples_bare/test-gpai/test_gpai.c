@@ -115,28 +115,23 @@ struct aic_gpai_ch aic_gpai_chs[] = {
 #endif
 };
 
-static char sopts[] = "c:t:h";
-static struct option lopts[] = {
-    {"channel", required_argument, NULL, 'c'},
-    {"voltage", required_argument, NULL, 't'},
-    {"help",          no_argument, NULL, 'h'},
-    {0, 0, 0, 0}
-    };
-
+/* The default voltages are set to D21x->3.0V, D31x->2.5V */
 #define AIC_GPAI_DEFAULT_VOLTAGE        3
 #define AIC_GPAI_ADC_MAX_VAL            0xFFF
-#define AIC_GPAI_VOLTAGE_ACCURACY       100
+#define AIC_GPAI_VOLTAGE_ACCURACY       10000
 
-static void cmd_gpai_usage(char *program)
+static float g_def_voltage = AIC_GPAI_DEFAULT_VOLTAGE;
+
+static void cmd_gpai_usage(void)
 {
     printf("Compile time: %s %s\n", __DATE__, __TIME__);
-    printf("Usage: %s [options]\n", program);
-    printf("\t -c, --channel\t\tSelect one channel in [0, %d], default is 0\n",
-           AIC_GPAI_CH_NUM);
-    printf("\t -t, --voltage\t\tInput standard voltage, default is 3\n");
-    printf("\t -h, --help \n");
+    printf("Usage: test_gpai [options]\n");
+    printf("test_gpai read <channel_id>      : Select one channel in [0, %d], default is 0\n",
+           AIC_GPAI_CH_NUM - 1);
+    printf("test_gpai set <default_voltage>  : Modify default voltage\n");
+    printf("test_gpai help                   : Get this help\n");
     printf("\n");
-    printf("Example: %s -c 4 -t 3\n", program);
+    printf("Example: test_gpai read 4\n");
 }
 
 static int test_gpai_init(int ch)
@@ -161,72 +156,71 @@ static int test_gpai_init(int ch)
     return 0;
 }
 
-static int test_gpai_read(int ch)
+static void adc2voltage(float def_voltage, int adc_value, int chan)
 {
-    u32 value;
+    int voltage;
+    int scale = AIC_GPAI_VOLTAGE_ACCURACY;
+
+    voltage = hal_adcim_auto_calibration(adc_value, def_voltage, scale);
+    if (voltage)
+        printf("GPAI ch%d-voltage:%d.%04d v\n", chan, voltage / scale,
+                   voltage % scale);
+    return;
+}
+
+static void cmd_gpai_set(int argc, char **argv)
+{
+    g_def_voltage = strtod(argv[1], NULL);
+    if (g_def_voltage < 0) {
+        printf("Please input valid default voltage\n");
+        return;
+    }
+    printf("Successfully set the default voltage");
+}
+
+
+static int cmd_gpai_read(int argc, char **argv)
+{
+    u32 value, ch;
     struct aic_gpai_ch *chan;
+    ch = strtod(argv[1], NULL);
+
+    if ((ch < 0) || (ch >= AIC_GPAI_CH_NUM)) {
+        printf("Invalid channel No.%d\n", ch);
+        return -1;
+    }
+
+    test_gpai_init(ch);
 
     chan = hal_gpai_ch_is_valid(ch);
     chan->complete = aicos_sem_create(0);
     aicos_request_irq(GPAI_IRQn, aich_gpai_isr, 0, NULL, NULL);
     aich_gpai_read(chan, &value, AIC_GPAI_TIMEOUT);
     printf("ch %d:%d\n", ch, value);
-    return value;
-}
 
-static void test_adc2voltage(int adc_value, int chan, int st_voltage)
-{
-    int voltage;
-    int scale = AIC_GPAI_VOLTAGE_ACCURACY;
+    adc2voltage(g_def_voltage, value, ch);
 
-    voltage = hal_adcim_auto_calibration(adc_value, st_voltage, scale,
-                                         AIC_GPAI_ADC_MAX_VAL);
-    printf("GPAI ch%d-voltage:%d.%02d\n", chan, voltage / scale,
-           voltage % scale);
-    return;
+    return 0;
 }
 
 static int cmd_test_gpai(int argc, char *argv[])
 {
-    int c;
-    int ch = 0;
-    int adc_value = -1;
-    int ret;
-    float st_voltage = AIC_GPAI_DEFAULT_VOLTAGE;
-
     if (argc < 3) {
-        cmd_gpai_usage(argv[0]);
+        cmd_gpai_usage();
         return 0;
     }
 
-    optind = 0;
-    while ((c = getopt_long(argc, argv, sopts, lopts, NULL)) != -1) {
-        switch (c) {
-        case 'c':
-            ch = atoi(optarg);
-            ret = test_gpai_init(ch);
-            if (!ret)
-                adc_value = test_gpai_read(ch);
-            break;
-        case 't':
-            st_voltage = atof(optarg);
-            break;
-        case 'h':
-            cmd_gpai_usage(argv[0]);
-        default:
-            return 0;
-        }
+    if (!strcmp(argv[1], "read")) {
+        cmd_gpai_read(argc - 1, &argv[1]);
+        return 0;
     }
 
-    if (adc_value < 0) {
-        printf("Please select a channel first\n");
+    if (!strcmp(argv[1], "set")) {
+        cmd_gpai_set(argc - 1, &argv[1]);
         return 0;
     }
-    if (st_voltage < 0) {
-        printf("Please input standard voltage\n");
-        return 0;
-    }
-    test_adc2voltage(adc_value,ch,st_voltage);
+
+    cmd_gpai_usage();
 
     return 0;
 }

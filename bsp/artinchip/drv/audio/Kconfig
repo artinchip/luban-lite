@@ -57,9 +57,11 @@ menu "Audio Parameter"
         endif
     endif
 
-    config AIC_AUDIO_DMIC
-        bool "Using DMIC"
-        default y
+    if AIC_AUDIO_DRV_V10 || AIC_AUDIO_DRV_V11
+        config AIC_AUDIO_DMIC
+            bool "Using DMIC"
+            default y
+    endif
 
     if AIC_AUDIO_DRV_V10
         config AIC_AUDIO_AMIC

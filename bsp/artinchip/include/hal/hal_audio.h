@@ -23,6 +23,8 @@
 #define AUDIO_TRANSFER_TYPE_DMIC            5
 #define AUDIO_TRANSFER_TYPE_AMIC            6
 
+#define MAX_VOLUME_0DB                      160
+
 struct aic_audio_config
 {
     uint32_t samplerate;

@@ -147,6 +147,7 @@ static const struct romfs_dirent _mountpoint_root[] =
 {
     {ROMFS_DIRENT_DIR, "ram", RT_NULL, 0},
     {ROMFS_DIRENT_DIR, "data", RT_NULL, 0},
+    {ROMFS_DIRENT_DIR, "rodata", RT_NULL, 0},
     {ROMFS_DIRENT_DIR, "sdcard", RT_NULL, 0},
     {ROMFS_DIRENT_DIR, "udisk", RT_NULL, 0},
 };
@@ -164,9 +165,12 @@ const struct dfs_mount_tbl mount_table[] = {
 #ifdef LPKG_RAMDISK_TYPE_INITDATA
     {"ramdisk0", "/ram", "elm", 0, 0, 0},
 #endif
+#ifdef AIC_USING_SDMC0
+    {"mmc0p2", "/rodata", "elm", 0, 0, 0},
+    {"mmc0p3", "/data",   "elm", 0, 0, 0},
+#endif
 #ifdef AIC_USING_SDMC1
-    {"sd0p0", "/sdcard", "elm", 0, 0, 0},
-    {"sd0", "/sdcard", "elm", 0, 0, 0},
+    {"sd1", "/sdcard", "elm", 0, 0, 0},
 #endif
 #if (defined(AIC_USING_USB0_HOST) || defined(AIC_USING_USB1_HOST))
     {"udisk", "/udisk", "elm", 0, 0, 0},

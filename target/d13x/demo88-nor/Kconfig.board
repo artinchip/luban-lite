@@ -1,10 +1,5 @@
 menu "Board options"
 
-#============================================
-# Peripheral Devices
-#============================================
-comment "Peripheral Devices:"
-
 #---------------------------
 # cmu device global option
 #---------------------------
@@ -114,6 +109,70 @@ config AIC_USING_PWM3
     select AIC_PWM_DRV
 
 #---------------------------
+# EPWM device global option
+#---------------------------
+
+config AIC_USING_EPWM0
+    bool "Using EPWM0"
+    default n
+    select AIC_EPWM_DRV
+
+config AIC_USING_EPWM1
+    bool "Using EPWM1"
+    default n
+    select AIC_EPWM_DRV
+
+config AIC_USING_EPWM2
+    bool "Using EPWM2"
+    default n
+    select AIC_EPWM_DRV
+
+config AIC_USING_EPWM3
+    bool "Using EPWM3"
+    default n
+    select AIC_EPWM_DRV
+
+config AIC_USING_EPWM4
+    bool "Using EPWM4"
+    default n
+    select AIC_EPWM_DRV
+
+config AIC_USING_EPWM5
+    bool "Using EPWM5"
+    default n
+    select AIC_EPWM_DRV
+
+config AIC_USING_EPWM6
+    bool "Using EPWM6"
+    default n
+    select AIC_EPWM_DRV
+
+config AIC_USING_EPWM7
+    bool "Using EPWM7"
+    default n
+    select AIC_EPWM_DRV
+
+config AIC_USING_EPWM8
+    bool "Using EPWM8"
+    default n
+    select AIC_EPWM_DRV
+
+config AIC_USING_EPWM9
+    bool "Using EPWM9"
+    default n
+    select AIC_EPWM_DRV
+
+config AIC_USING_EPWM10
+    bool "Using EPWM10"
+    default n
+    select AIC_EPWM_DRV
+
+config AIC_USING_EPWM11
+    bool "Using EPWM11"
+    default n
+    select AIC_EPWM_DRV
+
+#---------------------------
 # HRTimer device global option
 #---------------------------
 
@@ -146,6 +205,40 @@ config AIC_USING_HRTIMER5
     bool "Using HRTimer5"
     default n
     select AIC_HRTIMER_DRV
+
+#---------------------------
+# CAP device global option
+#---------------------------
+
+config AIC_USING_CAP0
+    bool "Using cap0"
+    default n
+    select AIC_CAP_DRV
+
+config AIC_USING_CAP1
+    bool "Using cap1"
+    default n
+    select AIC_CAP_DRV
+
+config AIC_USING_CAP2
+    bool "Using cap2"
+    default n
+    select AIC_CAP_DRV
+
+config AIC_USING_CAP3
+    bool "Using cap3"
+    default n
+    select AIC_CAP_DRV
+
+config AIC_USING_CAP4
+    bool "Using cap4"
+    default n
+    select AIC_CAP_DRV
+
+config AIC_USING_CAP5
+    bool "Using cap5"
+    default n
+    select AIC_CAP_DRV
 
 #---------------------------
 # CAN device global option
@@ -267,17 +360,6 @@ source "bsp/artinchip/drv/sdmc/Kconfig"
 comment "Analog Related:"
 
 #---------------------------
-# RTP device global option
-#---------------------------
-
-config AIC_USING_RTP
-    bool "Using RTP"
-    default n
-    select AIC_RTP_DRV
-
-source "bsp/artinchip/drv/rtp/Kconfig"
-
-#---------------------------
 # TSEN device global option
 #---------------------------
 
@@ -289,6 +371,14 @@ config AIC_USING_TSEN
 #---------------------------
 # GPAI device global option
 #---------------------------
+
+config AIC_USING_GPAI
+    bool "Using GPAI"
+    default n
+    select AIC_GPAI_DRV
+
+menu "GPAI options"
+    depends on AIC_USING_GPAI
 
 config AIC_USING_GPAI0
     bool "Using GPAI0"
@@ -329,6 +419,9 @@ config AIC_USING_GPAI7
     bool "Using GPAI7"
     default n
     select AIC_GPAI_DRV
+
+source "bsp/artinchip/drv/gpai/Kconfig.dev"
+endmenu
 
 #================================================
 # MutiMedia Class

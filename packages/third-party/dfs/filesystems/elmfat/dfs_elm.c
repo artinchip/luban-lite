@@ -34,7 +34,7 @@
 
 #include "boot_param.h"
 
-static struct dev_info disk[FF_VOLUMES] = {0};
+static struct elm_dev_info disk[FF_VOLUMES] = {0};
 
 static int elm_result_to_dfs(FRESULT result)
 {
@@ -100,43 +100,30 @@ static int get_disk(rt_device_t id)
     return -1;
 }
 
-static void get_disk_info(struct rt_device_blk_geometry *g)
-{
-    disk_ioctl(SDMC_DISK, GET_SECTOR_COUNT, &g->sector_count);
-    disk_ioctl(SDMC_DISK, GET_SECTOR_SIZE, &g->bytes_per_sector);
-    disk_ioctl(SDMC_DISK, GET_BLOCK_SIZE, &g->block_size);
-}
-
 int dfs_elm_mount(struct dfs_filesystem *fs, unsigned long rwflag, const void *data)
 {
     FATFS *fat;
     FRESULT result;
     int index;
-    struct rt_device_blk_geometry geometry = {0};
     char logic_nbr[3] = {'0',':', 0};
 
     /* get an empty position */
     index = get_disk(RT_NULL);
-    if (index == -1)
+    if (index == -1) {
+        pr_err("Failed to get empty disk position.\n");
         return -ENOENT;
+    }
     logic_nbr[0] = '0' + index;
 
     /* save device */
     disk[index].dev_name = fs->dev_id;
     disk[index].dev_type = (long)data;
 
-    /* check sector size */
-    get_disk_info(&geometry);
-    if (geometry.bytes_per_sector > FF_MAX_SS)
-    {
-        rt_kprintf("The sector size of device is greater than the sector size of FAT.\n");
-        return -EINVAL;
-    }
-
     fat = (FATFS *)rt_malloc_align(sizeof(FATFS), CACHE_LINE_SIZE);
     if (fat == RT_NULL)
     {
         disk[index].dev_name = RT_NULL;
+        pr_err("Failed to allocate memory.\n");
         return -ENOMEM;
     }
 
@@ -154,17 +141,20 @@ int dfs_elm_mount(struct dfs_filesystem *fs, unsigned long rwflag, const void *d
             f_mount(RT_NULL, (const TCHAR *)logic_nbr, 1);
             disk[index].dev_name = RT_NULL;
             rt_free_align(fat);
+            pr_err("Failed to allocate memory for %s\n", drive);
             return -ENOMEM;
         }
 
         /* open the root directory to test whether the fatfs is valid */
         result = f_opendir(dir, drive);
-        if (result != FR_OK)
+        rt_free(dir);
+        if (result != FR_OK) {
+            pr_err("Try to open the fatfs failure.\n");;
             goto __err;
+        }
 
         /* mount succeed! */
         fs->data = fat;
-        rt_free_align(dir);
         return 0;
     }
 
@@ -861,7 +851,7 @@ INIT_COMPONENT_EXPORT(elm_init);
 #include "ram_disk/ram_disk.h"
 #endif
 
-#ifdef USB_DISK_ENABLE
+#ifdef AIC_USB_HOST_EHCI_DRV
 #include "usb_disk/usb_disk.h"
 #endif
 
@@ -873,38 +863,53 @@ INIT_COMPONENT_EXPORT(elm_init);
 #include "spinand_disk/spinand_disk.h"
 #endif
 
+#ifdef AIC_SPINOR_DRV
+#include "spinor_disk/spinor_disk.h"
+#endif
+
 /* Initialize a Drive */
 DSTATUS disk_initialize(BYTE pdrv)
 {
     DSTATUS stat = STA_NOINIT;
-    int dev_type = disk[pdrv].dev_type;
+    long dev_type = disk[pdrv].dev_type;
     const char *device_name = disk[pdrv].dev_name;
+    void *handle = NULL;
 
+    (void)handle;
     switch (dev_type) {
 #ifdef RAM_DISK_ENABLE
-        case RAM_DISK:
+        case DTL(DEVICE_TYPE_RAM_DISK):
             stat = ram_disk_initialize(pdrv);
             return stat;
 #endif
-#ifdef USB_DISK_ENABLE
-        case USB_DISK:
+#ifdef AIC_USB_HOST_EHCI_DRV
+        case DTL(DEVICE_TYPE_USB_DISK):
             stat = usb_disk_initialize(pdrv);
             return stat;
 #endif
 #ifdef AIC_SDMC_DRV
-        case SDMC_DISK:
-            stat = sdmc_disk_initialize(1, device_name);
-            return stat;
+        case DTL(DEVICE_TYPE_SDMC_DISK):
+            handle = sdmc_disk_initialize(device_name);
+            stat = 0;
+            break;
 #endif
 #ifdef AIC_SPINAND_DRV
-        case SPINAND_DISK:
-            stat = spinand_disk_initialize(device_name);
-            return stat;
+        case DTL(DEVICE_TYPE_SPINAND_DISK):
+            handle = spinand_disk_initialize(device_name);
+            stat = 0;
+            break;
+#endif
+#ifdef AIC_SPINOR_DRV
+        case DTL(DEVICE_TYPE_SPINOR_DISK):
+            handle = spinor_disk_initialize(device_name);
+            stat = 0;
+            break;
 #endif
         default:
             break;
     }
 
+    disk[pdrv].priv = handle;
     return stat;
 }
 
@@ -918,28 +923,33 @@ DSTATUS disk_status(BYTE pdrv)
 DRESULT disk_read(BYTE pdrv, BYTE *buff, DWORD sector, UINT count)
 {
     DRESULT res = RES_PARERR;
-    int dev_type = disk[pdrv].dev_type;
-    const char *device_name = disk[pdrv].dev_name;
+    long dev_type = disk[pdrv].dev_type;
+    void *handle = disk[pdrv].priv;
 
     switch (dev_type) {
 #ifdef RAM_DISK_ENABLE
-        case RAM_DISK:
+        case DTL(DEVICE_TYPE_RAM_DISK):
             res = ram_disk_read(pdrv, buff, sector, count);
             return res;
 #endif
-#ifdef USB_DISK_ENABLE
-        case USB_DISK:
+#ifdef AIC_USB_HOST_EHCI_DRV
+        case DTL(DEVICE_TYPE_USB_DISK):
             res = usb_disk_read(pdrv, buff, sector, count);
             return res;
 #endif
 #ifdef AIC_SDMC_DRV
-        case SDMC_DISK:
-            res = sdmc_disk_read(pdrv, device_name, buff, sector, count);
+        case DTL(DEVICE_TYPE_SDMC_DISK):
+            res = sdmc_disk_read(handle, buff, sector, count);
             return res;
 #endif
 #ifdef AIC_SPINAND_DRV
-        case SPINAND_DISK:
-            res = spinand_disk_read(device_name, buff, sector, count);
+        case DTL(DEVICE_TYPE_SPINAND_DISK):
+            res = spinand_disk_read(handle, buff, sector, count);
+            return res;
+#endif
+#ifdef AIC_SPINOR_DRV
+        case DTL(DEVICE_TYPE_SPINOR_DISK):
+            res = spinor_disk_read(handle, buff, sector, count);
             return res;
 #endif
         default:
@@ -953,28 +963,33 @@ DRESULT disk_read(BYTE pdrv, BYTE *buff, DWORD sector, UINT count)
 DRESULT disk_write(BYTE pdrv, const BYTE *buff, DWORD sector, UINT count)
 {
     DRESULT res = RES_PARERR;
-    int dev_type = disk[pdrv].dev_type;
-    const char *device_name = disk[pdrv].dev_name;
+    long dev_type = disk[pdrv].dev_type;
+    void *handle = disk[pdrv].priv;
 
     switch (dev_type) {
 #ifdef RAM_DISK_ENABLE
-        case RAM_DISK:
+        case DTL(DEVICE_TYPE_RAM_DISK):
             res = ram_disk_write(pdrv, buff, sector, count);
             return res;
 #endif
-#ifdef USB_DISK_ENABLE
-        case USB_DISK:
+#ifdef AIC_USB_HOST_EHCI_DRV
+        case DTL(DEVICE_TYPE_USB_DISK):
             res = usb_disk_write(pdrv, buff, sector, count);
             return res;
 #endif
 #ifdef AIC_SDMC_DRV
-        case SDMC_DISK:
-            res = sdmc_disk_write(pdrv, device_name, buff, sector, count);
+        case DTL(DEVICE_TYPE_SDMC_DISK):
+            res = sdmc_disk_write(handle, buff, sector, count);
             return res;
 #endif
 #ifdef AIC_SPINAND_DRV
-        case SPINAND_DISK:
-            res = spinand_disk_write(device_name, buff, sector, count);
+        case DTL(DEVICE_TYPE_SPINAND_DISK):
+            res = spinand_disk_write(handle, buff, sector, count);
+            return res;
+#endif
+#ifdef AIC_SPINOR_DRV
+        case DTL(DEVICE_TYPE_SPINOR_DISK):
+            res = spinor_disk_write(handle, buff, sector, count);
             return res;
 #endif
         default:
@@ -987,29 +1002,34 @@ DRESULT disk_write(BYTE pdrv, const BYTE *buff, DWORD sector, UINT count)
 /* Miscellaneous Functions */
 DRESULT disk_ioctl(BYTE pdrv, BYTE cmd, void *buff)
 {
-     DRESULT res = RES_PARERR;
-     int dev_type = disk[pdrv].dev_type;
-     const char *device_name = disk[pdrv].dev_name;
+    DRESULT res = RES_PARERR;
+    long dev_type = disk[pdrv].dev_type;
+    void *handle = disk[pdrv].priv;
 
     switch (dev_type) {
 #ifdef RAM_DISK_ENABLE
-        case RAM_DISK:
+        case DTL(DEVICE_TYPE_RAM_DISK):
             res = ram_disk_ioctl(pdrv, cmd, buff);
             return res;
 #endif
-#ifdef USB_DISK_ENABLE
-        case USB_DISK:
+#ifdef AIC_USB_HOST_EHCI_DRV
+        case DTL(DEVICE_TYPE_USB_DISK):
             res = usb_disk_ioctl(pdrv, cmd, buff);
             return res;
 #endif
 #ifdef AIC_SDMC_DRV
-        case SDMC_DISK:
-            res = sdmc_disk_ioctl(pdrv, device_name, cmd, buff);
+        case DTL(DEVICE_TYPE_SDMC_DISK):
+            res = sdmc_disk_ioctl(handle, cmd, buff);
             return res;
 #endif
 #ifdef AIC_SPINAND_DRV
-        case SPINAND_DISK:
-            res = spinand_disk_ioctl(device_name, cmd, buff);
+        case DTL(DEVICE_TYPE_SPINAND_DISK):
+            res = spinand_disk_ioctl(handle, cmd, buff);
+            return res;
+#endif
+#ifdef AIC_SPINOR_DRV
+        case DTL(DEVICE_TYPE_SPINOR_DISK):
+            res = spinor_disk_ioctl(handle, cmd, buff);
             return res;
 #endif
         default:

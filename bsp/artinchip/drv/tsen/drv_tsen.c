@@ -47,9 +47,9 @@ static rt_size_t aic_tsen_fetch(struct rt_sensor_device *sensor, void *buf, rt_s
         pr_warn("%s is unavailable!\n", chan->name);
         return -ENODEV;
     }
-
+#ifdef AIC_SID_DRV
     hal_tsen_curve_fitting(chan);
-
+#endif
     data->type = RT_SENSOR_CLASS_TEMP;
     data->timestamp = rt_sensor_get_ts();
     if (chan->mode == AIC_TSEN_MODE_SINGLE)

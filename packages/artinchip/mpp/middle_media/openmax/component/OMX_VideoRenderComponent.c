@@ -472,9 +472,10 @@ static int  OMX_VideoRenderGiveBackAllFrames(VIDEO_RENDER_DATA_TYPE * pVideoRend
             } else {
                 loge("give back frame to vdec fail\n");
                 pVideoRenderDataType->nGiveBackFrameFailNum++;
+                usleep(5*1000);
                 continue;// must give back ok ,so retry to give back
             }
-            logi("nGiveBackFrameOkNum:%d,nGiveBackFrameFailNum:%d\n"
+            logi("nGiveBackFrameOkNum:%"PRId32",nGiveBackFrameFailNum:%"PRId32"\n"
                 ,pVideoRenderDataType->nGiveBackFrameOkNum
                 ,pVideoRenderDataType->nGiveBackFrameFailNum);
 
@@ -766,7 +767,7 @@ static OMX_ERRORTYPE OMX_VideoRenderComponentTunnelRequest(
         pTunneledInfo = &pVideoRenderDataType->sInPortTunneledInfo[VIDEO_RENDER_PORT_IN_CLOCK_INDEX];
         pBufSupplier = &pVideoRenderDataType->sInBufSupplier[VIDEO_RENDER_PORT_IN_CLOCK_INDEX];
     } else {
-        loge("component can not find port :%d,VIDEO_RENDER_PORT_IN_VIDEO_INDEX:%d\n",nPort,VIDEO_RENDER_PORT_IN_VIDEO_INDEX);
+        loge("component can not find port :%"PRIu32",VIDEO_RENDER_PORT_IN_VIDEO_INDEX:%d\n",nPort,VIDEO_RENDER_PORT_IN_VIDEO_INDEX);
         return OMX_ErrorBadParameter;
     }
 
@@ -891,9 +892,15 @@ static OMX_ERRORTYPE OMX_VideoRenderEmptyThisBuffer(
         memcpy(&pFrame->sFrameInfo,pBuffer->pBuffer,sizeof(struct mpp_frame));
         mpp_list_del(&pFrame->sList);
         mpp_list_add_tail(&pFrame->sList, &pVideoRenderDataType->sInReadyFrame);
-        aic_pthread_mutex_unlock(&pVideoRenderDataType->sInFrameLock);
+        if (pVideoRenderDataType->nWaitReayFrameFlag) {
+            sMsg.message_id = OMX_CommandNops;
+            sMsg.data_size = 0;
+            aic_msg_put(&pVideoRenderDataType->sMsgQue, &sMsg);
+            pVideoRenderDataType->nWaitReayFrameFlag = 0;
+        }
         pVideoRenderDataType->nReceiveFrameNum++;
-        logd("nReceiveFrameNum:%d\n",pVideoRenderDataType->nReceiveFrameNum);
+        logd("nReceiveFrameNum:%"PRId32"\n",pVideoRenderDataType->nReceiveFrameNum);
+        aic_pthread_mutex_unlock(&pVideoRenderDataType->sInFrameLock);
 
         {
             static int nRenderFrameNum = 0;
@@ -927,19 +934,17 @@ static OMX_ERRORTYPE OMX_VideoRenderEmptyThisBuffer(
         memcpy(&pFrame->sFrameInfo,pBuffer->pBuffer,sizeof(struct mpp_frame));
         mpp_list_del(&pFrame->sList);
         mpp_list_add_tail(&pFrame->sList, &pVideoRenderDataType->sInReadyFrame);
-        aic_pthread_mutex_unlock(&pVideoRenderDataType->sInFrameLock);
+        if (pVideoRenderDataType->nWaitReayFrameFlag) {
+            sMsg.message_id = OMX_CommandNops;
+            sMsg.data_size = 0;
+            aic_msg_put(&pVideoRenderDataType->sMsgQue, &sMsg);
+            pVideoRenderDataType->nWaitReayFrameFlag = 0;
+        }
         pVideoRenderDataType->nReceiveFrameNum++;
-        logw("nReceiveFrameNum:%d\n",pVideoRenderDataType->nReceiveFrameNum);
+        logd("nReceiveFrameNum:%"PRId32"\n",pVideoRenderDataType->nReceiveFrameNum);
+        aic_pthread_mutex_unlock(&pVideoRenderDataType->sInFrameLock);
     }
 
-    aic_pthread_mutex_lock(&pVideoRenderDataType->sWaitReayFrameLock);
-    if (pVideoRenderDataType->nWaitReayFrameFlag) {
-        sMsg.message_id = OMX_CommandNops;
-        sMsg.data_size = 0;
-        aic_msg_put(&pVideoRenderDataType->sMsgQue, &sMsg);
-        pVideoRenderDataType->nWaitReayFrameFlag = 0;
-    }
-    aic_pthread_mutex_unlock(&pVideoRenderDataType->sWaitReayFrameLock);
     aic_pthread_mutex_unlock(&pVideoRenderDataType->stateLock);
 
     return eError;
@@ -1043,7 +1048,6 @@ OMX_ERRORTYPE OMX_VideoRenderComponentDeInit(
 
     pthread_mutex_destroy(&pVideoRenderDataType->sInFrameLock);
     pthread_mutex_destroy(&pVideoRenderDataType->stateLock);
-    pthread_mutex_destroy(&pVideoRenderDataType->sWaitReayFrameLock);
 
     aic_msg_destroy(&pVideoRenderDataType->sMsgQue);
 
@@ -1062,7 +1066,7 @@ OMX_ERRORTYPE OMX_VideoRenderComponentDeInit(
     return eError;
 }
 
-static int dec_thread_attr_init(pthread_attr_t *attr)
+static int video_thread_attr_init(pthread_attr_t *attr)
 {
     // default stack size is 2K, it is not enough for decode thread
     if (attr == NULL) {
@@ -1085,9 +1089,8 @@ OMX_ERRORTYPE OMX_VideoRenderComponentInit(
     OMX_U32 i;
     //OMX_U32 cnt;
 
-    pthread_attr_t *attr = NULL;
-    attr = (pthread_attr_t*)mpp_alloc(sizeof(pthread_attr_t));
-    dec_thread_attr_init(attr);
+    pthread_attr_t attr;
+    video_thread_attr_init(&attr);
 
     logw("OMX_VideoRenderComponentInit....");
 
@@ -1174,11 +1177,9 @@ OMX_ERRORTYPE OMX_VideoRenderComponentInit(
     pVideoRenderDataType->nRotationAngleChange = 0;
     pVideoRenderDataType->nInitRotationParam = 0;
 
-    pthread_mutex_init(&pVideoRenderDataType->sWaitReayFrameLock, NULL);
-
     pthread_mutex_init(&pVideoRenderDataType->stateLock, NULL);
     // Create the component thread
-    err = pthread_create(&pVideoRenderDataType->threadId, attr, OMX_VideoRenderComponentThread, pVideoRenderDataType);
+    err = pthread_create(&pVideoRenderDataType->threadId, &attr, OMX_VideoRenderComponentThread, pVideoRenderDataType);
     //if (err || !pVideoRenderDataType->threadId)
     if (err)
     {
@@ -1192,7 +1193,6 @@ OMX_ERRORTYPE OMX_VideoRenderComponentInit(
 _EXIT5:
     aic_msg_destroy(&pVideoRenderDataType->sMsgQue);
     pthread_mutex_destroy(&pVideoRenderDataType->stateLock);
-    pthread_mutex_destroy(&pVideoRenderDataType->sWaitReayFrameLock);
 
 _EXIT4:
     if (!mpp_list_empty(&pVideoRenderDataType->sInEmptyFrame)) {
@@ -1313,10 +1313,10 @@ static void OMX_VideoRenderStateChangeToPause(VIDEO_RENDER_DATA_TYPE * pVideoRen
         OMX_TIME_CONFIG_TIMESTAMPTYPE sTimeStamp;
         if (pTunneldClock->nTunneledFlag) {
             OMX_GetConfig(pTunneldClock->pTunneledComp,OMX_IndexConfigTimeCurrentMediaTime, &sTimeStamp);
-            printf("[%s:%d]Excuting--->Pause,sTimeStamp:%ld\n",__FUNCTION__,__LINE__,sTimeStamp.nTimestamp);
+            printf("[%s:%d]Excuting--->Pause,sTimeStamp:%"PRId64"\n",__FUNCTION__,__LINE__,sTimeStamp.nTimestamp);
         } else {
             pVideoRenderDataType->sPauseTimePoint = OMX_ClockGetSystemTime();
-            printf("[%s:%d]Excuting--->Pause,sPauseTimePoint:%ld\n",__FUNCTION__,__LINE__,pVideoRenderDataType->sPauseTimePoint);
+            printf("[%s:%d]Excuting--->Pause,sPauseTimePoint:%"PRId64"\n",__FUNCTION__,__LINE__,pVideoRenderDataType->sPauseTimePoint);
         }
     } else {
         OMX_VideoRenderEventNotify(pVideoRenderDataType
@@ -1351,10 +1351,10 @@ static void OMX_VideoRenderStateChangeToExecuting(VIDEO_RENDER_DATA_TYPE * pVide
         OMX_PORT_TUNNELEDINFO *pTunneldClock = &pVideoRenderDataType->sInPortTunneledInfo[VIDEO_RENDER_PORT_IN_CLOCK_INDEX];
         if (pTunneldClock->nTunneledFlag) {
             OMX_GetConfig(pTunneldClock->pTunneledComp,OMX_IndexConfigTimeCurrentMediaTime, &sTimeStamp);
-            printf("[%s:%d]Pause--->Excuting,sTimeStamp:%ld\n",__FUNCTION__,__LINE__,sTimeStamp.nTimestamp);
+            printf("[%s:%d]Pause--->Excuting,sTimeStamp:%"PRId64"\n",__FUNCTION__,__LINE__,sTimeStamp.nTimestamp);
         } else {
             pVideoRenderDataType->sPauseTimeDurtion += (OMX_ClockGetSystemTime() - pVideoRenderDataType->sPauseTimePoint);
-            printf("[%s:%d]Pause--->Excuting,sPauseTimePoint:%ld,curTime:%ld,pauseDura:%ld\n"
+            printf("[%s:%d]Pause--->Excuting,sPauseTimePoint:%"PRId64",curTime:%"PRId64",pauseDura:%"PRId64"\n"
                 ,__FUNCTION__,__LINE__,pVideoRenderDataType->sPauseTimePoint,OMX_ClockGetSystemTime(),pVideoRenderDataType->sPauseTimeDurtion);
         }
     } else {
@@ -1480,7 +1480,7 @@ static void OMX_VdieoRenderSetMediaClock(VIDEO_RENDER_DATA_TYPE* pVideoRenderDat
     pVideoRenderDataType->sPauseTimeDurtion = 0;
     pVideoRenderDataType->sFisrtShowPts = pFrameInfo->pts;
     pVideoRenderDataType->sPreFramePts = pFrameInfo->pts;
-    logw("pVideoRenderDataType->sFisrtShowPts:%ld,pVideoRenderDataType->sWallTimeBase:%ld\n"
+    logw("pVideoRenderDataType->sFisrtShowPts:%"PRId64",pVideoRenderDataType->sWallTimeBase:%"PRId64"\n"
         ,pVideoRenderDataType->sFisrtShowPts
         ,pVideoRenderDataType->sWallTimeBase);
 }
@@ -1526,9 +1526,10 @@ static int OMX_GiveBackProcessedFrames(VIDEO_RENDER_DATA_TYPE* pVideoRenderDataT
         } else { // how to do ,do nothing or move to empty list,now move to  empty list
             logw("give back frame to vdec fail\n");
             pVideoRenderDataType->nGiveBackFrameFailNum++;
-            break;
+            usleep(5*1000);
+            continue;
         }
-        logi("nGiveBackFrameOkNum:%d,nGiveBackFrameFailNum:%d\n"
+        logi("nGiveBackFrameOkNum:%"PRId32",nGiveBackFrameFailNum:%"PRId32"\n"
             ,pVideoRenderDataType->nGiveBackFrameOkNum,pVideoRenderDataType->nGiveBackFrameFailNum);
     }
     return ret;
@@ -1590,7 +1591,7 @@ static OMX_VIDEO_SYNC_TYPE OMX_VdieoRenderProcessVideoSync(VIDEO_RENDER_DATA_TYP
     }
 
     if (pFrameInfo->flags & FRAME_FLAG_EOS) {
-        printf("[%s:%d]pts:%lld,sDiffTime:%ld\n",__FUNCTION__,__LINE__,pFrameInfo->pts,sDelayime);
+        printf("[%s:%d]pts:%lld,sDiffTime:%"PRId64"\n",__FUNCTION__,__LINE__,pFrameInfo->pts,sDelayime);
     }
 
     if (sDelayime > 2*MAX_DIFFF_TIME) {
@@ -1607,7 +1608,61 @@ static OMX_VIDEO_SYNC_TYPE OMX_VdieoRenderProcessVideoSync(VIDEO_RENDER_DATA_TYP
 }
 
 
+//#define OMX_VIDEORENDER_ENABLE_DUMP_PIC
 
+#ifdef OMX_VIDEORENDER_ENABLE_DUMP_PIC
+static int OMX_VideoRenderDumpPic(struct mpp_buf* video,int index)
+{
+	int i;
+	int data_size[3] =  {0, 0, 0};
+	int comp = 3;
+	FILE* fp_save = NULL;
+	char fileName[255] =  {0};
+	if (video->format == MPP_FMT_YUV420P)  {
+		comp = 3;
+		data_size[0] = video->size.height * video->stride[0];
+		data_size[1] = data_size[2] = data_size[0]/4;
+	}  else if (video->format == MPP_FMT_NV12 || video->format == MPP_FMT_NV21)  {
+		comp = 2;
+		data_size[0] = video->size.height * video->stride[0];
+		data_size[1] =  data_size[0]/2;
+	}  else if (video->format == MPP_FMT_YUV444P)  {
+		comp = 3;
+		data_size[0] = video->size.height * video->stride[0];
+		data_size[1] = data_size[2] = data_size[0];
+	}  else if (video->format == MPP_FMT_YUV422P)  {
+		comp = 3;
+		data_size[0] = video->size.height * video->stride[0];
+		data_size[1] = data_size[2] = data_size[0]/2;
+	}  else if (video->format == MPP_FMT_RGBA_8888 || video->format == MPP_FMT_BGRA_8888
+		|| video->format == MPP_FMT_ARGB_8888 || video->format == MPP_FMT_ABGR_8888)  {
+		comp = 1;
+		data_size[0] = video->size.height * video->stride[0];
+	}  else if (video->format == MPP_FMT_RGB_888 || video->format == MPP_FMT_BGR_888)  {
+		comp = 1;
+		data_size[0] = video->size.height * video->stride[0];
+	}  else if (video->format == MPP_FMT_RGB_565 || video->format == MPP_FMT_BGR_565)  {
+		comp = 1;
+		data_size[0] = video->size.height * video->stride[0];
+	}
+	loge("data_size: %d %d %d, height: %d, stride: %d, format: %d",
+		data_size[0], data_size[1], data_size[2],
+		video->size.height, video->stride[0], video->format);
+	snprintf(fileName,sizeof(fileName),"/sdcard/video/pics/pic%d.yuv",index);
+	fp_save = fopen(fileName, "wb");
+	if (fp_save  == NULL) {
+		loge("fopen %s error\n",fileName);
+		return -1;
+	}
+	logd("fopen %s ok\n",fileName);
+	for(i=0; i<comp; i++)  {
+		if (fp_save)
+			fwrite((void *)video->phy_addr[i], 1, data_size[i], fp_save);
+	}
+	fclose(fp_save);
+	return 0;
+}
+#endif
 
 static void* OMX_VideoRenderComponentThread(void* pThreadData)
 {
@@ -1623,16 +1678,16 @@ static void* OMX_VideoRenderComponentThread(void* pThreadData)
     //prctl(PR_SET_NAME,(u32)"VideoRender");
     OMX_PORT_TUNNELEDINFO *pTunneldClock;
     pTunneldClock = &pVideoRenderDataType->sInPortTunneledInfo[VIDEO_RENDER_PORT_IN_CLOCK_INDEX];
-
     OMX_S32 nEmptyNum = 0;
-
+    struct timespec pev = {0},cur = {0};
     pVideoRenderDataType->nWaitReayFrameFlag = 1;
+
     while(1) {
 _AIC_MSG_GET_:
         if (aic_msg_get(&pVideoRenderDataType->sMsgQue, &message) == 0) {
             nCmd = message.message_id;
             nCmdData = message.param;
-            logi("nCmd:%d, nCmdData:%d\n",nCmd,nCmdData);
+            logi("nCmd:%"PRId32", nCmdData:%"PRId32"\n",nCmd,nCmdData);
             if (OMX_CommandStateSet == nCmd) {
                 aic_pthread_mutex_lock(&pVideoRenderDataType->stateLock);
                 if (pVideoRenderDataType->state == (OMX_STATETYPE)(nCmdData)) {
@@ -1694,24 +1749,26 @@ _AIC_MSG_GET_:
 
         OMX_GiveBackProcessedFrames(pVideoRenderDataType);
 
-        if (OMX_VideoRenderListEmpty(&pVideoRenderDataType->sInReadyFrame,pVideoRenderDataType->sInFrameLock))
-        {
+        aic_pthread_mutex_lock(&pVideoRenderDataType->sInFrameLock);
+        if (mpp_list_empty(&pVideoRenderDataType->sInReadyFrame)) {
             struct timespec before = {0},after = {0};
             long diff;
-            aic_pthread_mutex_lock(&pVideoRenderDataType->sWaitReayFrameLock);
+
             pVideoRenderDataType->nWaitReayFrameFlag = 1;
-            aic_pthread_mutex_unlock(&pVideoRenderDataType->sWaitReayFrameLock);
+            aic_pthread_mutex_unlock(&pVideoRenderDataType->sInFrameLock);
 
             clock_gettime(CLOCK_REALTIME,&before);
-            aic_msg_wait_new_msg(&pVideoRenderDataType->sMsgQue, 0);
+            aic_msg_wait_new_msg(&pVideoRenderDataType->sMsgQue, VIDEO_RENDER_WAIT_FRAME_INTERVAL);
             clock_gettime(CLOCK_REALTIME,&after);
             diff = (after.tv_sec - before.tv_sec)*1000*1000 + (after.tv_nsec - before.tv_nsec)/1000;
-            if (diff > 50*1000) {
+            if (diff >  VIDEO_RENDER_WAIT_FRAME_MAX_TIME) {
                 printf("[%s:%d]:%ld\n",__FUNCTION__,__LINE__,diff);
+               pVideoRenderDataType->nFlags  |= VIDEO_RENDER_INPORT_SEND_ALL_FRAME_FLAG;
             }
             nEmptyNum++;
             goto _AIC_MSG_GET_;
         }
+        aic_pthread_mutex_unlock(&pVideoRenderDataType->sInFrameLock);
 
         while(!OMX_VideoRenderListEmpty(&pVideoRenderDataType->sInReadyFrame,pVideoRenderDataType->sInFrameLock)) {
             aic_pthread_mutex_lock(&pVideoRenderDataType->sInFrameLock);
@@ -1737,7 +1794,7 @@ _AIC_MSG_GET_:
                     OMX_SetConfig(pTunneldClock->pTunneledComp,OMX_IndexConfigTimeClientStartTime, &sTimeStamp);
                     // whether need to wait????
                     if (pVideoRenderDataType->eClockState != OMX_TIME_ClockStateRunning) {
-                        aic_msg_wait_new_msg(&pVideoRenderDataType->sMsgQue, 1*1000);
+                        aic_msg_wait_new_msg(&pVideoRenderDataType->sMsgQue, 10*1000);
                         goto _AIC_MSG_GET_;
                     }
                     printf("[%s:%d]audio start time arrive\n",__FUNCTION__,__LINE__);
@@ -1819,7 +1876,7 @@ _AIC_MSG_GET_:
                 }
                 aic_pthread_mutex_unlock(&pVideoRenderDataType->sInFrameLock);
 
-                logd("nReceiveFrameNum:%d,nShowFrameOkNum:%d,nShowFrameFailNum:%d\n"
+                logd("nReceiveFrameNum:%"PRId32",nShowFrameOkNum:%"PRId32",nShowFrameFailNum:%"PRId32"\n"
                     ,pVideoRenderDataType->nReceiveFrameNum
                     ,pVideoRenderDataType->nShowFrameOkNum
                     ,pVideoRenderDataType->nShowFrameFailNum);
@@ -1827,26 +1884,24 @@ _AIC_MSG_GET_:
                 OMX_S32 data1,data2;
                 OMX_TICKS sDelayime;
                 OMX_VIDEO_SYNC_TYPE eSyncType;
-                static struct timespec pev = {0},cur = {0};
+
                 //loge("!!!!!!!!!!!!!!! ReadyFrame!!!!!!!!! \n");
                 eSyncType = OMX_VdieoRenderProcessVideoSync(pVideoRenderDataType,&pFrameNode->sFrameInfo,&sDelayime);
                 //eSyncType = OMX_VIDEO_SYNC_SHOW;
-
                 if (pev.tv_sec == 0) {
                     clock_gettime(CLOCK_REALTIME,&pev);
                 } else {
                     long diff = 0;
                     clock_gettime(CLOCK_REALTIME,&cur);
                     diff = (cur.tv_sec - pev.tv_sec)*1000*1000 + (cur.tv_nsec - pev.tv_nsec)/1000;
-                    if (diff > 42*1000) {
-                        printf("[%s:%d]:%ld,sDelayime:%ld,eSyncType:%d,pts:%lld\n"
+                    if (diff > 100*1000) {
+                        printf("[%s:%d]:%ld,sDelayime:%"PRId64",eSyncType:%d,pts:%lld\n"
                                 ,__FUNCTION__,__LINE__
                                 ,diff
                                 ,sDelayime
                                 ,eSyncType
                                 ,pFrameNode->sFrameInfo.pts);
                     }
-
                     pev = cur;
                 }
 
@@ -1906,7 +1961,7 @@ _AIC_MSG_GET_:
                     nDropNum++;
                     if (nDropNum  > 50) {
                         nDropNum = 0;
-                        printf("[%s:%d]OMX_VIDEO_SYNC_DROP:nDropFrameNum:%d,sDelayime:%ld:%d\n",__FUNCTION__,__LINE__,pVideoRenderDataType->nDropFrameNum,sDelayime,nEmptyNum);
+                        printf("[%s:%d]OMX_VIDEO_SYNC_DROP:nDropFrameNum:%"PRId32",sDelayime:%"PRId64":%"PRId32"\n",__FUNCTION__,__LINE__,pVideoRenderDataType->nDropFrameNum,sDelayime,nEmptyNum);
                     }
 
                     aic_pthread_mutex_unlock(&pVideoRenderDataType->sInFrameLock);
@@ -1943,12 +1998,12 @@ _AIC_MSG_GET_:
 
     }
 _EXIT:
-    printf("[%s:%d]nReceiveFrameNum:%d,"\
-            "nLeftReadyFrameWhenCompoentExitNum:%d,"\
-            "nShowFrameOkNum:%d,"\
-            "nShowFrameFailNum:%d,"\
-            "nGiveBackFrameOkNum:%d,"\
-            "nGiveBackFrameFailNum:%d\n"
+    printf("[%s:%d]nReceiveFrameNum:%"PRId32","\
+            "nLeftReadyFrameWhenCompoentExitNum:%"PRId32","\
+            "nShowFrameOkNum:%"PRId32","\
+            "nShowFrameFailNum:%"PRId32","\
+            "nGiveBackFrameOkNum:%"PRId32","\
+            "nGiveBackFrameFailNum:%"PRId32"\n"
             ,__FUNCTION__,__LINE__
             ,pVideoRenderDataType->nReceiveFrameNum
             ,pVideoRenderDataType->nLeftReadyFrameWhenCompoentExitNum

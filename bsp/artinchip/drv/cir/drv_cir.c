@@ -48,7 +48,7 @@ rt_size_t drv_cir_read(rt_device_t pdev, rt_off_t pos, void *buffer,
                                  p_cir_ctrl->rx_idx, (uint32_t *)buffer);
     if (ret)
     {
-        LOG_E("ir_raw_decode_scancode error\n");
+        LOG_D("ir_raw_decode_scancode error\n");
         size = 0;
     }
 
@@ -107,6 +107,7 @@ rt_err_t drv_cir_control(rt_device_t pdev, int cmd, void *args)
         hal_cir_set_rx_sample_clock(p_cir_ctrl, (uint8_t)config->protocol);
         hal_cir_set_rx_level(p_cir_ctrl, config->rx_level);
         hal_cir_enable_receiver(p_cir_ctrl);
+        hal_cir_enable_transmitter(p_cir_ctrl);
         break;
     default:
         break;

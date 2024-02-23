@@ -16,7 +16,6 @@ extern "C" {
 #endif
 
 #define BASE_DRAM                     (0x40000000)
-#define XSPI_BASE                    0x10300000
 #define XSPI_INVALID_BASE             (0xFFFFFFFF)
 
 #define XSPI_REG_CTL(base)            (volatile void *)((base) + 0x00UL)
@@ -104,6 +103,10 @@ extern "C" {
 #define CTL_BIT_AXI_BURST_OFS           (3)
 #define CTL_BIT_AXI_BURST_MSK           (0x1 << CTL_BIT_AXI_BURST_OFS)
 #define CTL_BIT_AXI_BURST_VAL(v)        (((v) << CTL_BIT_AXI_BURST_OFS) & CTL_BIT_AXI_BURST_MSK)
+#define CTL_BIT_TIMEOUT_OFS             (7)
+#define CTL_BIT_TIMEOUT_MSK             (0x1 << CTL_BIT_TIMEOUT_OFS)
+#define CTL_BIT_TIMEOUT_VAL(v)          (((v) << CTL_BIT_TIMEOUT_OFS) & CTL_BIT_TIMEOUT_MSK)
+
 
 
 /*  0x0028 XSPI_FCR */
@@ -214,34 +217,34 @@ extern "C" {
 #define XSPI_FIFO_DEPTH                 64
 
 
-typedef enum xspi_ddr_sdr_mode{
+typedef enum xspi_ddr_sdr_mode {
     xspi_sdr = 0x0,
     xspi_ddr = 0x1,
 }xspi_ddr_sdr_mode_t;
 
-typedef enum xspi_cs_sel{
+typedef enum xspi_cs_sel {
     cs0 = 0x0,
     cs1 = 0x1,
 }xspi_cs_sel_t;
 
-typedef enum xspi_mode{
+typedef enum xspi_mode {
     xccela = 0x0,
     hyperbus = 0x1,
     opi = 0x2,
     xspi_spi = 0x3,
 }xspi_mode_t;
 
-typedef enum xspi_boundary{
+typedef enum xspi_boundary {
     xspi_2k = 0x0,
     xspi_1k = 0x1,
 }xspi_boundary_t;
 
-typedef enum xspi_parallel_mode{
+typedef enum xspi_parallel_mode {
     single_mode = 0x0,
     parellel_mode = 0x1,
 }xspi_parallel_mode_t;
 
-typedef enum xspi_dll_phase_sel{
+typedef enum xspi_dll_phase_sel {
     xspi_d_22b5 = 0x0,
     xspi_d_45b = 0x1,
     xspi_d_67b5 = 0x2,
@@ -260,14 +263,14 @@ typedef enum xspi_dll_phase_sel{
     xspi_dbypass = 0xf,
 }xspi_dll_phase_sel_t;
 
-typedef enum xspi_dll_reg_icp{
+typedef enum xspi_dll_reg_icp {
     ICP_50_100M = 0x0,
     ICP_100_150M = 0x1,
     ICP_150_200M = 0x2,
     ICP_200_266M = 0x3,
 }xspi_dll_reg_icp_t;
 
-typedef enum xspi_lut_id{
+typedef enum xspi_lut_id {
     lut_id0 = 0x0,
     lut_id1 = 0x1,
     lut_id2 = 0x2,
@@ -278,7 +281,7 @@ typedef enum xspi_lut_id{
     lut_id7 = 0x7
 }xspi_lut_id_t;
 
-typedef enum xspi_lut_ins{
+typedef enum xspi_lut_ins {
     XSPI_CMD = 0x1,
     XSPI_CMD_EX = 0x2,
     XSPI_ADDR = 0x3,
@@ -296,14 +299,14 @@ typedef enum xspi_lut_ins{
 }xspi_lut_ins_t;
 
 
-typedef enum xspi_lut_io{
+typedef enum xspi_lut_io {
     IO_1 = 0x0,
     IO_2 = 0x1,
     IO_4 = 0x2,
     IO_8 = 0x3,
 }xspi_lut_io_t;
 
-typedef enum xspi_lut_lock{
+typedef enum xspi_lut_lock {
     LUT_LOCK = 0x1,
     LUT_UNLOCK = 0x2,
 }xspi_lut_lock_t;
@@ -384,7 +387,7 @@ static inline void xspi_hw_reset(u32 base)
 static inline void xspi_hw_set_cs_write_hold(u32 base, u32 num)
 {
     hal_log_debug("hal_xspi %s:%d\n", __FUNCTION__, __LINE__);
-    while(XSPI_BUSY == xspi_hw_check_idle_status(base));
+    while(XSPI_BUSY == xspi_hw_check_idle_status(base)){};
     u32 val = readl(XSPI_REG_TCR(base));
 
     val &= ~(TCR_BIT_WR_HOLD_MSK);
@@ -396,7 +399,7 @@ static inline void xspi_hw_set_cs_write_hold(u32 base, u32 num)
 static inline void xspi_hw_set_cs_read_hold(u32 base, u32 num)
 {
     hal_log_debug("hal_xspi %s:%d\n", __FUNCTION__, __LINE__);
-    while(XSPI_BUSY == xspi_hw_check_idle_status(base));
+    while(XSPI_BUSY == xspi_hw_check_idle_status(base)){};
     u32 val = readl(XSPI_REG_TCR(base));
 
     val &= ~(TCR_BIT_RD_HOLD_MSK);
@@ -408,7 +411,7 @@ static inline void xspi_hw_set_cs_read_hold(u32 base, u32 num)
 static inline void xspi_hw_set_cs_opi_hold(u32 base, u32 num)
 {
     hal_log_debug("hal_xspi %s:%d\n", __FUNCTION__, __LINE__);
-    while(XSPI_BUSY == xspi_hw_check_idle_status(base));
+    while(XSPI_BUSY == xspi_hw_check_idle_status(base)){};
     u32 val = readl(XSPI_REG_TCR(base));
 
     val &= ~(TCR_BIT_OPI_HOLD_MSK);
@@ -420,7 +423,7 @@ static inline void xspi_hw_set_cs_opi_hold(u32 base, u32 num)
 static inline void xspi_hw_set_xspi_mode(u32 base, xspi_mode_t xspi_mode)
 {
     hal_log_debug("hal_xspi %s:%d\n", __FUNCTION__, __LINE__);
-    while(XSPI_BUSY == xspi_hw_check_idle_status(base));
+    while(XSPI_BUSY == xspi_hw_check_idle_status(base)){};
     u32 val = readl(XSPI_REG_CTL(base));
 
     val &= ~(CTL_BIT_XSPI_MODE_MSK);
@@ -438,7 +441,7 @@ static inline void xspi_hw_set_xspi_mode(u32 base, xspi_mode_t xspi_mode)
 static inline void xspi_hw_set_boudary_ctl(u32 base, xspi_boundary_t xspi_boundary)
 {
     hal_log_debug("hal_xspi %s:%d\n", __FUNCTION__, __LINE__);
-    while(XSPI_BUSY == xspi_hw_check_idle_status(base));
+    while(XSPI_BUSY == xspi_hw_check_idle_status(base)){};
     u32 val = readl(XSPI_REG_CTL(base));
 
     val &= ~(CTL_BIT_BOUNDARY_EN_MSK);
@@ -454,7 +457,7 @@ static inline void xspi_hw_set_boudary_ctl(u32 base, xspi_boundary_t xspi_bounda
 static inline void xspi_hw_set_parallel_mode(u32 base, xspi_parallel_mode_t parallel_mode)
 {
     hal_log_debug("hal_xspi %s:%d\n", __FUNCTION__, __LINE__);
-    while(XSPI_BUSY == xspi_hw_check_idle_status(base));
+    while(XSPI_BUSY == xspi_hw_check_idle_status(base)){};
     u32 val = readl(XSPI_REG_CTL(base));
 
     val &= ~(CTL_BIT_PARALLEL_MODE_MSK);
@@ -467,7 +470,7 @@ static inline void xspi_hw_set_parallel_mode(u32 base, xspi_parallel_mode_t para
 static inline void xspi_hw_set_xspi_en(u32 base, u8 en)
 {
     hal_log_debug("hal_xspi %s:%d\n", __FUNCTION__, __LINE__);
-    while(XSPI_BUSY == xspi_hw_check_idle_status(base));
+    while(XSPI_BUSY == xspi_hw_check_idle_status(base)){};
     u32 val = readl(XSPI_REG_CTL(base));
 
     val &= ~(CTL_BIT_XSPI_EN_MSK);
@@ -479,7 +482,7 @@ static inline void xspi_hw_set_xspi_en(u32 base, u8 en)
 static inline void xspi_hw_set_xip_en(u32 base, u8 en)
 {
     hal_log_debug("hal_xspi %s:%d\n", __FUNCTION__, __LINE__);
-    while(XSPI_BUSY == xspi_hw_check_idle_status(base));
+    while(XSPI_BUSY == xspi_hw_check_idle_status(base)){};
     u32 val = readl(XSPI_REG_CTL(base));
 
     val &= ~(CTL_BIT_XIP_EN_MSK);
@@ -492,7 +495,7 @@ static inline void xspi_hw_set_xip_en(u32 base, u8 en)
 static inline void xspi_hw_set_cs_sel(u32 base, xspi_cs_sel_t sel)
 {
     hal_log_debug("hal_xspi %s:%d\n", __FUNCTION__, __LINE__);
-    while(XSPI_BUSY == xspi_hw_check_idle_status(base));
+    while(XSPI_BUSY == xspi_hw_check_idle_status(base)){};
     u32 val = readl(XSPI_REG_TCR(base));
 
     val &= ~(TCR_BIT_CS_SEL_MSK);
@@ -504,7 +507,7 @@ static inline void xspi_hw_set_cs_sel(u32 base, xspi_cs_sel_t sel)
 static inline void xspi_hw_set_address(u32 base, u32 address)
 {
     hal_log_debug("hal_xspi %s:%d\n", __FUNCTION__, __LINE__);
-    while(XSPI_BUSY == xspi_hw_check_idle_status(base));
+    while(XSPI_BUSY == xspi_hw_check_idle_status(base)){};
     writel(address, XSPI_REG_ADDR(base));
 }
 
@@ -670,12 +673,12 @@ static inline void xspi_hw_set_phase_sel(u32 base, u8 sel, u8 phase_val)
 
 static inline void xspi_hw_set_cs_iocfg(u32 base, u8 sel, u32 iocfg1_val, u32 iocfg2_val, u32 iocfg3_val, u32 iocfg4_val)
 {
-    if (sel == cs0){
+    if (sel == cs0) {
         writel(iocfg1_val, XSPI_REG_CS0_IOCFG1(base));
         writel(iocfg2_val, XSPI_REG_CS0_IOCFG2(base));
         writel(iocfg3_val, XSPI_REG_CS0_IOCFG3(base));
         writel((iocfg4_val & IOCFG4_BIT_IOCFG4_MSK), XSPI_REG_CS0_IOCFG4(base));
-    }else if (sel == cs1) {
+    } else if (sel == cs1) {
         writel(iocfg1_val, XSPI_REG_CS1_IOCFG1(base));
         writel(iocfg2_val, XSPI_REG_CS1_IOCFG2(base));
         writel(iocfg3_val, XSPI_REG_CS1_IOCFG3(base));
@@ -693,6 +696,20 @@ static inline void xspi_hw_set_wrap_burst_split(u32 base, u8 enable)
 
     writel(val, XSPI_REG_CTL(base));
 }
+
+static inline void xspi_hw_set_timeout(u32 base, u32 timeout)
+{
+    u32 val = 0;
+    val = readl(XSPI_REG_CTL(base));
+    val &= ~(CTL_BIT_TIMEOUT_MSK);
+    val |= CTL_BIT_TIMEOUT_VAL(1);
+    writel(val, XSPI_REG_CTL(base));
+
+    val = timeout;
+    writel(val, XSPI_REG_TO(base));
+
+}
+
 
 #ifdef __cplusplus
 }

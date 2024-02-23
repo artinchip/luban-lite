@@ -1,0 +1,31 @@
+menu "TLV320AIC3101 codec options"
+
+config AIC_I2S_CODEC_TLV320_I2C
+    string "tlv320 i2c port select"
+    default "i2c1"
+
+config AIC_I2S_CODEC_PA_PIN
+    string "PA shutdown pin"
+    default "PA.13"
+
+choice
+    prompt "Select PA enable level"
+    default AIC_I2S_CODEC_PA_ENABLE_HIGH
+
+    config  AIC_I2S_CODEC_PA_ENABLE_HIGH
+        bool "high level Active"
+
+    config  AIC_I2S_CODEC_PA_ENABLE_LOW
+        bool "low level Active"
+endchoice
+
+config AIC_I2S_CODEC_MCLK_NFS
+    int "MCLK NFS"
+    default 256
+
+config AIC_I2S_CODEC_SCLK_NFS
+    int "SCLK NFS"
+    default 64
+
+endmenu
+

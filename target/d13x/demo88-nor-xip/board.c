@@ -190,7 +190,6 @@ const struct dfs_mount_tbl mount_table[] = {
     {"data", "/data", "uffs", 0, 0, 1},
 #endif
 #ifdef AIC_USING_SDMC1
-    {"sd0p0", "/sdcard", "elm", 0, 0, 0},
     {"sd0", "/sdcard", "elm", 0, 0, 0},
 #endif
 #if (defined(AIC_USING_USB0_HOST) || defined(AIC_USING_USB1_HOST))

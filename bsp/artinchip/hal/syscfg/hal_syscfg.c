@@ -81,6 +81,8 @@ enum fpga_gmac_clk_t {
 
 #endif
 
+#define SYSCFG_USB0_REXT                0x48
+#define SYSCFG_USB1_REXT                0x4C
 #define SYSCFG_FLASH_CFG                0x1F0
 #define SYSCFG_USB0_CFG                 0x40C
 #define SYSCFG_GMAC0_CFG                0x410 /* It's EMAC for syscfg v1.1 */
@@ -88,44 +90,51 @@ enum fpga_gmac_clk_t {
 #define SYSCFG_GMAC1_CFG                0x414
 #endif
 
-
+#define SYSCFG_USB_RES_CAL_EN_SHIFT     8
+#define SYSCFG_USB_RES_CAL_EN_MASK      BIT(8)
+#define SYSCFG_USB_RES_CAL_VAL_SHIFT    0
+#define SYSCFG_USB_RES_CAL_VAL_MASK     GENMASK(7, 0)
+#define SYSCFG_USB_RES_CAL_VAL_DEF      0x40
+#define SYSCFG_USB_RES_CAL_BIAS_DEF     (-0x18)
 
 #define SYSCFG_USB0_HOST_MODE           0
 #define SYSCFG_USB0_DEVICE_MODE         1
 
 #ifdef AIC_SYSCFG_DRV_V10
-#define SYSCFG_LDO_CFG                  0x20
-#define SYSCFG_LDO_CFG_IBIAS_EN_SHIFT   18
-#define SYSCFG_LDO_CFG_IBIAS_EN_MASK    GENMASK(18, 17)
+#define SYSCFG_LDO_CFG                      0x20
+#define SYSCFG_LDO_CFG_IBIAS_EN_SHIFT       18
+#define SYSCFG_LDO_CFG_IBIAS_EN_MASK        GENMASK(18, 17)
+#define SYSCFG_LDO_CFG_VAL_MASK             GENMASK(2, 0)
+#define SYSCFG_LDO_CFG_REFERENCE_VOLTAGE    28000
+#define SYSCFG_LDO_CFG_VOLTAGE_SPACING      500
+#endif
+
+#if defined(AIC_SYSCFG_DRV_V11) || defined(AIC_SYSCFG_DRV_V12)
+#define SYSCFG_LDO25_CFG                    0x20
+#define SYSCFG_LDO25_CFG_IBIAS_EN_SHIFT     16
+#define SYSCFG_LDO25_CFG_IBIAS_EN_MASK      GENMASK(17, 16)
+#define SYSCFG_LDO25_CFG_VAL_MASK           GENMASK(2, 0)
+#define SYSCFG_LDO25_CFG_REFERENCE_VOLTAGE  24000
+#define SYSCFG_LDO25_CFG_VOLTAGE_SPACING    1000
 #endif
 
 #ifdef AIC_SYSCFG_DRV_V11
-#define SYSCFG_LDO25_CFG                  0x20
-#define SYSCFG_LDO25_CFG_IBIAS_EN_SHIFT   16
-#define SYSCFG_LDO25_CFG_IBIAS_EN_MASK    GENMASK(17, 16)
-
 #define SYSCFG_LDO18_CFG                 0x24
 #define SYSCFG_LDO18_CFG_LDO18_EN_SHIFT  4
 #define SYSCFG_LDO18_CFG_LDO18_EN_MASK   BIT(4)
 #define SYSCFG_LDO18_CFG_LDO18_VAL_SHIFT 0
 #define SYSCFG_LDO18_CFG_LDO18_VAL_MASK  GENMASK(2, 0)
+#define LDO18_VAL_DEFAULT 255
+
 enum syscfg_ldo18_cfg_ldo18_en_t {
     LDO18_EN_DISABLE = 0,
     LDO18_EN_ENABLE = 1,
 };
 
-enum syscfg_ldo18_cfg_ldo18_val_t {
-    LDO18_VAL_1_71V = 0,
-    LDO18_VAL_1_74V = 1,
-    LDO18_VAL_1_77V = 2,
-    LDO18_VAL_1_80V = 3,
-    LDO18_VAL_1_83V = 4,
-    LDO18_VAL_1_86V = 5,
-    LDO18_VAL_1_89V = 6,
-    LDO18_VAL_1_92V = 7,
-    LDO18_VAL_DEFAULT = 255
-};
+#endif
 
+
+#if defined(AIC_SYSCFG_DRV_V11) || defined(AIC_SYSCFG_DRV_V12)
 #define SYSCFG_LDO1X_CFG                 0x28
 #define SYSCFG_LDO1X_CFG_LDO1X_VAL_SHIFT 0
 #define SYSCFG_LDO1X_CFG_LDO1X_VAL_MASK  GENMASK(2, 0)
@@ -135,31 +144,11 @@ enum syscfg_ldo18_cfg_ldo18_val_t {
 #define SYSCFG_LDO1X_CFG_LDO1X_PD_FAST_MASK   BIT(5)
 #define SYSCFG_LDO1X_CFG_LDO1X_SOFT_EN_SHIFT  6
 #define SYSCFG_LDO1X_CFG_LDO1X_SOFT_EN_MASK   BIT(6)
-
+#define LDO1X_VAL_DEFAULT 255
 
 enum syscfg_ldo1x_cfg_ldo1x_en_t {
     LDO1X_EN_DISABLE = 0,
     LDO1X_EN_ENABLE = 1,
-};
-
-enum syscfg_ldo1x_cfg_ldo1x_val_t {
-    LDO1X_VAL_0_90V = 0,
-    LDO1X_VAL_0_95V = 1,
-    LDO1X_VAL_1_00V = 2,
-    LDO1X_VAL_1_05V = 3,
-    LDO1X_VAL_1_10V = 4,
-    LDO1X_VAL_1_15V = 5,
-    LDO1X_VAL_1_20V = 6,
-    LDO1X_VAL_1_25V = 7,
-    LDO1X_VAL_1_30V = 8,
-    LDO1X_VAL_1_35V = 9,
-    LDO1X_VAL_1_40V = 10,
-    LDO1X_VAL_1_50V = 11,
-    LDO1X_VAL_1_60V = 12,
-    LDO1X_VAL_1_70V = 13,
-    LDO1X_VAL_1_80V = 14,
-    LDO1X_VAL_1_90V = 15,
-    LDO1X_VAL_DEFAULT = 255,
 };
 #endif
 
@@ -187,6 +176,22 @@ enum syscfg_ldo1x_cfg_ldo1x_val_t {
 #define syscfg_readl(reg)           readl(SYSCFG_BASE + reg)
 #define syscfg_writel(val, reg)     writel(val, SYSCFG_BASE + reg)
 
+u32 syscfg_read_ldo_cfg(void)
+{
+    u32 st_voltage = 0;
+
+#ifdef AIC_SYSCFG_DRV_V10
+    u32 ldo30_val = syscfg_readl(SYSCFG_LDO_CFG) & SYSCFG_LDO_CFG_VAL_MASK;
+    st_voltage = SYSCFG_LDO_CFG_REFERENCE_VOLTAGE + ldo30_val * SYSCFG_LDO_CFG_VOLTAGE_SPACING;
+#endif
+#if defined(AIC_SYSCFG_DRV_V11) || defined(AIC_SYSCFG_DRV_V12)
+    u32 ldo25_val = syscfg_readl(SYSCFG_LDO25_CFG) & SYSCFG_LDO25_CFG_VAL_MASK;
+    st_voltage = SYSCFG_LDO25_CFG_REFERENCE_VOLTAGE + ldo25_val * SYSCFG_LDO25_CFG_VOLTAGE_SPACING;
+#endif
+
+    return st_voltage;
+}
+
 #ifndef AIC_SYSCFG_DRV_V12
 void syscfg_usb_phy0_sw_host(s32 sw)
 {
@@ -209,8 +214,8 @@ static s32 syscfg_fpga_drp_wr(u8 addr, u16 data)
                   | SYSCFG_MMCM2_CTL_DRP_DWE | SYSCFG_MMCM2_CTL_DRP_START
                   | SYSCFG_MMCM2_CTL_DRP_RESET, SYSCFG_MMCM2_CTL);
 
-    while (syscfg_readl(SYSCFG_MMCM2_CTL) & SYSCFG_MMCM2_CTL_DRP_START)
-        ;
+    while (syscfg_readl(SYSCFG_MMCM2_CTL) & SYSCFG_MMCM2_CTL_DRP_START) {
+    }
 
     aicos_udelay(20);
 
@@ -229,8 +234,8 @@ static u16 syscfg_fpga_drp_rd(u16 addr)
             | SYSCFG_MMCM2_CTL_DRP_START;
 
     syscfg_writel(val, SYSCFG_MMCM2_CTL);
-    while (syscfg_readl(SYSCFG_MMCM2_CTL) & SYSCFG_MMCM2_CTL_DRP_START)
-        ;
+    while (syscfg_readl(SYSCFG_MMCM2_CTL) & SYSCFG_MMCM2_CTL_DRP_START) {
+    }
 
     return syscfg_readl(SYSCFG_MMCM2_STA) >> SYSCFG_MMCM2_STA_DRP_DOUT_SHIFT;
 }
@@ -267,10 +272,8 @@ s32 syscfg_fpga_de_clk_sel_by_div(u8 sclk, u8 pixclk)
 
     if (cntr > 0) {
         syscfg_fpga_drp_wr(FPGA_MMCM_DADDR_CLKOUT2_CTL0, data);
-        if (syscfg_fpga_drp_rd(FPGA_MMCM_DADDR_CLKOUT2_CTL0) != data) {
-            hal_log_err("Failed to set clkout2\n");
+        if (syscfg_fpga_drp_rd(FPGA_MMCM_DADDR_CLKOUT2_CTL0) != data)
             return -1;
-        }
     } else {
         syscfg_fpga_drp_wr(FPGA_MMCM_DADDR_CLKOUT2_CTL1, 0x40);
     }
@@ -280,10 +283,8 @@ s32 syscfg_fpga_de_clk_sel_by_div(u8 sclk, u8 pixclk)
 
     if (cntr > 0) {
         syscfg_fpga_drp_wr(FPGA_MMCM_DADDR_CLKOUT3_CTL0, data);
-        if (syscfg_fpga_drp_rd(FPGA_MMCM_DADDR_CLKOUT3_CTL0) != data) {
-            hal_log_err("Failed to set clkout3\n");
+        if (syscfg_fpga_drp_rd(FPGA_MMCM_DADDR_CLKOUT3_CTL0) != data)
             return -1;
-        }
     } else {
         syscfg_fpga_drp_wr(FPGA_MMCM_DADDR_CLKOUT3_CTL1, 0x40);
     }
@@ -345,7 +346,29 @@ static void syscfg_fpga_gmac_clk_sel(u32 id)
 
 static s32 syscfg_usb_init(void)
 {
-    // TODO: Set some USB parameters to syscfg register
+#if defined(AIC_USING_USB0) || defined(AIC_USING_USB1)
+    u32 cfg_reg = 0;
+    s32 cfg = 0;
+#endif
+
+#ifdef AIC_USING_USB0
+    cfg_reg =  SYSCFG_USB0_REXT;
+    cfg = syscfg_readl(cfg_reg);
+    cfg &= SYSCFG_USB_RES_CAL_VAL_MASK;
+    cfg += SYSCFG_USB_RES_CAL_BIAS_DEF;
+    cfg &= SYSCFG_USB_RES_CAL_VAL_MASK;
+    cfg |= (1 << SYSCFG_USB_RES_CAL_EN_SHIFT);
+    syscfg_writel(cfg, cfg_reg);
+#endif
+
+#ifdef AIC_USING_USB1
+    cfg_reg =  SYSCFG_USB1_REXT;
+    cfg &= SYSCFG_USB_RES_CAL_VAL_MASK;
+    cfg += SYSCFG_USB_RES_CAL_BIAS_DEF;
+    cfg &= SYSCFG_USB_RES_CAL_VAL_MASK;
+    cfg |= (1 << SYSCFG_USB_RES_CAL_EN_SHIFT);
+    syscfg_writel(cfg, cfg_reg);
+#endif
     return 0;
 }
 
@@ -417,7 +440,7 @@ static void syscfg_sip_flash_init(void)
     u32 iomap_efuse_wid = 9;
 
     /* 1. Read eFuse to set SiP flash IO mapping */
-    val = hal_efuse_read(iomap_efuse_wid, &val);
+    hal_efuse_read(iomap_efuse_wid, &val);
     map = (val >> 24) & 0xFF;
 
     /* 2. Set the SiP flash's access Controller */
@@ -443,7 +466,7 @@ static void syscfg_ldo25_xspi_init(void)
 }
 #endif
 
-#if defined(AIC_SYSCFG_DRV_V11)
+#if defined(AIC_SYSCFG_DRV_V11) || defined(AIC_SYSCFG_DRV_V12)
 #define LDO1X_DISABLE_BIT4_6_VAL_STEP1   0x30
 #define LDO1X_DISABLE_BIT4_6_VAL_STEP2   0x70
 #define LDO1X_DISABLE_BIT4_6_VAL_STEP3   0x60
@@ -483,7 +506,7 @@ static void syscfg_ldo1x_init(u8 status, u8 v_level)
 #if defined(AIC_SYSCFG_DRV_V11)
 #define LDO18_ENABLE_BIT4_VAL_STEP1   0x0
 #define LDO18_ENABLE_BIT4_VAL_STEP2   0x10
-static void syscfg_ldo18_init(u8 status, u8 v_level)
+[[maybe_unused]] static void syscfg_ldo18_init(u8 status, u8 v_level)
 {
     u32 val = 0;
     if (status == LDO18_EN_ENABLE) {
@@ -510,17 +533,12 @@ s32 hal_syscfg_probe(void)
     s32 ret = 0;
 
     ret = hal_clk_enable(CLK_SYSCFG);
-    if (ret < 0) {
-        hal_log_err("Syscfg clk enable failed!\n");
+    if (ret < 0)
         return -1;
-    }
 
     ret = hal_clk_enable_deassertrst(CLK_SYSCFG);
-    if (ret < 0) {
-        hal_log_err("Syscfg reset deassert failed!\n");
+    if (ret < 0)
         return -1;
-    }
-
 
     syscfg_sip_flash_init();
 #ifndef AIC_SYSCFG_DRV_V12
@@ -544,12 +562,14 @@ s32 hal_syscfg_probe(void)
     // disable ldo1x, the broom code maybe enable it.
     syscfg_ldo1x_init(LDO1X_EN_DISABLE, LDO1X_VAL_DEFAULT);
 #endif
+#endif
 
-// default power on, LDO18 is disable
-#ifdef AIC_SYSCFG_LDO18_ENABLE
-    syscfg_ldo18_init(LDO18_EN_ENABLE, AIC_SYSCFG_LDO18_VOL_VAL);
+#ifdef AIC_SYSCFG_DRV_V12
+#ifdef AIC_SYSCFG_LDO1X_ENABLE
+    syscfg_ldo1x_init(LDO1X_EN_ENABLE, AIC_SYSCFG_LDO1X_VOL_VAL);
 #else
-    syscfg_ldo18_init(LDO18_EN_DISABLE, LDO18_VAL_DEFAULT);
+    // disable ldo1x, the broom code maybe enable it.
+    syscfg_ldo1x_init(LDO1X_EN_DISABLE, LDO1X_VAL_DEFAULT);
 #endif
 #endif
 

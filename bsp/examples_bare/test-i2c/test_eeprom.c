@@ -2,8 +2,6 @@
  * Copyright (c) 2022-2023, ArtInChip Technology Co., Ltd
  *
  * SPDX-License-Identifier: Apache-2.0
- *
- * Authors: hjh <jiehua.huang@artinchip.com>
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,12 +22,16 @@
     "Example:\n"                                                                        \
     "write one byte: i2c write 0 0x50 0x0000 0x11\n"                                    \
     "read one byte: i2c read 0 0x50 0x0000 \n"                                          \
-    "tips: slave addr is 16bit such as : 0x1234\n"
+    "tips: slave addr is 16bit such as : 0x1234\n"                                      \
+    "      if use se_i2c please input bus_id write 5\n"
+
+#define I2C_BASE_OFFSET 0x1000
+#define SE_BUS_ID (CLK_SE_I2C - CLK_I2C0)
 
 #ifdef SE_I2C_BASE
-#define I2C_REG_BASE SE_I2C_BASE
+#define I2C_REG_BASE(x) (SE_I2C_BASE)
 #else
-#define I2C_REG_BASE I2C0_BASE
+#define I2C_REG_BASE(x) (I2C0_BASE + (x * I2C_BASE_OFFSET))
 #endif
 
 void i2c_usage(void)
@@ -47,13 +49,13 @@ void read_eeprom(unsigned long reg_base, struct aic_i2c_msg *msg)
     aic_i2c_target_addr(reg_base, msg->addr);
     aic_i2c_module_enable(reg_base);
 
-    aic_i2c_transmit_data(I2C_REG_BASE, receive_data[0]);                           //write high_address
-    aic_i2c_transmit_data(I2C_REG_BASE, receive_data[1]);                           //write low_address
-    aic_i2c_transmit_data(I2C_REG_BASE, I2C_INTR_ACTIVITY | I2C_INTR_STOP_DET);     //read signal
+    aic_i2c_transmit_data(reg_base, receive_data[0]);                           //write high_address
+    aic_i2c_transmit_data(reg_base, receive_data[1]);                           //write low_address
+    aic_i2c_transmit_data(reg_base, I2C_INTR_ACTIVITY | I2C_INTR_STOP_DET);     //read signal
 
-    while ((aic_i2c_get_raw_interrupt_state(I2C_REG_BASE) & I2C_INTR_STOP_DET) == 0) {;};
+    while ((aic_i2c_get_raw_interrupt_state(reg_base) & I2C_INTR_STOP_DET) == 0) {;};
 
-    reg_data = aic_i2c_get_receive_data(I2C_REG_BASE);
+    reg_data = aic_i2c_get_receive_data(reg_base);
     printf("read_data = 0x%lx\n", reg_data);
 }
 
@@ -64,12 +66,12 @@ void write_eeprom(unsigned long reg_base, struct aic_i2c_msg *msg)
     aic_i2c_target_addr(reg_base, msg->addr);
     aic_i2c_module_enable(reg_base);
 
-    aic_i2c_transmit_data(I2C_REG_BASE, send_data[0]);          //write high_address
-    aic_i2c_transmit_data(I2C_REG_BASE, send_data[1]);          //write low_address
-    aic_i2c_transmit_data(I2C_REG_BASE, send_data[2] | I2C_INTR_STOP_DET);      //write data
+    aic_i2c_transmit_data(reg_base, send_data[0]);          //write high_address
+    aic_i2c_transmit_data(reg_base, send_data[1]);          //write low_address
+    aic_i2c_transmit_data(reg_base, send_data[2] | I2C_INTR_STOP_DET);      //write data
 
-    while ((aic_i2c_get_raw_interrupt_state(I2C_REG_BASE) & I2C_INTR_STOP_DET) == 0) {;};
-    aic_i2c_module_disable(I2C_REG_BASE);
+    while ((aic_i2c_get_raw_interrupt_state(reg_base) & I2C_INTR_STOP_DET) == 0) {;};
+    aic_i2c_module_disable(reg_base);
 }
 
 static int test_i2c_example(int argc, char *argv[])
@@ -97,8 +99,8 @@ static int test_i2c_example(int argc, char *argv[])
     }
 
     bus_id = atoi(argv[2]);
-    if (bus_id < 0 || bus_id > 3) {
-        hal_log_err("bus id param error,pleaseinput range 0-2\n");
+    if (bus_id < 0 || bus_id > 5) {
+        hal_log_err("bus id param error,pleaseinput range 0-5\n");
         goto __exit;
     }
 
@@ -119,29 +121,33 @@ static int test_i2c_example(int argc, char *argv[])
     }
 
     int ret = -1;
+    #ifdef SE_I2C_BASE
+    ret = aic_i2c_init(SE_BUS_ID);
+    #else
     ret = aic_i2c_init(bus_id);
+    #endif
     if (ret) {
         hal_log_err("init error\n");
         goto __exit;
     }
-    ret = aic_i2c_set_master_slave_mode(I2C_REG_BASE, true);
+    ret = aic_i2c_set_master_slave_mode(I2C_REG_BASE(bus_id), true);
     if (ret) {
         hal_log_err("mode set error\n");
         goto __exit;
     }
 
-    hal_i2c_set_hold(I2C_REG_BASE, 10);
-    aic_i2c_master_10bit_addr(I2C_REG_BASE, false);
-    aic_i2c_slave_10bit_addr(I2C_REG_BASE, false);
-    aic_i2c_master_enable_transmit_irq(I2C_REG_BASE);
-    aic_i2c_master_enable_receive_irq(I2C_REG_BASE);
-    aic_i2c_speed_mode_select(I2C_REG_BASE, I2C_DEFALT_CLOCK, true);
-    aic_i2c_module_enable(I2C_REG_BASE);
+    hal_i2c_set_hold(I2C_REG_BASE(bus_id), 10);
+    aic_i2c_master_10bit_addr(I2C_REG_BASE(bus_id), false);
+    aic_i2c_slave_10bit_addr(I2C_REG_BASE(bus_id), false);
+    aic_i2c_master_enable_transmit_irq(I2C_REG_BASE(bus_id));
+    aic_i2c_master_enable_receive_irq(I2C_REG_BASE(bus_id));
+    aic_i2c_speed_mode_select(I2C_REG_BASE(bus_id), I2C_DEFALT_CLOCK, true);
+    aic_i2c_module_enable(I2C_REG_BASE(bus_id));
 
     if (!strcmp(argv[1], "write")) {
-        write_eeprom(I2C_REG_BASE, msgs);
+        write_eeprom(I2C_REG_BASE(bus_id), msgs);
     } else if (!strcmp(argv[1], "read")) {
-        read_eeprom(I2C_REG_BASE, msgs);
+        read_eeprom(I2C_REG_BASE(bus_id), msgs);
     }
 
 __exit:

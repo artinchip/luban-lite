@@ -21,12 +21,21 @@
 #include <sys/stat.h>
 #include <aic_common.h>
 #include <aic_tlsf.h>
+#ifdef KERNEL_FREERTOS
+#include <FreeRTOS.h>
+#endif
 
 void *_malloc_r(struct _reent *ptr, size_t size)
 {
     void* result;
 
+#if defined(KERNEL_BAREMETAL)
     result = (void*)aic_tlsf_malloc(MEM_DEFAULT, size);
+#elif defined(KERNEL_FREERTOS)
+    result = pvPortMalloc(size);
+#else
+    #error unknown kernel
+#endif
     if (result == NULL)
     {
         ptr->_errno = ENOMEM;
@@ -39,7 +48,15 @@ void *_realloc_r(struct _reent *ptr, void *old, size_t newlen)
 {
     void* result;
 
-   result = (void*)aic_tlsf_realloc(MEM_DEFAULT, old, newlen);
+#if defined(KERNEL_BAREMETAL)
+    result = (void*)aic_tlsf_realloc(MEM_DEFAULT, old, newlen);
+#elif defined(KERNEL_FREERTOS)
+    if (old)
+        vPortFree(old);
+    result = pvPortMalloc(newlen);
+#else
+    #error unknown kernel
+#endif
     if (result == NULL)
     {
         ptr->_errno = ENOMEM;
@@ -52,7 +69,16 @@ void *_calloc_r(struct _reent *ptr, size_t size, size_t len)
 {
     void* result;
 
+#if defined(KERNEL_BAREMETAL)
     result = (void*)aic_tlsf_calloc(MEM_DEFAULT, size, len);
+#elif defined(KERNEL_FREERTOS)
+    result = pvPortMalloc(size*len);
+    if (result != NULL)
+        /* clean memory */
+        memset(result, 0, size*len);
+#else
+    #error unknown kernel
+#endif
     if (result == NULL)
     {
         ptr->_errno = ENOMEM;
@@ -63,7 +89,13 @@ void *_calloc_r(struct _reent *ptr, size_t size, size_t len)
 
 void _free_r(struct _reent *ptr, void *addr)
 {
+#if defined(KERNEL_BAREMETAL)
     aic_tlsf_free(MEM_DEFAULT, addr);
+#elif defined(KERNEL_FREERTOS)
+    vPortFree(addr);
+#else
+    #error unknown kernel
+#endif
 }
 
 int *__errno(void)

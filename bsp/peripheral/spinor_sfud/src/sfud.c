@@ -492,8 +492,8 @@ sfud_err sfud_read(const sfud_flash *flash, uint32_t addr, size_t size, uint8_t 
     }
     if (result == SFUD_SUCCESS) {
         do {
-            if ((dolen & (READ_ALIGN_SIZE - 1)) && (dolen > SFUD_WRITE_MAX_PAGE_SIZE)) {
-                dolen -= dolen & (READ_ALIGN_SIZE - 1);
+            if ((dolen & (CACHE_LINE_SIZE - 1)) && (dolen > SFUD_WRITE_MAX_PAGE_SIZE)) {
+                dolen -= dolen & (CACHE_LINE_SIZE- 1);
             }
 
             result = sfud_read_data(flash, addr, dolen, p);

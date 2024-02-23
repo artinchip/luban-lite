@@ -4,7 +4,7 @@
 #define MIDI_OUT_EP 0x02
 #define MIDI_IN_EP  0x81
 
-#define USBD_VID           0x0d28
+#define USBD_VID           0x33C3
 #define USBD_PID           0x0404
 #define USBD_MAX_POWER     100
 #define USBD_LANGID_STRING 1033

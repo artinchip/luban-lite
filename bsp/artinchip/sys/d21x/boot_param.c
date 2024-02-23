@@ -58,6 +58,11 @@ enum boot_controller aic_get_boot_controller(void)
     return get_boot_controller(boot_params_stash.r.a[0]);
 }
 
+void *aic_get_boot_resource(void)
+{
+    return (void *)(boot_params_stash.r.a[1]);
+}
+
 int aic_get_boot_image_id(void)
 {
     return get_boot_image_id(boot_params_stash.r.a[0]);

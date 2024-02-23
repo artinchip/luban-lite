@@ -202,7 +202,7 @@ static bool read_basic_table(sfud_flash *flash, sfdp_para_header *basic_header) 
     uint32_t table_addr = basic_header->ptp;
     /* parameter table */
     uint8_t table[BASIC_TABLE_LEN * 4] __attribute__((aligned(CACHE_LINE_SIZE)));
-    uint8_t i, j;
+    uint8_t i, j, erase_param_off = 24;
     uint32_t bfpt_len;
 
     SFUD_ASSERT(flash);
@@ -216,6 +216,8 @@ static bool read_basic_table(sfud_flash *flash, sfdp_para_header *basic_header) 
         SFUD_INFO("Warning: Can't read JEDEC basic flash parameter table.");
         return false;
     }
+
+
     /* print JEDEC basic flash parameter table info */
     SFUD_DEBUG("JEDEC basic flash parameter table info:");
     SFUD_DEBUG("MSB-LSB  3    2    1    0");
@@ -240,7 +242,7 @@ static bool read_basic_table(sfud_flash *flash, sfdp_para_header *basic_header) 
         return false;
     }
     /* get write granularity */
-    //TODO 目前为 1.0 所提供的方式，后期支持 V1.5 及以上的方式读取 page size
+    //TODO At present, the way provided by V1.0, later support V1.5 and above to read page size.
     switch ((table[0] & (0x01 << 2)) >> 2) {
     case 0:
         sfdp->write_gran = 1;
@@ -321,10 +323,12 @@ static bool read_basic_table(sfud_flash *flash, sfdp_para_header *basic_header) 
     }
     SFUD_DEBUG("Capacity is %ld Bytes.", sfdp->capacity);
     /* get erase size and erase command  */
+    if (table[erase_param_off] == 0xFF)
+        erase_param_off = 28;
     for (i = 0, j = 0; i < SFUD_SFDP_ERASE_TYPE_MAX_NUM; i++) {
-        if (table[28 + 2 * i] != 0x00) {
-            sfdp->eraser[j].size = 1L << table[28 + 2 * i];
-            sfdp->eraser[j].cmd = table[28 + 2 * i + 1];
+        if (table[erase_param_off + 2 * i] != 0x00) {
+            sfdp->eraser[j].size = 1L << table[erase_param_off + 2 * i];
+            sfdp->eraser[j].cmd = table[erase_param_off + 2 * i + 1];
             SFUD_DEBUG("Flash device supports %ldKB block erase. Command is 0x%02X.", sfdp->eraser[j].size / 1024,
                     sfdp->eraser[j].cmd);
             j++;
@@ -378,7 +382,8 @@ static bool read_basic_table(sfud_flash *flash, sfdp_para_header *basic_header) 
 		         * supported.
 		         */
                 flash->flags |= SNOR_F_HAS_16BIT_SR | SNOR_F_NO_READ_CR;
-                flash->quad_enable = spi_nor_sr2_bit1_quad_enable;
+
+                flash->quad_enable = spi_nor_quad_enable;
                 break;
 
             case BFPT_DWORD15_QER_SR1_BIT6:

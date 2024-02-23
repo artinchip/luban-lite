@@ -292,6 +292,9 @@ struct aicfb_screeninfo {
 /** get gamma config */
 #define AICFB_GET_GAMMA_CONFIG _IOR(IOC_TYPE_FB, 0x68, struct aicfb_gamma_config)
 
+/* get screen register value */
+#define AICFB_GET_SCREENREG   _IOR(IOC_TYPE_FB, 0x69, unsigned int)
+
 /* get screen info */
 #define AICFB_GET_SCREENINFO _IOR(IOC_TYPE_FB, 0x62, struct aicfb_screeninfo)
 

@@ -1136,7 +1136,6 @@ static int mp4_read_dec_config_descr(struct aic_mov_parser *c, struct mov_stream
 	if (codec_id)
 		st->id = codec_id;
 
-	loge("st->id:0x%x\n",st->id);
 	len = mp4_read_desc(c->stream, &tag);
 	if (tag == MP4DecSpecificDescrTag) {
 		if (len > (1<<30))
@@ -1244,12 +1243,12 @@ static int mov_read_default(struct aic_mov_parser *c, struct mov_atom atom)
 				total_size += 8;
 			}
 		}
-		logi("atom type:%c%c%c%c, parent:%c%c%c%c, sz:" "%"PRId64"%"PRId64"%"PRId64"",
-			(a.type)&0xff, (a.type>>8)&0xff,
-			(a.type>>16)&0xff, (a.type>>24)&0xff,
-			(atom.type)&0xff, (atom.type>>8)&0xff,
-			(atom.type>>16)&0xff, (atom.type>>24)&0xff,
-			a.size, total_size, atom.size);
+		// logi("atom type:%c%c%c%c, parent:%c%c%c%c, sz:" "%"PRId64"%"PRId64"%"PRId64"",
+		// 	(a.type)&0xff, (a.type>>8)&0xff,
+		// 	(a.type>>16)&0xff, (a.type>>24)&0xff,
+		// 	(atom.type)&0xff, (atom.type>>8)&0xff,
+		// 	(atom.type>>16)&0xff, (atom.type>>24)&0xff,
+		// 	a.size, total_size, atom.size);
 
 		if (a.size == 0) {
 			a.size = atom.size - total_size + 8;
@@ -1290,7 +1289,7 @@ static int mov_read_default(struct aic_mov_parser *c, struct mov_atom atom)
 				/* skip garbage at atom end */
 				stream_skip(c->stream, left);
 			} else if (left < 0) {
-				loge("overread end of atom %x", a.type);
+				loge("overread end of atom %"PRIx32"", a.type);
 				aic_stream_seek(c->stream, left, SEEK_CUR);
 			}
 		}
@@ -1352,7 +1351,7 @@ int mov_peek_packet(struct aic_mov_parser *c, struct aic_parser_packet *pkt)
 
 	if (st->cur_sample_idx == st->nb_index_entries) {
 		// eos now
-		loge("this stream eos");
+		printf("[%s:%d] this stream eos",__FUNCTION__,__LINE__);
 		pkt->flag = PACKET_EOS;
 	}
 
@@ -1458,7 +1457,7 @@ int  find_video_index_by_pts(struct mov_stream_ctx *video_st,s64 pts)
 			min = diff;
 			index = k;
 		}
-		logd("keyfame:%d,pts:%ld\n",k,sample_pts);
+		logd("keyfame:%d,pts:%"PRId64"\n",k,sample_pts);
 	}
 	return index;
 }

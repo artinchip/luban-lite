@@ -147,7 +147,6 @@ struct rt_audio_replay
     rt_uint32_t pos;
     rt_uint8_t event;
     rt_bool_t activated;
-    rt_uint32_t start_threshold;
 };
 
 struct rt_audio_record

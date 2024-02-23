@@ -22,7 +22,6 @@
 #define OV5640_MODE             OV5640_MODE_VGA_640_480
 #define OV5640_BUS_TYPE         MEDIA_BUS_PARALLEL
 #define OV5640_CODE             MEDIA_BUS_FMT_UYVY8_2X8
-#define OV5640_FPS              OV5640_24_FPS
 #define OV5640_DVP_BUS_WIDTH    8
 #define OV5640_IIC_TIMEOUT      3000    // 3 sec
 #define OV5640_AUTO_EXPOSURE    1
@@ -31,9 +30,11 @@
 
 /* The clk source is decided by board design */
 #ifdef AIC_CHIP_D13X
-#define OV5640_CLK_SRC          CLK_OUT3
+#define OV5640_CLK_SRC          CLK_OUT1
+#define OV5640_FPS              OV5640_15_FPS
 #else
 #define OV5640_CLK_SRC          CLK_OUT1
+#define OV5640_FPS              OV5640_24_FPS
 #endif
 
 /* min/typical/max system clock (xclk) frequencies */

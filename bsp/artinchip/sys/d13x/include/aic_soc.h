@@ -63,6 +63,7 @@ typedef enum IRQn {
     SDMC0_IRQn                      = 46U,
     SDMC1_IRQn                      = 47U,
     SDMC2_IRQn                      = 48U,
+    XSPI_IRQn                       = 49U,
     SPI_ENC_IRQn                    = 41U,
     PWMCS_FAULT_IRQn                = 24U,
     PWMCS_PWM_IRQn                  = 25U,
@@ -156,6 +157,7 @@ IRQn_Type;
 #define USB_HOST1_BASE              QEMU_IO_BASE
 #define GMAC0_BASE                  QEMU_IO_BASE
 #define GMAC1_BASE                  QEMU_IO_BASE
+#define XSPI_BASE                   QEMU_IO_BASE
 #define QSPI0_BASE                  QEMU_IO_BASE
 #define QSPI1_BASE                  QEMU_IO_BASE
 #define QSPI2_BASE                  QEMU_IO_BASE
@@ -163,21 +165,19 @@ IRQn_Type;
 #define SDMC0_BASE                  QEMU_IO_BASE
 #define SDMC1_BASE                  QEMU_IO_BASE
 #define SDMC2_BASE                  QEMU_IO_BASE
+#define AHBCFG_BASE                 QEMU_IO_BASE
 #define PBUS_BASE                   QEMU_IO_BASE
 #define SYSCFG_BASE                 QEMU_IO_BASE
 #define CMU_BASE                    QEMU_IO_BASE
-#define CMT_BASE                    QEMU_IO_BASE
 #define SPI_ENC_BASE                QEMU_IO_BASE
 #define PWMCS_BASE                  QEMU_IO_BASE
 #define PSADC_BASE                  QEMU_IO_BASE
-#define DDR_CTL_BASE                QEMU_IO_BASE
+#define AXICFG_BASE                 QEMU_IO_BASE
 #define MTOP_BASE                   QEMU_IO_BASE
-#define DDR_PHY_BASE                QEMU_IO_BASE
 #define I2S0_BASE                   QEMU_IO_BASE
 #define I2S1_BASE                   QEMU_IO_BASE
 #define AUDIO_BASE                  QEMU_IO_BASE
 #define GPIO_BASE                   QEMU_IO_BASE
-#define PMT_BASE                    QEMU_IO_BASE
 #define UART1_BASE                  QEMU_IO_BASE
 #define UART2_BASE                  QEMU_IO_BASE
 #define UART3_BASE                  QEMU_IO_BASE
@@ -211,8 +211,8 @@ IRQn_Type;
 #define TSEN_BASE                   QEMU_IO_BASE
 #define CIR_BASE                    QEMU_IO_BASE
 #else
-#define BROM_BASE                   0x00000000UL /* - 0x0000FFFF, 64KB	,1MB	*/
-#define SRAM_BASE                   0x00100000UL /* - 0x00117FFF, 96KB	,1MB	*/
+#define BROM_BASE                   0x30000000UL /* - 0x30007FFF, 512KB	*/
+#define SRAM_BASE                   0x30040000UL /* - 0x3004FFFF, 1MB	*/
 #define DMA_BASE                    0x10000000UL /* - 0x1000FFFF, 64KB	,64KB	*/
 #define CE_BASE                     0x10020000UL /* - 0x1002FFFF, 64KB	,64KB	*/
 #define USB_DEV_BASE                0x10200000UL /* - 0x1020FFFF, 64KB	,--	*/
@@ -220,6 +220,7 @@ IRQn_Type;
 #define USB_HOST1_BASE              0x10220000UL /* - 0x1022FFFF, 64KB	,512KB	*/
 #define GMAC0_BASE                  0x10280000UL /* - 0x1028FFFF, 64KB	,--	*/
 #define GMAC1_BASE                  0x10290000UL /* - 0x1029FFFF, 64KB	,512KB	*/
+#define XSPI_BASE                   0x10300000UL /* - 0x10030FFF,  4KB	,4KB	*/
 #define QSPI0_BASE                  0x10400000UL /* - 0x1040FFFF, 64KB	,--	*/
 #define QSPI1_BASE                  0x10410000UL /* - 0x1041FFFF, 64KB	,256KB	*/
 #define QSPI2_BASE                  0x10420000UL /* - 0x1042FFFF, 64KB	,256KB	*/
@@ -227,21 +228,19 @@ IRQn_Type;
 #define SDMC0_BASE                  0x10440000UL /* - 0x1044FFFF, 64KB	,--	*/
 #define SDMC1_BASE                  0x10450000UL /* - 0x1045FFFF, 64KB	,--	*/
 #define SDMC2_BASE                  0x10460000UL /* - 0x1046FFFF, 64KB	,256KB	*/
+#define AHBCFG_BASE                 0x104FE000UL /* - 0x104FEFFF,  4KB	,4KB	*/
 #define PBUS_BASE                   0x107F0000UL /* - 0x1080FFFF, 128KB	,8MB	*/
 #define SYSCFG_BASE                 0x18000000UL /* - 0x18000FFF, 4KB	,64KB	*/
 #define CMU_BASE                    0x18020000UL /* - 0x18020FFF, 4KB	,32KB	*/
-#define CMT_BASE                    0x18028000UL /* - 0x1802FFFF, 32KB	,--	*/
 #define SPI_ENC_BASE                0x18100000UL /* - 0x18100FFF, 4KB	,--	*/
 #define PWMCS_BASE                  0x18200000UL /* - 0x1820FFFF, 64KB	,--	*/
 #define PSADC_BASE                  0x18210000UL /* - 0x18210FFF, 4KB	,--	*/
-#define DDR_CTL_BASE                0x18400000UL /* - 0x1840FFFF, 64KB	,1MB	*/
+#define AXICFG_BASE                 0x184FE000UL /* - 0x184FEFFF, 4KB	,--	*/
 #define MTOP_BASE                   0x184FF000UL /* - 0x184FFFFF, 4KB	,--	*/
-#define DDR_PHY_BASE                0x18500000UL /* - 0x1850FFFF, 64KB	,1MB	*/
 #define I2S0_BASE                   0x18600000UL /* - 0x18600FFF, 4KB	,--	*/
 #define I2S1_BASE                   0x18601000UL /* - 0x18601FFF, 4KB	,64KB	*/
 #define AUDIO_BASE                  0x18610000UL /* - 0x18610FFF, 4KB	,64KB	*/
 #define GPIO_BASE                   0x18700000UL /* - 0x18700FFF, 4KB	,64KB	*/
-#define PMT_BASE                    0x1870F000UL /* - 0x1870FFFF, 4KB	,--	*/
 #define UART0_BASE                  0x18710000UL /* - 0x18710FFF, 4KB	,--	*/
 #define UART1_BASE                  0x18711000UL /* - 0x18711FFF, 4KB	,--	*/
 #define UART2_BASE                  0x18712000UL /* - 0x18712FFF, 4KB	,--	*/

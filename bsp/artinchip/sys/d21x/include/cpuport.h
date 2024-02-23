@@ -14,6 +14,9 @@
 #include <rtconfig.h>
 #include <aic_arch.h>
 
+#define TSPEND_ADDR             (CPU_BASE + 0x4000000)
+#define TSPEND_NEED_CLEAR
+
 /* bytes of register width  */
 #ifdef ARCH_RISCV64
 #define DFSTORE                 fsd

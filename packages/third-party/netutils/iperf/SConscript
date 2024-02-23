@@ -1,0 +1,7 @@
+from building import *
+
+src = Glob('*.c')
+
+group = DefineGroup('iperf', src, depend = ['LPKG_NETUTILS_IPERF'])
+
+Return('group')

@@ -103,11 +103,10 @@ rt_err_t drv_dmic_configure(struct rt_audio_device *audio,
         {
         case AUDIO_MIXER_VOLUME:
             volume = caps->udata.value;
-            /* The miximum value of volume in register is 255,
-             * but in rtt audio framework, the miximum volume
-             * is 100, so must convert user volume to register volume.
-             **/
-            reg_volume = volume * 255 / 100;
+            /*
+             * Set max user volume to 0db
+             */
+            reg_volume = volume * MAX_VOLUME_0DB / 100;
 
             hal_audio_set_dmic_volume(pcodec, reg_volume);
             p_dmic_dev->volume = volume;
@@ -267,6 +266,7 @@ static void drv_dmic_callback(aic_audio_ctrl *pcodec, void *arg)
     switch (event)
     {
     case AUDIO_RX_DMIC_PERIOD_INT:
+        aicos_dcache_invalid_range((void *)dmic_rx_fifo, RX_DMIC_FIFO_SIZE);
         period_len = pcodec->dmic_info.buf_info.period_len;
         if (!p_dmic_dev->index) {
             rt_audio_rx_done(audio, &dmic_rx_fifo[0], period_len);

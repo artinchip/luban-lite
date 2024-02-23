@@ -314,15 +314,11 @@ def PrepareBuilding(env, root_directory, has_libcpu=False, remove_components = [
             prj_kernel = env['PRJ_KERNEL']
             prj_app = env['PRJ_APP']
             # generate .Kconfig.prj
-            if prj_kernel == 'baremetal':
-                app_os = 'baremetal'
-            else:
-                app_os = 'os'
             with open(".Kconfig.prj", "w") as f:
                 f.write('source "bsp/artinchip/sys/{}/Kconfig.chip"\n'.format(prj_chip))
                 f.write('source "target/{}/{}/Kconfig.board"\n'.format(prj_chip, prj_board))
                 f.write('source "kernel/{}/Kconfig"\n'.format(prj_kernel))
-                f.write('source "application/{}/{}/Kconfig"\n'.format(app_os, prj_app))
+                f.write('source "application/{}/{}/Kconfig"\n'.format(prj_kernel, prj_app))
                 if prj_kernel == 'rt-thread':
                     f.write('source "$PKGS_DIR/Kconfig"\n')
             # call menuconfig

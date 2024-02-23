@@ -34,4 +34,10 @@ config AIC_GE_CMDQ_BUF_LENGTH
     range 1024 16384
     default 2048
 
+config CTRL_GE_CLK_IN_FRAME
+    bool "GE Clock Ctrl In Frames"
+    default n
+    help
+      This is a GE Clock Ctrl in frames
+
 endmenu

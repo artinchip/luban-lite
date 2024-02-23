@@ -651,7 +651,7 @@ static s32 fat_read_from_fatfs(struct fat_volume *vol, char *filename,
     s32 ret;
 
     /* Reuse one global var to reduce memory use */
-    file = malloc(sizeof(struct fat_file));
+    file = aicos_malloc_align(0, sizeof(struct fat_file), CACHE_LINE_SIZE);
     if (!file) {
         pr_err("malloc fat file failed.\n");
         return -1;
@@ -695,12 +695,12 @@ static s32 fat_read_from_fatfs(struct fat_volume *vol, char *filename,
 
     *actread = min((u32)file->size, (u32)maxsize);
 
-    free(file);
+    aicos_free(0, file);
     return 0;
 
 out:
     if (file)
-        free(file);
+        aicos_free(0, file);
 
     return ret;
 }

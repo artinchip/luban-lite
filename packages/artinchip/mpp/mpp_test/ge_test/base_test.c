@@ -121,7 +121,7 @@ static int degree_list[] = {
 
 static void usage(char *app)
 {
-    printf("Usage: %s [Options], built on %s %s\n", app, __DATE__, __TIME__);
+    printf("Usage: %s [Options]: \n", app);
     printf("\t-c, --circle test\n");
     printf("\t-n, --number of run, default run once\n");
 
@@ -160,9 +160,9 @@ static void draw_clock(struct ge_bitblt *blt, int src_buf, int index)
     /* dstination buffer */
     blt->dst_buf.buf_type = MPP_PHY_ADDR;
 
-    if (!index)
+    if (!index) {
         blt->dst_buf.phy_addr[0] = g_dst_phy;
-    else {
+    } else {
         if (APP_FB_NUM > 1) {
             blt->dst_buf.phy_addr[0] = g_dst_phy + g_info.smem_len;
         } else {
@@ -201,9 +201,9 @@ static void move_second_hand(struct mpp_ge *ge, struct ge_rotation *rot,
 
     /* destination buffer */
     rot->dst_buf.buf_type = MPP_PHY_ADDR;
-    if (!index)
+    if (!index) {
         rot->dst_buf.phy_addr[0] = g_dst_phy;
-    else {
+    } else {
         if (APP_FB_NUM > 1) {
             rot->dst_buf.phy_addr[0] = g_dst_phy + g_info.smem_len;
         } else {
@@ -247,6 +247,13 @@ static void ge_rotate_thread(void *arg)
     if (para[PARA_NUM] >= 0)
         loops = para[PARA_NUM];
 
+    src_fd = open(SECOND_IMAGE, O_RDONLY);
+    if (src_fd < 0) {
+        LOGE("open second_bmp fail, path = %s\n", SECOND_IMAGE);
+        goto out;
+    }
+
+    lseek(src_fd, 54, SEEK_SET);
     stat(SECOND_IMAGE, &st);
     fsize = st.st_size;
     src_buf = aicos_malloc(MEM_CMA, fsize);
@@ -256,18 +263,18 @@ static void ge_rotate_thread(void *arg)
     }
     memset(src_buf, 0, fsize);
 
-    src_fd = open(SECOND_IMAGE, O_RDONLY);
-    if (src_fd < 0) {
-        LOGE("open second_bmp fail\n");
-        goto out;
-    }
-    lseek(src_fd, 54, SEEK_SET);
-
     ret = read(src_fd, src_buf, fsize - 54);
     aicos_dcache_clean_range((unsigned long *)src_buf, (unsigned long)fsize);
     close(src_fd);
 
     g_src_phy = (uintptr_t)src_buf;
+
+    bg_fd = open(CLOCK_IMAGE, O_RDONLY);
+    if (bg_fd < 0) {
+        LOGE("open second_bmp fail, path = %s\n", CLOCK_IMAGE);
+        goto out;
+    }
+    lseek(bg_fd, 54, SEEK_SET);
 
     stat(CLOCK_IMAGE, &st);
     fsize = st.st_size;
@@ -277,13 +284,6 @@ static void ge_rotate_thread(void *arg)
         goto out;
     }
     memset(bg_buf, 0, fsize);
-
-    bg_fd = open(CLOCK_IMAGE, O_RDONLY);
-    if (bg_fd < 0) {
-        LOGE("open second_bmp fail\n");
-        goto out;
-    }
-    lseek(bg_fd, 54, SEEK_SET);
 
     ret = read(bg_fd, bg_buf, fsize - 54);
     aicos_dcache_clean_range((unsigned long *)bg_buf, (unsigned long)fsize);
@@ -314,7 +314,7 @@ static void ge_rotate_thread(void *arg)
         draw_clock(&blt, g_bg_phy, index);
 
         ret = mpp_ge_bitblt(ge, &blt);
-        if (ret < 0){
+        if (ret < 0) {
             LOGE("ge blt fail\n");
         }
 
@@ -335,7 +335,7 @@ static void ge_rotate_thread(void *arg)
                     g_src_phy, index);
 
         ret = mpp_ge_rotate(ge, &rot);
-        if (ret < 0){
+        if (ret < 0) {
             LOGE("ge rotate fail\n");
         }
 
@@ -470,12 +470,19 @@ static void ge_bitblt(int argc, char **argv)
             break;
         case 'u':
             usage(argv[0]);
-            goto out;
+            return;
         default:
             LOGE("Invalid parameter: %#x\n", ret);
-            goto out;;
+            return;
         }
     }
+
+    src_fd = open(BLT_BMP, O_RDONLY);
+    if (src_fd < 0) {
+        LOGE("open blt_bmp fail, path = %s\n", BLT_BMP);
+        return;
+    }
+    lseek(src_fd, 54, SEEK_SET);
 
     stat(BLT_BMP, &st);
     fsize = st.st_size;
@@ -486,14 +493,6 @@ static void ge_bitblt(int argc, char **argv)
         return;
     }
     memset(src_buf, 0, fsize);
-
-    src_fd = open(BLT_BMP, O_RDONLY);
-    if (src_fd < 0) {
-        LOGE("open blt_bmp fail\n");
-        aicos_free(MEM_CMA, src_buf);
-        return;
-    }
-    lseek(src_fd, 54, SEEK_SET);
 
     ret = read(src_fd, src_buf, fsize - 54);
     LOGI("fsize: %d, ret: %d", fsize, ret);
@@ -549,17 +548,17 @@ static void ge_bitblt(int argc, char **argv)
         blt.dst_buf.crop.height = height;
 
         ret =  mpp_ge_bitblt(ge, &blt);
-        if (ret < 0){
+        if (ret < 0) {
             LOGE("ge bitblt fail\n");
         }
 
         ret = mpp_ge_emit(ge);
-        if (ret < 0){
+        if (ret < 0) {
             LOGE("ge emit fail\n");
         }
 
         ret = mpp_ge_sync(ge);
-        if (ret < 0){
+        if (ret < 0) {
             LOGE("ge sync fail\n");
             break;
         }
@@ -617,10 +616,10 @@ static void ge_fillrect(int argc, char **argv)
             break;
         case 'u':
             usage(argv[0]);
-            goto out;
+            return;
         default:
             LOGE("Invalid parameter: %#x\n", ret);
-            goto out;;
+            return;
         }
     }
 
@@ -659,9 +658,9 @@ static void ge_fillrect(int argc, char **argv)
         fill.end_color = 0;
         fill.dst_buf.buf_type = MPP_PHY_ADDR;
 
-        if (!index)
+        if (!index) {
             fill.dst_buf.phy_addr[0] = g_dst_phy;
-        else {
+        } else {
             if (APP_FB_NUM > 1) {
                 fill.dst_buf.phy_addr[0] = g_dst_phy + g_info.smem_len;
             } else {

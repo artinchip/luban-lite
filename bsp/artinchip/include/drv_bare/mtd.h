@@ -16,12 +16,32 @@
 extern "C" {
 #endif
 
+#define MAX_NAND_NAME 32
+struct nftl_volume {
+    char name[MAX_NAND_NAME];
+    int vol_type;
+    u32 size;
+    struct nftl_volume *next;
+};
+
+struct nftl_mtd {
+    char name[MAX_NAND_NAME];
+    struct nftl_mtd *next;
+    struct nftl_volume *vols;
+};
+
+enum part_attr {
+    PART_ATTR_MTD = 0,
+    PART_ATTR_NFTL,
+};
+
 #define MAX_MTD_NAME 64
 struct mtd_partition {
     char name[MAX_MTD_NAME];
     u32 start;
     u32 size;
     struct mtd_partition *next;
+    enum part_attr attr;
 };
 
 struct mtd_dev;
@@ -48,6 +68,7 @@ struct mtd_dev {
     unsigned long oobsize;
     struct mtd_drv_ops ops;
     void *priv;
+    enum part_attr attr;
 };
 
 int mtd_probe(void);
@@ -68,6 +89,10 @@ int mtd_block_markbad(struct mtd_dev *mtd, u32 offset);
 struct mtd_partition *mtd_parts_parse(char *parts);
 void mtd_parts_free(struct mtd_partition *head);
 int mtd_contread(struct mtd_dev *mtd, u32 offset, u8 *data, u32 len);
+
+struct nftl_mtd *build_nftl_list(char *nftlvols);
+void free_nftl_list(struct nftl_mtd *nftl);
+u8 partition_nftl_is_exist(char *mtd_name, struct nftl_mtd *nftl_list);
 
 #ifdef __cplusplus
 }

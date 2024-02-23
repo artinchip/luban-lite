@@ -1,0 +1,3 @@
+menuconfig LPKG_USING_FREETYPE
+    bool "freetype"
+    default n

@@ -18,7 +18,7 @@
 #include "hal_i2s.h"
 #include "codec.h"
 
-#define TX_FIFO_PERIOD_COUNT        4
+#define TX_FIFO_PERIOD_COUNT        2
 #define TX_FIFO_SIZE                (RT_AUDIO_REPLAY_MP_BLOCK_SIZE *\
                                      TX_FIFO_PERIOD_COUNT)
 #define RX_FIFO_PERIOD_COUNT        2
@@ -101,7 +101,6 @@ rt_err_t drv_i2s_sound_start(struct rt_audio_device *audio, int stream)
     struct aic_i2s_sound *p_snd_dev;
     aic_i2s_ctrl *pi2s;
     i2s_format_t *pformat;
-    unsigned int i;
 
     p_snd_dev = (struct aic_i2s_sound *)audio;
     pi2s = &p_snd_dev->i2s;
@@ -109,8 +108,7 @@ rt_err_t drv_i2s_sound_start(struct rt_audio_device *audio, int stream)
 
     if (stream == AUDIO_STREAM_REPLAY)
     {
-        for (i = 0; i < TX_FIFO_PERIOD_COUNT; i++)
-            rt_audio_tx_complete(audio);
+        rt_audio_tx_complete(audio);
 
         hal_i2s_playback_start(pi2s, pformat);
         codec_start(p_snd_dev->codec, I2S_STREAM_PLAYBACK);
@@ -205,7 +203,10 @@ rt_err_t drv_i2s_sound_configure(struct rt_audio_device *audio,
     case AUDIO_TYPE_OUTPUT:
     case AUDIO_TYPE_INPUT:
     {
-        pformat->stream = I2S_STREAM_PLAYBACK;
+        if (caps->main_type == AUDIO_TYPE_OUTPUT)
+            pformat->stream = I2S_STREAM_PLAYBACK;
+        else if (caps->main_type == AUDIO_TYPE_INPUT)
+            pformat->stream = I2S_STREAM_RECORD;
         pformat->mclk_nfs = AIC_I2S_CODEC_MCLK_NFS;
         pformat->sclk_nfs = AIC_I2S_CODEC_SCLK_NFS;
         pformat->protocol = I2S_PROTOCOL_I2S;
@@ -222,12 +223,14 @@ rt_err_t drv_i2s_sound_configure(struct rt_audio_device *audio,
             pformat->rate = caps->udata.config.samplerate;
             pformat->channel = caps->udata.config.channels;
             pformat->width = caps->udata.config.samplebits;
+            pformat->slot_width = caps->udata.config.samplebits;
 
             /* Configure channel */
             hal_i2s_channel_select(pi2s, pformat->channel, pformat->stream);
             codec_set_channel(codec, pformat);
             /* Configure samplebits */
             hal_i2s_sample_width_select(pi2s, pformat->width);
+            hal_i2s_slot_width_select(pi2s, pformat->slot_width);
             codec_set_sample_width(codec, pformat);
             /* Configure sample rate */
             hal_i2s_mclk_set(pi2s, pformat->rate, pformat->mclk_nfs);
@@ -265,6 +268,7 @@ rt_err_t drv_i2s_sound_configure(struct rt_audio_device *audio,
             pformat->width = caps->udata.config.samplebits;
             /* Configure samplebits */
             hal_i2s_sample_width_select(pi2s, pformat->width);
+            hal_i2s_slot_width_select(pi2s, pformat->slot_width);
             codec_set_sample_width(codec, pformat);
 
             LOG_D("set samplebits: %d\n", pformat->width);
@@ -393,9 +397,11 @@ static void drv_i2s_sound_callback(aic_i2s_ctrl *pi2s, void *arg)
     {
     case I2S_TX_PERIOD_INT:
         rt_audio_tx_complete(audio);
+        aicos_dcache_clean_range((void *)i2s_tx_fifo, TX_FIFO_SIZE);
         break;
 
     case I2S_RX_PERIOD_INT:
+        aicos_dcache_invalid_range((void *)i2s_rx_fifo, RX_FIFO_SIZE);
         period_len = pi2s->rx_info.buf_info.period_len;
         if (!p_snd_dev->record_idx)
         {
@@ -480,6 +486,11 @@ int rt_hw_i2s_sound_init(void)
 
         snd_dev[i].audio.ops = &aic_i2s_ops;
         snd_dev[i].record_idx = 0;
+        if (!register_codec) {
+            rt_kprintf("codec not registered!\n");
+            return -RT_ERROR;
+        }
+        snd_dev[i].codec = register_codec;
 
         ret = rt_audio_register(&snd_dev[i].audio, snd_dev[i].name,
                             RT_DEVICE_FLAG_RDWR, &snd_dev[i]);

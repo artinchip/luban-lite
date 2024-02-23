@@ -1,3 +1,9 @@
+/*
+ * I2S driver of ArtInChip SoC
+ *
+ * Copyright (C) 2020-2021 ArtInChip Technology Co., Ltd.
+ * Authors:  dwj <weijie.ding@artinchip.com>
+ */
 #ifndef __HAL_I2S_SOUND_H__
 #define __HAL_I2S_SOUND_H__
 
@@ -47,9 +53,22 @@ typedef enum {
 } i2s_sample_width_t;
 
 typedef enum {
-    I2S_LEFT_CHANNEL,
-    I2S_RIGHT_CHANNEL,
-    I2S_LEFT_RIGHT_CHANNEL,
+    I2S_TDM_CHANNEL_1 = 1U,
+    I2S_TDM_CHANNEL_2 = 2U,
+    I2S_TDM_CHANNEL_3 = 3U,
+    I2S_TDM_CHANNEL_4 = 4U,
+    I2S_TDM_CHANNEL_5 = 5U,
+    I2S_TDM_CHANNEL_6 = 6U,
+    I2S_TDM_CHANNEL_7 = 7U,
+    I2S_TDM_CHANNEL_8 = 8U,
+    I2S_TDM_CHANNEL_9 = 9U,
+    I2S_TDM_CHANNEL_10 = 10U,
+    I2S_TDM_CHANNEL_11 = 11U,
+    I2S_TDM_CHANNEL_12 = 12U,
+    I2S_TDM_CHANNEL_13 = 13U,
+    I2S_TDM_CHANNEL_14 = 14U,
+    I2S_TDM_CHANNEL_15 = 15U,
+    I2S_TDM_CHANNEL_16 = 16U,
 } i2s_sound_channel_t;
 
 typedef enum {
@@ -63,6 +82,7 @@ typedef struct {
     i2s_polarity_t          polarity;
     i2s_sample_rate_t       rate;
     i2s_sample_width_t      width;
+    i2s_sample_width_t      slot_width;
     i2s_sound_channel_t     channel;
     uint32_t                sclk_nfs;
     uint32_t                mclk_nfs;

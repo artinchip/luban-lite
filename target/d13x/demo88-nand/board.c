@@ -62,14 +62,17 @@ void aic_memheap_init(void)
     rt_ubase_t end_align;
     int i = 0;
 
-    for (i=0; i<sizeof(aic_memheaps)/sizeof(struct aic_memheap); i++){
-        begin_align = RT_ALIGN((rt_ubase_t)aic_memheaps[i].begin_addr, RT_ALIGN_SIZE);
-        end_align   = RT_ALIGN_DOWN((rt_ubase_t)aic_memheaps[i].end_addr, RT_ALIGN_SIZE);
+    for (i = 0; i < sizeof(aic_memheaps) / sizeof(struct aic_memheap); i++) {
+        begin_align =
+            RT_ALIGN((rt_ubase_t)aic_memheaps[i].begin_addr, RT_ALIGN_SIZE);
+        end_align =
+            RT_ALIGN_DOWN((rt_ubase_t)aic_memheaps[i].end_addr, RT_ALIGN_SIZE);
         RT_ASSERT(end_align > begin_align);
 
         rt_memheap_init(&aic_memheaps[i].heap, aic_memheaps[i].name,
                         (void *)begin_align, end_align - begin_align);
-        rt_mutex_init(&aic_memheaps[i].lock, aic_memheaps[i].name, RT_IPC_FLAG_PRIO);
+        rt_mutex_init(&aic_memheaps[i].lock, aic_memheaps[i].name,
+                      RT_IPC_FLAG_PRIO);
     }
 }
 
@@ -78,11 +81,11 @@ void *aic_memheap_malloc(int type, size_t size)
     void *ptr;
     int i = 0;
 
-    for (i=0; i<sizeof(aic_memheaps)/sizeof(struct aic_memheap); i++){
+    for (i = 0; i < sizeof(aic_memheaps) / sizeof(struct aic_memheap); i++) {
         if (aic_memheaps[i].type == type)
             break;
     }
-    if (i >= sizeof(aic_memheaps)/sizeof(struct aic_memheap))
+    if (i >= sizeof(aic_memheaps) / sizeof(struct aic_memheap))
         return NULL;
 
     /* Enter critical zone */
@@ -102,11 +105,11 @@ void aic_memheap_free(int type, void *rmem)
     if (rmem == RT_NULL)
         return;
 
-    for (i=0; i<sizeof(aic_memheaps)/sizeof(struct aic_memheap); i++){
+    for (i = 0; i < sizeof(aic_memheaps) / sizeof(struct aic_memheap); i++) {
         if (aic_memheaps[i].type == type)
             break;
     }
-    if (i >= sizeof(aic_memheaps)/sizeof(struct aic_memheap))
+    if (i >= sizeof(aic_memheaps) / sizeof(struct aic_memheap))
         return;
 
     /* Enter critical zone */
@@ -182,12 +185,12 @@ const struct dfs_mount_tbl mount_table[] = {
 #endif
 #if (defined(AIC_USING_FS_IMAGE_TYPE_FATFS_FOR_0) || defined(AIC_USING_FS_IMAGE_TYPE_FATFS_FOR_1))
     {"blk_rodata", "/rodata", "elm", 0, 0, 0},
+    {"blk_data", "/data", "elm", 0, 0, 1},
 #endif
 #ifdef LPKG_USING_DFS_UFFS
     {"data", "/data", "uffs", 0, 0, 1},
 #endif
 #ifdef AIC_USING_SDMC1
-    {"sd0p0", "/sdcard", "elm", 0, 0, 0},
     {"sd0", "/sdcard", "elm", 0, 0, 0},
 #endif
 #if (defined(AIC_USING_USB0_HOST) || defined(AIC_USING_USB1_HOST))

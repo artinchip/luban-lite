@@ -20,7 +20,22 @@
 
 int wdt_init(void)
 {
-    if (hal_clk_enable_deassertrst(CLK_WDT) < 0) {
+    int ret;
+
+    ret = hal_clk_enable(CLK_WDT);
+    if (ret < -1) {
+        pr_err("Watchdog clk enable failed.");
+        return -EINVAL;
+    }
+
+    ret = hal_reset_assert(RESET_WDT);
+    if (ret < -1) {
+        pr_err("Watchdog reset assert failed.");
+        return -EINVAL;
+    }
+
+    ret = hal_reset_deassert(RESET_WDT);
+    if (ret < -1) {
         pr_err("Watchdog reset deassert failed.");
         return -EINVAL;
     }

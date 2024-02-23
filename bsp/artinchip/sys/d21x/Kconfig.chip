@@ -485,6 +485,27 @@ config AIC_PWM_CH_NUM
     default 4 if AIC_PWM_DRV_V10
 
 #--------------------------------------------
+# EPWM driver global option
+#--------------------------------------------
+
+config AIC_EPWM_DRV
+    bool
+    default n
+    select RT_USING_PWM if DRIVER_DRV_EN
+
+config AIC_EPWM_DRV_V10
+    bool
+    default y if AIC_EPWM_DRV
+
+config AIC_EPWM_DRV_VER
+    string
+    default "10" if AIC_EPWM_DRV_V10
+
+config AIC_EPWM_CH_NUM
+    int
+    default 6 if AIC_EPWM_DRV_V10
+
+#--------------------------------------------
 # HRTimer driver global option
 #--------------------------------------------
 
@@ -594,6 +615,15 @@ config AIC_I2S_DRV
     default n
     select RT_USING_AUDIO
     select RT_USING_MEMPOOL
+    select AIC_I2S_CODEC_SELECT
+
+config AIC_I2S_DRV_V10
+    bool
+    default y if AIC_I2S_DRV
+
+config AIC_I2S_DRV_VER
+    string
+    default "10" if AIC_I2S_DRV_V10
 
 #--------------------------------------------
 # AUDIO driver global option

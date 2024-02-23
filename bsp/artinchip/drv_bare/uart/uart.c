@@ -13,6 +13,8 @@
 #include <driver.h>
 #include <uart.h>
 
+#define AIC_CLK_UART_MAX_FREQ 100000000 /* max 100M*/
+
 #ifndef AIC_CLK_UART0_FREQ
 #define AIC_CLK_UART0_FREQ 48000000 /* default 48M*/
 #endif
@@ -270,8 +272,10 @@ int uart_config_update(int id, int baudrate)
 {
     const struct drv_uart_dev_para *p;
     u32 data_bits, stop_bits, parity;
-    int i;
-    int ret = 0;
+    int freq, parent_clk_id, parent_freq;
+    int cmu_div, uart_div, real_baudrate;
+    u64 err, min_err = baudrate / 40;
+    int i, ret = 0;
 
     p = NULL;
     for (i = 0; i < ARRAY_SIZE(uart_dev_paras); i++) {
@@ -282,6 +286,37 @@ int uart_config_update(int id, int baudrate)
     }
     if (!p)
         return -ENODEV;
+
+    parent_clk_id = hal_clk_get_parent(CLK_UART0 + id);
+    parent_freq   = hal_clk_get_freq(parent_clk_id);
+    freq = p->clk_freq;
+
+#if defined(AIC_CMU_DRV_V12)
+    for (cmu_div = 16; cmu_div > 0; cmu_div--) {
+#else
+    for (cmu_div = 32; cmu_div > 0; cmu_div--) {
+#endif
+        if ((parent_freq / cmu_div) > AIC_CLK_UART_MAX_FREQ)
+            continue;
+        for (uart_div = 1; uart_div < 65536; uart_div++) {
+            real_baudrate = parent_freq / (cmu_div * 16 * uart_div);
+            err = abs(baudrate - real_baudrate);
+            if (err < min_err) {
+                freq = parent_freq / cmu_div;
+                min_err = err;
+            }
+        }
+    }
+
+    if (min_err >= (baudrate / 40)) {
+        printf("Error is too large for this baud rate.\n");
+        return -1;
+    }
+
+    hal_clk_set_freq(CLK_UART0 + id, freq);
+    hal_clk_enable(CLK_UART0 + id);
+    hal_reset_assert(RESET_UART0 + id);
+    hal_reset_deassert(RESET_UART0 + id);
 
     data_bits = get_data_bits(p->data_bits);
     stop_bits = get_stop_bits(p->stop_bits);

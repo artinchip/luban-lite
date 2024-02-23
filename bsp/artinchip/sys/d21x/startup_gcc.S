@@ -65,8 +65,10 @@ save_boot_params_ret:
 #endif
     csrw    mscratch, sp
 
-    jal     icache_enable
-    jal     dcache_enable
+    la      a5, icache_enable
+    jalr    a5
+    la      a5, dcache_enable
+    jalr    a5
 
     /* Load data section */
 #if defined(AIC_XIP)
@@ -94,7 +96,8 @@ save_boot_params_ret:
 2:
 
 #ifndef __NO_SYSTEM_INIT
-    jal     SystemInit
+    la      a5, SystemInit
+    jalr    a5
 #endif
 
 #if (defined(KERNEL_RTTHREAD) || defined(KERNEL_FREERTOS))

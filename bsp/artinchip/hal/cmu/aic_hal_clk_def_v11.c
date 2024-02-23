@@ -79,12 +79,12 @@ FPCLK(CLK_PBUS, "pbus", CLK_AHB0, PARENT("ahb0"), CLK_PBUS_REG, 12, -1, 0, 0);
 FPCLK(CLK_SYSCFG, "syscfg", CLK_OSC24M, PARENT("osc24m"), CLK_SYSCFG_REG, 12,
       -1, 0, 0);
 FPCLK(CLK_RTC, "rtc", CLK_OSC32K, PARENT("osc32k"), CLK_RTC_REG, 12, -1, 0, 0);
-FPCLK(CLK_I2S0, "i2s0", CLK_PLL_INT1, PARENT("pll_int1"), CLK_I2S0_REG, 12, 8,
-      0, 0);
-FPCLK_BASE(CLK_AUDIO_SCLK, "audio_sclk", CLK_PLL_INT1, PARENT("pll_int1"), CLK_AUDIO_REG, 0,
-      0, 0, 1, 49, 4);
+FPCLK_BASE(CLK_AUDIO_SCLK, "audio_sclk", CLK_PLL_INT1, PARENT("pll_int1"), CLK_AUDIO_REG, -1,
+      -1, 0, 1, 49, 4);
 FPCLK(CLK_CODEC, "codec", CLK_AUDIO_SCLK, PARENT("audio_sclk"), CLK_CODEC_REG, 12,
       8, 0, 0);
+FPCLK(CLK_I2S0, "i2s0", CLK_AUDIO_SCLK, PARENT("audio_sclk"), CLK_I2S0_REG, 12, 8,
+      0, 0);
 FPCLK(CLK_DE, "de", CLK_PLL_INT1, PARENT("pll_int1"), CLK_DE_REG, 12, 8, 0, 5);
 FPCLK(CLK_GE, "ge", CLK_PLL_INT1, PARENT("pll_int1"), CLK_GE_REG, 12, 8, 0, 5);
 FPCLK(CLK_VE, "ve", CLK_PLL_INT1, PARENT("pll_int1"), CLK_VE_REG, 12, 8, 0, 5);

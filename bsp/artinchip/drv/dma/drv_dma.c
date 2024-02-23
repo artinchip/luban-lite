@@ -12,6 +12,14 @@
 #include "hal_dma.h"
 #include "drv_dma.h"
 
+#if defined(AIC_USING_DMA0)
+#define CLK_DMA    CLK_DMA0
+#elif defined(AIC_USING_DMA1)
+#define CLK_DMA    CLK_DMA1
+#elif defined(AIC_USING_DMA2)
+#define CLK_DMA    CLK_DMA2
+#endif
+
 void drv_dma_deinit(void)
 {
     hal_clk_disable_assertrst(CLK_DMA);

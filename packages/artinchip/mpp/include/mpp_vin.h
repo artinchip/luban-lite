@@ -11,7 +11,7 @@
 
 #include "aic_common.h"
 
-#define VIN_MAX_BUF_NUM         8
+#define VIN_MAX_BUF_NUM         32
 #define VIN_MAX_PLANE_NUM       2
 
 /*

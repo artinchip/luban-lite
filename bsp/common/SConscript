@@ -4,6 +4,9 @@ from building import *
 
 cwd = GetCurrentDir()
 src = Glob('*.c')
+src += Glob('partition/*.c')
+src += Glob('private_param/*.c')
+src += Glob('crc32/*.c')
 CPPPATH = [cwd + '/include', ]
 
 group = DefineGroup('aic_driver_common', src, depend = [''], CPPPATH = CPPPATH)

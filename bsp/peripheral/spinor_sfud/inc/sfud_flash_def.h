@@ -26,8 +26,8 @@
  * Created on: 2016-06-09
  */
 
-#ifndef _SFUD_FLASH_DEF_H_
-#define _SFUD_FLASH_DEF_H_
+#ifndef BSP_PERIPHERAL_SPINOR_SFUD_INC_SFUD_FLASH_DEF_H_
+#define BSP_PERIPHERAL_SPINOR_SFUD_INC_SFUD_FLASH_DEF_H_
 
 #include <stdint.h>
 #include <sfud_cfg.h>
@@ -151,6 +151,7 @@ typedef struct {
     {"W25Q64DW", SFUD_MF_ID_WINBOND, 0x60, 0x17, 8L*1024L*1024L, SFUD_WM_PAGE_256B, 4096, 0x20},                    \
     {"W25Q128BV", SFUD_MF_ID_WINBOND, 0x40, 0x18, 16L*1024L*1024L, SFUD_WM_PAGE_256B, 4096, 0x20},                  \
     {"W25Q256FV", SFUD_MF_ID_WINBOND, 0x40, 0x19, 32L*1024L*1024L, SFUD_WM_PAGE_256B, 4096, 0x20},                  \
+    {"MX25L25635E", SFUD_MF_ID_MACRONIX, 0x20, 0x19, 32L*1024L*1024L, SFUD_WM_PAGE_256B, 4096, 0x20},               \
     {"SST25VF080B", SFUD_MF_ID_SST, 0x25, 0x8E, 1L*1024L*1024L, SFUD_WM_BYTE|SFUD_WM_AAI, 4096, 0x20},              \
     {"SST25VF016B", SFUD_MF_ID_SST, 0x25, 0x41, 2L*1024L*1024L, SFUD_WM_BYTE|SFUD_WM_AAI, 4096, 0x20},              \
     {"M25P32", SFUD_MF_ID_MICRON, 0x20, 0x16, 4L*1024L*1024L, SFUD_WM_PAGE_256B, 64L*1024L, 0xD8},                  \
@@ -167,8 +168,8 @@ typedef struct {
     {"A25L080", SFUD_MF_ID_AMIC, 0x30, 0x14, 1L*1024L*1024L, SFUD_WM_PAGE_256B, 4096, 0x20},                        \
     {"F25L004", SFUD_MF_ID_ESMT, 0x20, 0x13, 512L*1024L, SFUD_WM_BYTE|SFUD_WM_AAI, 4096, 0x20},                     \
     {"PCT25VF016B", SFUD_MF_ID_SST, 0x25, 0x41, 2L*1024L*1024L, SFUD_WM_BYTE|SFUD_WM_AAI, 4096, 0x20},              \
-    {"NM25Q128EVB", SFUD_MF_ID_NOR_MEM, 0x21, 0x18, 16L*1024L*1024L, SFUD_WM_PAGE_256B, 4096, 0x20},                 \
-    {"ZD25Q64B", SFUD_MF_ID_ZETTA, 0x32, 0x17, 8L*1024L*1024L, SFUD_WM_PAGE_256B, 4096, 0x20},                       \
+    {"NM25Q128EVB", SFUD_MF_ID_NOR_MEM, 0x21, 0x18, 16L*1024L*1024L, SFUD_WM_PAGE_256B, 4096, 0x20},                \
+    {"ZD25Q64B", SFUD_MF_ID_ZETTA, 0x32, 0x17, 8L*1024L*1024L, SFUD_WM_PAGE_256B, 4096, 0x20},                      \
 }
 #endif /* SFUD_USING_FLASH_INFO_TABLE */
 
@@ -203,6 +204,8 @@ typedef struct {
     {SFUD_MF_ID_AMIC, 0x40, 0x17, NORMAL_SPI_READ|DUAL_OUTPUT|DUAL_IO|QUAD_IO},                    \
     /* MX25L3206E and KH25L3206E */                                                                \
     {SFUD_MF_ID_MACRONIX, 0x20, 0x16, NORMAL_SPI_READ|DUAL_OUTPUT},                                \
+    /* MX25L25635E */                                                                              \
+    {SFUD_MF_ID_MACRONIX, 0x20, 0x19, NORMAL_SPI_READ|DUAL_OUTPUT|DUAL_IO|QUAD_OUTPUT|QUAD_IO},    \
     /* MX25L51245G */                                                                              \
     {SFUD_MF_ID_MACRONIX, 0x20, 0x1A, NORMAL_SPI_READ|DUAL_OUTPUT|DUAL_IO|QUAD_OUTPUT|QUAD_IO},    \
     /* GD25Q64B */                                                                                 \
@@ -213,17 +216,21 @@ typedef struct {
     {SFUD_MF_ID_ZBIT, 0x40, 0x18, NORMAL_SPI_READ|DUAL_OUTPUT|DUAL_IO|QUAD_OUTPUT},                \
     /* ZB25VQ16C */                                                                                \
     {SFUD_MF_ID_ZBIT, 0x40, 0x15, NORMAL_SPI_READ|DUAL_OUTPUT|DUAL_IO|QUAD_OUTPUT},                \
-    /* ZD25Q64B */                                                                                \
-    {SFUD_MF_ID_ZETTA, 0x32, 0x17, NORMAL_SPI_READ|DUAL_OUTPUT|DUAL_IO|QUAD_OUTPUT},                \
+    /* ZD25Q64B */                                                                                 \
+    {SFUD_MF_ID_ZETTA, 0x32, 0x17, NORMAL_SPI_READ|DUAL_OUTPUT|DUAL_IO|QUAD_OUTPUT},               \
 }
 
-/* those flash SFDP basic_len < 15, and the QE at SR1-BIT6, the sfud can not recognition */
+/* those flash SFDP basic_len < 15, and the QE at SR1-BIT6, or specially SFDP (ZB25VQ16C QE info at Dword-14), the sfud can not recognition */
 #define SFUD_FLASH_QE_INFO_TABLE                                                                                                  \
 {                                                                                                                                 \
     /* MX25L6433FM2I */                                                                                                           \
     {SFUD_MF_ID_MACRONIX, 0x20, 0x17, SFUD_CMD_WRITE_STATUS_REGISTER, SFUD_CMD_READ_STATUS_REGISTER, 6},                          \
     /* MX25L12835FM2I */                                                                                                          \
     {SFUD_MF_ID_MACRONIX, 0x20, 0x18, SFUD_CMD_WRITE_STATUS_REGISTER, SFUD_CMD_READ_STATUS_REGISTER, 6},                          \
+    /* MX25L25635E */                                                                                                             \
+    {SFUD_MF_ID_MACRONIX, 0x20, 0x19, SFUD_CMD_WRITE_STATUS_REGISTER, SFUD_CMD_READ_STATUS_REGISTER, 6},                          \
+    /* ZB25VQ16C */                                                                                                               \
+    {SFUD_MF_ID_ZBIT, 0x40, 0x15, SFUD_CMD_WRITE_STATUS2_REGISTER, SFUD_CMD_READ_CONFIG_REGISTER, 1},                              \
 }
 
 #endif /* SFUD_USING_QSPI */
@@ -232,4 +239,4 @@ typedef struct {
 }
 #endif
 
-#endif /* _SFUD_FLASH_DEF_H_ */
+#endif /* BSP_PERIPHERAL_SPINOR_SFUD_INC_SFUD_FLASH_DEF_H_ */

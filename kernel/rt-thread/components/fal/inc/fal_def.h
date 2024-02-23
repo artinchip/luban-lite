@@ -73,6 +73,12 @@ if (!(EXPR))                                                                   \
 #define FAL_DEV_NAME_MAX 24
 #endif
 
+/* partition magic word */
+#define FAL_PART_MAGIC_WORD         0x45503130
+#define FAL_PART_MAGIC_WORD_H       0x4550L
+#define FAL_PART_MAGIC_WORD_L       0x3130L
+#define FAL_PART_MAGIC_WROD         0x45503130
+
 struct fal_flash_dev
 {
     char name[FAL_DEV_NAME_MAX];

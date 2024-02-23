@@ -10,6 +10,10 @@
 #define USB_NUM_BIDIR_ENDPOINTS USB_SOC_DCD_MAX_ENDPOINT_COUNT
 #endif
 
+#if !defined(CONFIG_HPM_USBD_BASE) || !defined(CONFIG_HPM_USBD_IRQn)
+#error "hpm dcd must config CONFIG_HPM_USBD_BASE and CONFIG_HPM_USBD_IRQn"
+#endif
+
 /* USBSTS, USBINTR */
 enum {
     intr_usb = HPM_BITSMASK(1, 0),
@@ -62,7 +66,7 @@ int usb_dc_init(void)
 
     memset(&g_hpm_udc, 0, sizeof(struct hpm_udc));
     g_hpm_udc.handle = &usb_device_handle[0];
-    g_hpm_udc.handle->regs = (USB_Type *)HPM_USB0_BASE;
+    g_hpm_udc.handle->regs = (USB_Type *)CONFIG_HPM_USBD_BASE;
     g_hpm_udc.handle->dcd_data = &_dcd_data;
 
     uint32_t int_mask;
@@ -71,12 +75,16 @@ int usb_dc_init(void)
 
     usb_device_init(g_hpm_udc.handle, int_mask);
 
-    intc_m_enable_irq(IRQn_USB0);
+    intc_m_enable_irq(CONFIG_HPM_USBD_IRQn);
     return 0;
 }
 
 int usb_dc_deinit(void)
 {
+    intc_m_disable_irq(CONFIG_HPM_USBD_IRQn);
+
+    usb_device_deinit(g_hpm_udc.handle);
+
     return 0;
 }
 
@@ -89,6 +97,7 @@ int usbd_set_address(const uint8_t addr)
 
 uint8_t usbd_get_port_speed(const uint8_t port)
 {
+    (void)port;
     uint8_t speed;
 
     speed = usb_get_port_speed(g_hpm_udc.handle->regs);
@@ -106,26 +115,26 @@ uint8_t usbd_get_port_speed(const uint8_t port)
     return 0;
 }
 
-int usbd_ep_open(const struct usbd_endpoint_cfg *ep_cfg)
+int usbd_ep_open(const struct usb_endpoint_descriptor *ep)
 {
     usb_endpoint_config_t tmp_ep_cfg;
     usb_device_handle_t *handle = g_hpm_udc.handle;
 
-    uint8_t ep_idx = USB_EP_GET_IDX(ep_cfg->ep_addr);
+    uint8_t ep_idx = USB_EP_GET_IDX(ep->bEndpointAddress);
 
-    if (USB_EP_DIR_IS_OUT(ep_cfg->ep_addr)) {
-        g_hpm_udc.out_ep[ep_idx].ep_mps = ep_cfg->ep_mps;
-        g_hpm_udc.out_ep[ep_idx].ep_type = ep_cfg->ep_type;
+    if (USB_EP_DIR_IS_OUT(ep->bEndpointAddress)) {
+        g_hpm_udc.out_ep[ep_idx].ep_mps = USB_GET_MAXPACKETSIZE(ep->wMaxPacketSize);
+        g_hpm_udc.out_ep[ep_idx].ep_type = USB_GET_ENDPOINT_TYPE(ep->bmAttributes);
         g_hpm_udc.out_ep[ep_idx].ep_enable = true;
     } else {
-        g_hpm_udc.in_ep[ep_idx].ep_mps = ep_cfg->ep_mps;
-        g_hpm_udc.in_ep[ep_idx].ep_type = ep_cfg->ep_type;
+        g_hpm_udc.in_ep[ep_idx].ep_mps = USB_GET_MAXPACKETSIZE(ep->wMaxPacketSize);
+        g_hpm_udc.in_ep[ep_idx].ep_type = USB_GET_ENDPOINT_TYPE(ep->bmAttributes);
         g_hpm_udc.in_ep[ep_idx].ep_enable = true;
     }
 
-    tmp_ep_cfg.xfer = ep_cfg->ep_type;
-    tmp_ep_cfg.ep_addr = ep_cfg->ep_addr;
-    tmp_ep_cfg.max_packet_size = ep_cfg->ep_mps;
+    tmp_ep_cfg.xfer = USB_GET_ENDPOINT_TYPE(ep->bmAttributes);
+    tmp_ep_cfg.ep_addr = ep->bEndpointAddress;
+    tmp_ep_cfg.max_packet_size = USB_GET_MAXPACKETSIZE(ep->wMaxPacketSize);
 
     usb_device_edpt_open(handle, &tmp_ep_cfg);
     return 0;
@@ -157,6 +166,9 @@ int usbd_ep_clear_stall(const uint8_t ep)
 
 int usbd_ep_is_stalled(const uint8_t ep, uint8_t *stalled)
 {
+    usb_device_handle_t *handle = g_hpm_udc.handle;
+
+    *stalled = usb_device_edpt_check_stall(handle, ep);
     return 0;
 }
 
@@ -206,7 +218,7 @@ void USBD_IRQHandler(void)
 {
     uint32_t int_status;
     usb_device_handle_t *handle = g_hpm_udc.handle;
-    uint32_t transfer_len;
+    uint32_t transfer_len = 0;
 
     /* Acknowledge handled interrupt */
     int_status = usb_device_status_flags(handle);
@@ -259,19 +271,26 @@ void USBD_IRQHandler(void)
                 if (edpt_complete & (1 << ep_idx2bit(ep_idx))) {
                     /* Failed QTD also get ENDPTCOMPLETE set */
                     dcd_qtd_t *p_qtd = usb_device_qtd_get(handle, ep_idx);
-
-                    if (p_qtd->halted || p_qtd->xact_err || p_qtd->buffer_err) {
-                    } else {
-                        /* only number of bytes in the IOC qtd */
-                        uint8_t const ep_addr = (ep_idx / 2) | ((ep_idx & 0x01) ? 0x80 : 0);
-
-                        transfer_len = p_qtd->expected_bytes - p_qtd->total_bytes;
-
-                        if (ep_addr & 0x80) {
-                            usbd_event_ep_in_complete_handler(ep_addr, transfer_len);
+                    while (1) {
+                        if (p_qtd->halted || p_qtd->xact_err || p_qtd->buffer_err) {
+                            USB_LOG_ERR("usbd transfer error!\r\n");
+                            return;
                         } else {
-                            usbd_event_ep_out_complete_handler(ep_addr, transfer_len);
+                            transfer_len += p_qtd->expected_bytes - p_qtd->total_bytes;
                         }
+
+                        if (p_qtd->next == USB_SOC_DCD_QTD_NEXT_INVALID){
+                            break;
+                        } else {
+                            p_qtd = (dcd_qtd_t *)p_qtd->next;
+                        }
+                    }
+
+                    uint8_t const ep_addr = (ep_idx / 2) | ((ep_idx & 0x01) ? 0x80 : 0);
+                    if (ep_addr & 0x80) {
+                        usbd_event_ep_in_complete_handler(ep_addr, transfer_len);
+                    } else {
+                        usbd_event_ep_out_complete_handler(ep_addr, transfer_len);
                     }
                 }
             }
@@ -279,8 +298,8 @@ void USBD_IRQHandler(void)
     }
 }
 
-void isr_usb0(void)
+void isr_usbd(void)
 {
     USBD_IRQHandler();
 }
-SDK_DECLARE_EXT_ISR_M(IRQn_USB0, isr_usb0)
+SDK_DECLARE_EXT_ISR_M(CONFIG_HPM_USBD_IRQn, isr_usbd)

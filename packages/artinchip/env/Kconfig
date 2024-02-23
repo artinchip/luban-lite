@@ -23,11 +23,6 @@ config AIC_ENV_REDUNDAND_PART_NAME
     depends on AIC_ENV_INTERFACE
     default "env_r"
 
-config AIC_AB_SYSTEM_INTERFACE
-    bool "Enable A/B system support"
-    depends on AIC_ENV_INTERFACE
-    default y
-
 config AIC_ENV_SIZE
     int "Environment Size"
     default 4096
@@ -37,4 +32,19 @@ config AIC_ENV_DEBUG
     bool "Enable ENV debug"
     default n
     depends on AIC_ENV_INTERFACE
+
+if AIC_BOOTLOADER
+config AIC_AB_SYSTEM_INTERFACE
+    bool "Enable A/B system support in bootloader"
+    depends on AIC_ENV_INTERFACE
+    default y
+endif
+
+if LPKG_USING_HTTP_OTA
+config AIC_AB_SYSTEM_INTERFACE
+    bool "Enable A/B system support"
+    depends on AIC_ENV_INTERFACE
+    default y
+endif
+
 endif

@@ -114,6 +114,11 @@ extern "C" {
 #define TCFG_BIT_START_MSK              (1UL << 31)
 #define TCFG_BIT_START_VAL(v)           (((v) << TCFG_BIT_START_OFS) & TCFG_BIT_START_MSK)
 
+#define TCFG_RX_SAMP_DLY_MSK            (TCFG_BIT_RXINDLY_EN_MSK | TCFG_BIT_RXDLY_DIS_MSK)
+#define TCFG_RX_SAMP_DLY_NONE           (TCFG_BIT_RXDLY_DIS_MSK)
+#define TCFG_RX_SAMP_DLY_HALF           (0)
+#define TCFG_RX_SAMP_DLY_ONE            (TCFG_BIT_RXINDLY_EN_MSK)
+
 #define FCTL_BIT_RF_WATERMARK_OFS       (0)
 #define FCTL_BIT_RF_WATERMARK_MSK       (0xFFUL << 0)
 #define FCTL_BIT_RF_WATERMARK_VAL(v)    (((v) << FCTL_BIT_RF_WATERMARK_OFS) & FCTL_BIT_RF_WATERMARK_MSK)
@@ -372,10 +377,6 @@ static inline u32 qspi_hw_index_to_base(u32 idx)
             return QSPI2_BASE;
         case 3:
             return QSPI3_BASE;
-#ifdef AIC_USING_SE_SPI
-        case 5:
-            return SE_SPI_BASE;
-#endif
         default:
             return 0;
     }
@@ -393,10 +394,6 @@ static inline u32 qspi_hw_base_to_index(u32 base)
             return 2;
         case QSPI3_BASE:
             return 3;
-#ifdef AIC_SE_SPI_DRV_TEST
-        case SE_SPI_BASE:
-            return 5;
-#endif
         default:
             return QSPI_INVALID_BASE;
     }
@@ -441,19 +438,28 @@ static inline u32 qspi_hw_get_slave_output_en(u32 base)
     return ((val & TCFG_BIT_SLV_OEN_MSK) >> TCFG_BIT_SLV_OEN_OFS);
 }
 
-static inline void qspi_hw_set_slave_rxdelay_dis(u32 base, u32 dis)
-{
-    u32 val = readl(QSPI_REG_TCFG(base));
-    val &= ~(TCFG_BIT_RXDLY_DIS_MSK);
-    val |= TCFG_BIT_RXDLY_DIS_VAL(dis);
-    writel(val, QSPI_REG_TCFG(base));
-}
-
-static inline void qspi_hw_set_slave_txdelay_en(u32 base, u32 en)
+static inline void qspi_hw_set_tx_delay_mode(u32 base, u32 en)
 {
     u32 val = readl(QSPI_REG_TCFG(base));
     val &= ~(TCFG_BIT_TXDLY_EN_MSK);
     val |= TCFG_BIT_TXDLY_EN_VAL(en);
+    writel(val, QSPI_REG_TCFG(base));
+}
+
+static inline u32 qspi_hw_freq_to_delay_mode(u32 freq)
+{
+    if (freq <= 24000000)
+        return TCFG_RX_SAMP_DLY_NONE;
+    else if (freq <= 60000000)
+        return TCFG_RX_SAMP_DLY_HALF;
+    return TCFG_RX_SAMP_DLY_ONE;
+}
+
+static inline void qspi_hw_set_rx_delay_mode(u32 base, u32 mode)
+{
+    u32 val = readl(QSPI_REG_TCFG(base));
+    val &= ~(TCFG_RX_SAMP_DLY_MSK);
+    val |= mode;
     writel(val, QSPI_REG_TCFG(base));
 }
 
@@ -1168,6 +1174,12 @@ static inline void qspi_hw_bit_mode_set_cs_pol(u32 base, bool high_active)
     writel(reg_val, QSPI_REG_BMTC(base));
 }
 
+static inline u32 qspi_hw_bit_mode_get_cs_pol(u32 base)
+{
+    u32 val = readl(QSPI_REG_BMTC(base));
+    return ((val & BMTC_BIT_SPOL_MSK) >> BMTC_BIT_SPOL_OFS);
+}
+
 static inline void qspi_hw_bit_mode_set_ss_owner(u32 base, bool soft_ctrl)
 {
     u32 val = readl(QSPI_REG_BMTC(base));
@@ -1232,9 +1244,9 @@ static inline void qspi_hw_set_work_mode(u32 base, int mode)
     writel(val, QSPI_REG_BMTC(base));
 }
 
-static inline int qspi_hw_bit_mode_read(u32 base, u8 *rx_buf, u32 rx_len)
+static inline int qspi_hw_bit_mode_read(u32 base, u8 *rx_buf, u32 rx_bits_len)
 {
-    int dolen, remain, i;
+    int dolen, i;
     u32 val, rxbits;
     u8 *p;
 
@@ -1243,38 +1255,35 @@ static inline int qspi_hw_bit_mode_read(u32 base, u8 *rx_buf, u32 rx_len)
     writel(val, QSPI_REG_BMTC(base));
 
     p = rx_buf;
-    remain = rx_len;
-    while (remain) {
-        rxbits = 0;
-        dolen = remain;
-        if (dolen > 4)
-            dolen = 4;
-
-        /* Configre rx length and start transfer */
-        val = readl(QSPI_REG_BMTC(base));
-        val |= 20 << BMTC_BIT_RX_BIT_LEN_OFS; //receive 10 bit
-        val |= BMTC_BIT_XFER_EN_MSK;
-        writel(val, QSPI_REG_BMTC(base));
-
-        while (!qspi_hw_bit_mode_xfer_done(base))
-            continue;
-        while (!qspi_hw_bit_mode_rxsts_clear(base))
-            continue;
-
-        /* Read rx bits */
-        rxbits = readl(QSPI_REG_BMRXD(base));
-        for (i = 0; i < dolen; i++)
-            p[i] = (rxbits >> ((3 - i) * 8)) & 0xFF;
-        p += dolen;
-        remain -= dolen;
+    dolen = (rx_bits_len + 7) / 8;
+    rxbits = 0;
+    if (dolen > 4) {
+        dolen = 4;
+        rx_bits_len = 32;
     }
 
-    return rx_len;
+    /* Configre rx length and start transfer */
+    val = readl(QSPI_REG_BMTC(base));
+    val |= rx_bits_len << BMTC_BIT_RX_BIT_LEN_OFS; //receive bits length
+    val |= BMTC_BIT_XFER_EN_MSK;
+    writel(val, QSPI_REG_BMTC(base));
+
+    while (!qspi_hw_bit_mode_xfer_done(base))
+        continue;
+    while (!qspi_hw_bit_mode_rxsts_clear(base))
+        continue;
+
+    /* Read rx bits */
+    rxbits = readl(QSPI_REG_BMRXD(base));
+    for (i = 0; i < dolen; i++)
+        p[i] = (rxbits >> (i * 8)) & 0xFF;
+
+    return rx_bits_len;
 }
 
-static inline int qspi_hw_bit_mode_write(u32 base, const u8 *tx_buf, u32 tx_len)
+static inline int qspi_hw_bit_mode_write(u32 base, const u8 *tx_buf, u32 tx_bits_len)
 {
-    int dolen, remain, i;
+    int dolen, i;
     u32 val, txbits;
     const u8 *p;
 
@@ -1283,32 +1292,30 @@ static inline int qspi_hw_bit_mode_write(u32 base, const u8 *tx_buf, u32 tx_len)
     writel(val, QSPI_REG_BMTC(base));
 
     p = tx_buf;
-    remain = tx_len;
-    while (remain) {
-        txbits = 0;
-        dolen = remain;
-        if (dolen > 4)
-            dolen = 4;
-        /* Prepare and write tx bits */
-        for (i = 0; i < dolen; i++)
-            txbits |= p[i] << ((3 - i) * 8);
-        writel(txbits, QSPI_REG_BMTXD(base));
-
-        /* Configure tx length and start transfer */
-        val = readl(QSPI_REG_BMTC(base));
-        val |= 10 << BMTC_BIT_TX_BIT_LEN_OFS; //send 10 bit
-        val |= BMTC_BIT_XFER_EN_MSK;
-        writel(val, QSPI_REG_BMTC(base));
-
-        while (!qspi_hw_bit_mode_xfer_done(base))
-            continue;
-        while (!qspi_hw_bit_mode_txsts_clear(base))
-            continue;
-        p += dolen;
-        remain -= dolen;
+    dolen = (tx_bits_len + 7) / 8;
+    txbits = 0;
+    if (dolen > 4) {
+        dolen = 4;
+        tx_bits_len = 32;
     }
 
-    return tx_len;
+    /* Prepare and write tx bits */
+    for (i = 0; i < dolen; i++)
+        txbits |= p[i] << (i * 8);
+    writel(txbits, QSPI_REG_BMTXD(base));
+
+    /* Configure tx length and start transfer */
+    val = readl(QSPI_REG_BMTC(base));
+    val |= tx_bits_len << BMTC_BIT_TX_BIT_LEN_OFS; //send bits length
+    val |= BMTC_BIT_XFER_EN_MSK;
+    writel(val, QSPI_REG_BMTC(base));
+
+    while (!qspi_hw_bit_mode_xfer_done(base))
+        continue;
+    while (!qspi_hw_bit_mode_txsts_clear(base))
+        continue;
+
+    return tx_bits_len;
 }
 
 #ifdef __cplusplus

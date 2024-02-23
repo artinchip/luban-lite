@@ -7,7 +7,7 @@
 #define PRINTER_OUT_EP         0x02
 #define PRINTER_OUT_EP_SIZE    0x40
 
-#define USBD_VID           0x5A5A
+#define USBD_VID           0x33C3
 #define USBD_PID           0xA5A5
 #define USBD_MAX_POWER     100
 #define USBD_LANGID_STRING 0x0409

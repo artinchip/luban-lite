@@ -56,6 +56,8 @@
 #define PWM_MCTL_PWM_EN(n)      (PWM_MCTL_PWM0_EN << (n))
 #define PWM_CKCTL_PWM0_ON       BIT(0)
 #define PWM_CKCTL_PWM_ON(n)     (PWM_CKCTL_PWM0_ON << (n))
+#define PWM_INTCTL_PWM0_ON      BIT(0)
+#define PWM_INTCTL_PWM_ON(n)    (PWM_INTCTL_PWM0_ON << (n))
 #define PWM_TBCTL_CLKDIV_MAX    0xFFF
 #define PWM_TBCTL_CLKDIV_SHIFT  16
 #define PWM_TBCTL_CTR_MODE_MASK GENMASK(1, 0)
@@ -67,6 +69,9 @@
 #define PWM_AQCTL_CAU_SHIFT     4
 #define PWM_AQCTL_PRD_SHIFT     2
 #define PWM_AQCTL_MASK          0x3
+#define PWM_ETSEL_INTEN_SHIFT   3
+#define PWM_ETSEL_INTSEL_SHIFT  0
+#define PWM_SHADOW_SEL_ZRQ_PRD  0xa
 
 #ifndef NSEC_PER_SEC
 #define NSEC_PER_SEC            1000000000
@@ -132,6 +137,22 @@ static void pwm_reg_enable(int offset, int bit, int enable)
     pwm_writel(tmp, offset);
 }
 
+u32 hal_pwm_int_sts(void)
+{
+    return pwm_readl(PWM_INTSTS);
+}
+
+void hal_pwm_clr_int(u32 stat)
+{
+    pwm_writel(stat, PWM_INTSTS);
+}
+
+void hal_pwm_int_config(u32 ch, u8 irq_mode, u8 enable)
+{
+    pwm_writel((enable << PWM_ETSEL_INTEN_SHIFT) | ((irq_mode + 4) << PWM_ETSEL_INTSEL_SHIFT), PWM_ETSEL(ch));
+    pwm_reg_enable(PWM_INTCTL, PWM_INTCTL_PWM_ON(ch), enable);
+}
+
 void hal_pwm_ch_init(u32 ch, enum aic_pwm_mode mode, u32 default_level,
                      struct aic_pwm_action *a0, struct aic_pwm_action *a1)
 {
@@ -142,11 +163,9 @@ void hal_pwm_ch_init(u32 ch, enum aic_pwm_mode mode, u32 default_level,
     arg->def_level = default_level;
     memcpy(&arg->action0, a0, sizeof(struct aic_pwm_action));
     memcpy(&arg->action1, a1, sizeof(struct aic_pwm_action));
-}
 
-static int hal_pwm_is_enable(u32 ch)
-{
-    return pwm_readl(PWM_MCTL) & PWM_MCTL_PWM_EN(ch);
+    pwm_reg_enable(PWM_CKCTL, PWM_CKCTL_PWM_ON(ch), 1);
+    pwm_writel(PWM_SHADOW_SEL_ZRQ_PRD, PWM_CMPCTL(ch));
 }
 
 int hal_pwm_set(u32 ch, u32 duty_ns, u32 period_ns)
@@ -165,9 +184,6 @@ int hal_pwm_set(u32 ch, u32 duty_ns, u32 period_ns)
         return -EINVAL;
     }
 
-    if (!hal_pwm_is_enable(ch))
-        hal_pwm_enable(ch);
-
     arg->freq = NSEC_PER_SEC / period_ns;
     prd = PWM_TB_CLK_RATE / arg->freq;
     if (arg->mode == PWM_MODE_UP_DOWN_COUNT)
@@ -185,7 +201,7 @@ int hal_pwm_set(u32 ch, u32 duty_ns, u32 period_ns)
     duty = (u64)duty_ns * (u64)prd;
     do_div(duty, period_ns);
     if (duty == prd)
-        duty--;
+        duty++;
 
     arg->duty = (u32)duty;
     hal_log_debug("Set CMP %u/%u\n", (u32)duty, prd);
@@ -263,7 +279,6 @@ int hal_pwm_enable(u32 ch)
     pwm_action_set(ch, &arg->action1, "action1");
 
     pwm_reg_enable(PWM_MCTL, PWM_MCTL_PWM_EN(ch), 1);
-    pwm_reg_enable(PWM_CKCTL, PWM_CKCTL_PWM_ON(ch), 1);
 
     return 0;
 }

@@ -10,7 +10,7 @@
 #include "hal_tsen.h"
 #include "aic_hal_clk.h"
 #include <string.h>
-#ifdef CONFIG_AIC_SID_DRV
+#ifdef AIC_SID_DRV
 #include "hal_efuse.h"
 #endif
 
@@ -85,22 +85,41 @@
 #define TSEN_VOLTAGE_SCALE_UNIT         2.14285
 #define TSEN_TRIM_VOLTAGE_BOUNDARY_VAL  0x80
 
+#if defined(AIC_SID_DRV_V10)
 #define TSEN_CP_VERSION_OFFSET          0x1C
 #define TSEN_LDO30_BG_CTRL_OFFSET       0x28
 #define TSEN_THS0_ADC_VAL_LOW_OFFSET    0x2c
 #define TSEN_THS_ENV_TEMP_LOW_OFFSET    0x24
 #define TSEN_THS0_ADC_VAL_HIGH_OFFSET   0x20
-
 #define TSEN_THS0_ADC_VAL_HIGH_MASK     0xfff
 #define TSEN_THS0_ADC_VAL_LOW_MASK      0xfff
 #define TSEN_LDO30_BG_CTRL_MASK         0xff
 #define TSEN_THS_ENV_TEMP_HIGH_MASK     0xff
 #define TSEN_THS_ENV_TEMP_LOW_MASK      0Xf
 #define TSEN_CP_VERSION_MASK            0x3f
-
 #define TSEN_THS_ENV_TEMP_LOW_SHIFT     16
 #define TSEN_THS_ENV_TEMP_HIGH_SHIFT    24
 #define TSEN_CP_VERSION_SHIFT           20
+#define TSEN_SINGLE_POINT_CALI_K        -1151
+#elif defined(AIC_SID_DRV_V11)
+#define TSEN_THS0_ADC_VAL_LOW_OFFSET    0x2c
+#define TSEN_THS_ENV_TEMP_LOW_OFFSET    0x2c
+#define TSEN_THS0_ADC_VAL_HIGH_OFFSET   0x34
+#define TSEN_THS0_ADC_VAL_LOW_MASK      0xfff
+#define TSEN_THS0_ADC_VAL_HIGH_MASK     0xfff
+#define TSEN_THS_ENV_TEMP_LOW_MASK      0Xff
+#define TSEN_THS_ENV_TEMP_HIGH_MASK     0xff
+#define TSEN_THS_ENV_TEMP_LOW_SHIFT     24
+#define TSEN_THS_ENV_TEMP_HIGH_SHIFT    24
+#define TSEN_SINGLE_POINT_CALI_K        940
+#elif defined(AIC_SID_DRV_V12)
+#define TSEN_THS0_ADC_VAL_LOW_OFFSET    0x0c
+#define TSEN_THS_ENV_TEMP_LOW_OFFSET    0x0c
+#define TSEN_THS0_ADC_VAL_LOW_MASK      0xfff
+#define TSEN_THS_ENV_TEMP_LOW_MASK      0Xff
+#define TSEN_THS_ENV_TEMP_LOW_SHIFT     24
+#define TSEN_SINGLE_POINT_CALI_K        950
+#endif
 
 #define TSEN_ORIGIN_STANDARD_VOLTAGE    3000 // = 3 * 1000
 #define TSEN_EFUSE_STANDARD_LENGTH      4
@@ -111,7 +130,6 @@
 #define TSEN_ENV_TEMP_HIGH_SIGN_MASK    BIT(7)
 
 #define TSEN_CP_VERSION_DIFF_TYPE       0xA
-#define TSEN_SINGLE_POINT_CALI_K        -1151
 
 static inline void tsen_writel(u32 val, int reg)
 {
@@ -165,7 +183,7 @@ u16 hal_tsen_temp2data(struct aic_tsen_ch *chan, s32 temp)
     return (u16)data;
 }
 
-#ifdef CONFIG_AIC_SID_DRV
+#ifdef AIC_SID_DRV
 int hal_tsen_efuse_read(u32 addr, u32 *data, u32 size)
 {
     u32 wid, wval, rest, cnt;
@@ -193,6 +211,7 @@ int hal_tsen_efuse_read(u32 addr, u32 *data, u32 size)
 
     return (int)(size - rest);
 }
+#endif
 
 /* The temperature obtained from nvmem contains sign bits.
  * For this purpose, this function converts data through sign bit mask
@@ -205,8 +224,38 @@ u8 hal_tsen_env_temp_cali(u8 sign_mask, u8 val)
         return val & (sign_mask - 1);
 
 }
-
+#ifdef AIC_SID_DRV
+#if defined(AIC_TSEN_DRV_V10) || defined(AIC_TSEN_DRV_V20)
 void hal_tsen_single_point_cali(struct aic_tsen_ch *chan)
+{
+    u32 ths0_adc_val = 0;
+    u32 ths0_adc_val_low;
+    u32 ths_env_temp_low = 0;
+    int env_temp_low = TSEN_ENV_TEMP_LOW_BASE;
+    int length = TSEN_EFUSE_STANDARD_LENGTH;
+    int cali_scale;
+
+    cali_scale = THERMAL_CORE_TEMP_AMPN_SCALE * TSEN_CALIB_ACCURACY_SCALE;
+
+    hal_tsen_efuse_read(TSEN_THS0_ADC_VAL_LOW_OFFSET, &ths0_adc_val, length);
+    ths0_adc_val_low = ths0_adc_val & TSEN_THS0_ADC_VAL_LOW_MASK;
+
+    hal_tsen_efuse_read(TSEN_THS_ENV_TEMP_LOW_OFFSET, &ths_env_temp_low,
+                        length);
+    ths_env_temp_low = (ths_env_temp_low >> TSEN_THS_ENV_TEMP_LOW_SHIFT) & TSEN_THS_ENV_TEMP_LOW_MASK;
+    env_temp_low += hal_tsen_env_temp_cali(TSEN_ENV_TEMP_LOW_SIGN_MASK,
+                                           ths_env_temp_low);
+    hal_log_debug("env_temp_low:%d, ths0_adc_val_low:%d\n", env_temp_low, ths0_adc_val_low);
+    chan->slope = TSEN_SINGLE_POINT_CALI_K;
+    chan->offset = env_temp_low * cali_scale - chan->slope * ths0_adc_val_low;
+    hal_log_debug("k:%d, b:%d\n", chan->slope, chan->offset);
+
+    return;
+}
+#endif
+
+#ifdef AIC_TSEN_DRV_V10
+void hal_tsen_single_point_cali_for_correct(struct aic_tsen_ch *chan)
 {
     u32 ldo30_bg_ctrl = 0;
     u32 ths0_adc_val = 0;
@@ -235,7 +284,8 @@ void hal_tsen_single_point_cali(struct aic_tsen_ch *chan)
 
     origin_adc = origin_voltage * ths0_adc_val_low / standard_vol;
 
-    hal_tsen_efuse_read(TSEN_THS_ENV_TEMP_LOW_OFFSET, &ths_env_temp_low, length);
+    hal_tsen_efuse_read(TSEN_THS_ENV_TEMP_LOW_OFFSET, &ths_env_temp_low,
+                        length);
     ths_env_temp_low = (ths_env_temp_low >> TSEN_THS_ENV_TEMP_LOW_SHIFT) & TSEN_THS_ENV_TEMP_LOW_MASK;
     env_temp_low += hal_tsen_env_temp_cali(TSEN_ENV_TEMP_LOW_SIGN_MASK,
                                            ths_env_temp_low);
@@ -246,10 +296,12 @@ void hal_tsen_single_point_cali(struct aic_tsen_ch *chan)
 
     return;
 }
+#endif
 
 /* For temperature's slope and offset calculated by y=kx+b equation.
  * THS0_ADC_VAL as y, THS_ENV_TEMP as x.
  */
+#ifndef AIC_SID_DRV_V12
 static void hal_tsen_get_cali_param(int y1, int y2, int x1, int x2,
                    struct aic_tsen_ch *chan)
 {
@@ -298,10 +350,12 @@ void hal_tsen_double_point_cali(struct aic_tsen_ch *chan)
                             ths_env_temp_low, ths_env_temp_high, chan);
 }
 #endif
+#endif
 
+#ifdef AIC_SID_DRV
 void hal_tsen_curve_fitting(struct aic_tsen_ch *chan)
 {
-#ifdef CONFIG_AIC_SID_DRV
+#ifdef AIC_TSEN_DRV_V10
     int cp_version;
     u32 data = 0;
 
@@ -311,15 +365,18 @@ void hal_tsen_curve_fitting(struct aic_tsen_ch *chan)
     hal_log_debug("CP version:%d\n", cp_version);
 
     if (cp_version >= TSEN_CP_VERSION_DIFF_TYPE) {
-        hal_log_debug("Double points calibration\n");
-        hal_tsen_double_point_cali(chan);
-    } else {
-        hal_log_debug("Single point calibration\n");
         hal_tsen_single_point_cali(chan);
+    } else {
+        hal_tsen_single_point_cali_for_correct(chan);
     }
 #endif
+#ifdef AIC_TSEN_DRV_V20
+    hal_tsen_single_point_cali(chan);
+#endif
+
     return;
 }
+#endif
 
 u32 tsen_sec2itv(u32 pclk, u32 sec)
 {
@@ -445,7 +502,8 @@ int hal_tsen_ch_init(struct aic_tsen_ch *chan, u32 pclk)
     if (chan->mode == AIC_TSEN_MODE_PERIOD)
         tsen_period_mode(chan, pclk);
 
-    tsen_diff_mode(chan->id, chan->diff_mode, chan->inverted);
+    if (chan->diff_mode || chan->inverted)
+        tsen_diff_mode(chan->id, chan->diff_mode, chan->inverted);
 
     /* For single mode, should init the channel in .get_temp() */
     return 0;

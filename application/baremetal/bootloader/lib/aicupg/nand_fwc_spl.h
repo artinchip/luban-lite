@@ -33,8 +33,14 @@ extern "C" {
 
 #define MAX_DUPLICATED_PART 4
 
+#ifdef AIC_NFTL_SUPPORT
+#include <nftl_api.h>
+#endif
 struct aicupg_nand_priv {
     struct mtd_dev *mtd[MAX_DUPLICATED_PART];
+#ifdef AIC_NFTL_SUPPORT
+    struct nftl_api_handler_t *nftl_handler[MAX_DUPLICATED_PART];
+#endif
     unsigned long start_offset[MAX_DUPLICATED_PART];
     unsigned long erase_offset[MAX_DUPLICATED_PART];
     unsigned char remain_data[PAGE_MAX_SIZE];

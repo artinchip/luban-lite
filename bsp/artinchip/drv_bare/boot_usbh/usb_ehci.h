@@ -540,7 +540,7 @@ struct usb_setup_packet {
 
     /** Number of bytes to transfer */
     u16 wLength;
-} __attribute__((packed));
+} __attribute__((aligned(CACHE_LINE_SIZE)));
 
 typedef void *usbh_epinfo_t;
 

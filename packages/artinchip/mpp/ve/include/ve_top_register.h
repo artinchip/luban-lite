@@ -18,6 +18,10 @@
     #define PNG_REG_OFFSET_ADDR	0x100
     #define JPG_REG_OFFSET_ADDR	0x200
     #define PIC_INFO_START_REG	0x600
+#elif defined(AIC_VE_DRV_V40)
+    #define PNG_REG_OFFSET_ADDR	0x100
+    #define JPG_REG_OFFSET_ADDR	0x200
+    #define PIC_INFO_START_REG	0x600
 #elif defined(AIC_VE_DRV_V10)
     #define PNG_REG_OFFSET_ADDR	0xC00
     #define JPG_REG_OFFSET_ADDR	0x2000

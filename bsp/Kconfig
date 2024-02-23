@@ -158,6 +158,11 @@ config AIC_FB_DRV_DEBUG
     default n
     depends on AIC_DISPLAY_DRV
 
+config AIC_DISP_MIPI_DBI_DEBUG
+    bool "Enable MIPI-DBI driver debug"
+    default n
+    depends on AIC_DISPLAY_DRV && AIC_DISP_MIPI_DBI
+
 endmenu
 
 menu "Drivers examples"
@@ -232,7 +237,12 @@ config AIC_FILE_CRC32_TEST
     default n
     select RT_USING_LEGACY
 
-config AIC_FB_DRV_TEST
+config AIC_MTD_LOAD_FILE_TEST
+    bool "Enable load mtd data to a file"
+    default n
+    select RT_USING_LEGACY
+
+config AIC_DISPLAY_TEST
     bool "Enable Display driver test command"
     default n
     depends on AIC_DISPLAY_DRV
@@ -260,7 +270,13 @@ config AIC_CIR_DRV_TEST
 config AIC_AUDIO_DRV_TEST
     bool "Enable audio driver test command"
     default n
-    depends on AIC_AUDIO_DRV || AIC_I2S_DRV
+    depends on AIC_AUDIO_DRV
+    select RT_USING_LEGACY
+
+config AIC_I2S_DRV_TEST
+    bool "Enable i2s driver test command"
+    default n
+    depends on AIC_I2S_DRV
     select RT_USING_LEGACY
 
 config AIC_I2C_DRV_TEST
@@ -276,7 +292,7 @@ config AIC_DVP_TEST
 config AIC_TP_DRV_TEST
     bool "Enable touch panel driver test command"
     default n
-    depends on AIC_TOUCH_PANEL_GT911
+    depends on AIC_TOUCH_PANEL_GT911 || AIC_TOUCH_PANEL_FT7411 || AIC_TOUCH_PANEL_GSL1680
 
 config AIC_WDT_DRV_TEST
     bool "Enable WDT driver test command"
@@ -313,6 +329,11 @@ config AIC_PWM_TEST
     default n
     depends on AIC_PWM_DRV
 
+config AIC_CAP_DRV_TEST
+    bool "Enable CAP driver test command"
+    default n
+    depends on AIC_CAP_DRV
+
 config AIC_ADCIM_DM_TEST
     bool "Enable ADCIM DM test command"
     default n
@@ -327,6 +348,10 @@ if LPKG_USING_LWIP
         default n
         depends on LPKG_LWIP_USING_MQTT
 
+    config AIC_IPERF_LWIP_TEST
+        bool "Enable iperf test command"
+        default n
+
     endmenu
 
 endif
@@ -340,6 +365,11 @@ config AIC_SID_BARE_TEST
     bool "Enable SID driver test command"
     default n
     depends on AIC_SID_DRV
+
+config AIC_DM_LIB_TEST
+    bool "Enable DM Lib test command"
+    default n
+    depends on RT_USING_MODULE
 
 endmenu
 endmenu

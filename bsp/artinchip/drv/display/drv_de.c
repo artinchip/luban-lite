@@ -86,6 +86,12 @@ static irqreturn_t aic_de_handler(int irq, void *ctx)
 
 static inline bool is_valid_layer_id(struct aic_de_comp *comp, u32 layer_id)
 {
+#if defined(AIC_DE_DRV_V12) || defined(AIC_DE_V12)
+    if (layer_id != AICFB_LAYER_TYPE_UI)
+        return false;
+    else
+        return true;
+#else
     u32 total_num = comp->config->layer_num->vi_num
             + comp->config->layer_num->ui_num;
 
@@ -93,6 +99,7 @@ static inline bool is_valid_layer_id(struct aic_de_comp *comp, u32 layer_id)
         return true;
     else
         return false;
+#endif
 }
 
 static inline bool need_update_disp_prop(struct aic_de_comp *comp,
@@ -193,6 +200,12 @@ static int aic_de_set_mode(struct aic_panel *panel)
 
     comp->timing = panel->timings;
 
+#ifdef AIC_DISPLAY_DITHER
+    if (comp->timing->hactive > DE_DITHER_WIDTH_MAX) {
+        memset(&comp->dither, 0x00, sizeof(struct aic_de_dither));
+        pr_err("Screen width is invalid, disable dither\n");
+    }
+#endif
     return 0;
 }
 
@@ -1326,14 +1339,14 @@ struct de_funcs aic_de_funcs = {
 };
 
 static const struct aicfb_layer_num layer_num = {
-    .vi_num = 1,
-    .ui_num = 1,
+    .vi_num = VI_LAYER_NUM,
+    .ui_num = UI_LAYER_NUM,
 };
 
 static const struct aicfb_layer_capability aicfb_layer_cap[] = {
-    {0, AICFB_LAYER_TYPE_VIDEO, 2048, 2048, AICFB_CAP_SCALING_FLAG},
-    {1, AICFB_LAYER_TYPE_UI, 2048, 2048,
-    AICFB_CAP_4_RECT_WIN_FLAG|AICFB_CAP_ALPHA_FLAG|AICFB_CAP_CK_FLAG},
+    {0, AICFB_LAYER_TYPE_VIDEO, VI_LAYER_WIDTH_MAX, VI_LAYER_HEIGHT_MAX, 0},
+    {1, AICFB_LAYER_TYPE_UI,    UI_LAYER_WIDTH_MAX, UI_LAYER_HEIGHT_MAX,
+     AICFB_CAP_4_RECT_WIN_FLAG | AICFB_CAP_ALPHA_FLAG | AICFB_CAP_CK_FLAG},
 };
 
 static const struct aic_de_configs aic_de_cfg = {

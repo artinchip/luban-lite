@@ -143,6 +143,11 @@ typedef unsigned long ptr_t;
 #if defined(KERNEL_RTTHREAD)
 #define CONFIG_SYSTICK_HZ RT_TICK_PER_SECOND
 #elif defined(KERNEL_FREERTOS)
+#ifdef FREERTOS_TICK_RATE_HZ
+#define CONFIG_SYSTICK_HZ FREERTOS_TICK_RATE_HZ
+#else
+#define CONFIG_SYSTICK_HZ 200
+#endif
 #elif defined(KERNEL_BAREMETAL)
 #define CONFIG_SYSTICK_HZ 100
 #endif

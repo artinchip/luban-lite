@@ -8,6 +8,7 @@ config AIC_MPP_PLAYER_INTERFACE
     depends on LPKG_MPP
     select LPKG_USING_MAD
     select AIC_AUDIO_DRV
+    select RT_USING_PTHREADS
 
 config AIC_MPP_VIN
     bool "Enable Video Input interface"

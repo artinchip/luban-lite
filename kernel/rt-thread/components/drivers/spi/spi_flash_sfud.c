@@ -647,7 +647,7 @@ static void sf(uint8_t argc, char **argv) {
                     addr = strtol(argv[2], NULL, 0);
                     size = strtol(argv[3], NULL, 0);
                     uint8_t *data = aicos_malloc_align(0, size, CACHE_LINE_SIZE);
-                    uint32_t start_us;
+                    uint64_t start_us;
                     if (data) {
                         start_us =  aic_get_time_us();
                         result = sfud_read(sfud_dev, addr, size, data);

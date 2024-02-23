@@ -161,6 +161,15 @@ int aicfb_ioctl(int cmd, void *args)
     case AICFB_WAIT_FOR_VSYNC:
         return fbi->de->de_funcs->wait_for_vsync();
 
+    case AICFB_GET_SCREENREG:
+    {
+        if (!fbi->di->di_funcs->read_cmd) {
+            pr_err("display interface do not supports AICFB_GET_SCREENREG\n");
+            return -EINVAL;
+        }
+
+        return fbi->di->di_funcs->read_cmd(*(u32 *)args);
+    }
     case AICFB_GET_SCREENINFO:
     {
         const struct display_timing *timing = fbi->panel->timings;
@@ -386,7 +395,7 @@ rt_err_t aicfb_control(rt_device_t dev, int cmd, void *args)
 }
 
 #ifdef RT_USING_DEVICE_OPS
-const static struct rt_device_ops aicfb_ops =
+static const struct rt_device_ops aicfb_ops =
 {
     RT_NULL,
     RT_NULL,
@@ -635,6 +644,14 @@ static void fb_color_block(struct aicfb_info *fbi)
         break;
     }
 #endif
+    default:
+        *pos = color[0][0];
+        index = AICFB_FORMAT;
+        i = width;
+        j = height;
+
+        pr_info("format(%d) do not support %dx%d color block.\n", index, i, j);
+        return;
     }
 
     aicos_dcache_clean_range((unsigned long *)fbi->fb_start, fbi->fb_size);

@@ -28,7 +28,7 @@ struct aic_sdmc_pdata {
     int clk;
     u32 is_sdio;
     u8 id;
-    u8 buswidth8;
+    u8 buswidth;
     u8 drv_phase;
     u8 smp_phase;
 };
@@ -66,6 +66,8 @@ struct aic_sdmc {
     int fifo_mode;
 
     struct aic_sdmc_pdata *pdata;
+
+    u8 is_enable;
 };
 
 static inline int resp_crc_type(struct rt_mmcsd_cmd *cmd)
@@ -123,9 +125,10 @@ static int aic_sdmc_data_transfer(struct aic_sdmc *host,
     for (;;) {
         mask = hal_sdmc_int_stat(&host->host);
         if (mask & (SDMC_DATA_ERR | SDMC_DATA_TOUT)) {
-            pr_err("Data error! size %d/%d, mode %s, status 0x%x\n",
+            pr_err("Data error! size %d/%d, mode %s-%s, status 0x%x\n",
                    size * 4, total,
-                   host->fifo_mode ? "FIFO" : "IDMA", mask);
+                   host->fifo_mode ? "FIFO" : "IDMA",
+                   data->flags == DATA_DIR_READ ? "Read" : "Write", mask);
             ret = -EINVAL;
             break;
         }
@@ -237,7 +240,8 @@ static void aic_sdmc_request(struct rt_mmcsd_host *rthost,
             hal_sdmc_idma_prepare(&host->host, data->blksize, data->blks,
                                   cur_idma, bbstate.bounce_buffer);
         } else {
-            hal_sdmc_idma_disable(&host->host);
+            if (hal_sdmc_get_idma_status(&host->host))
+                hal_sdmc_idma_disable(&host->host);
         }
     }
     if (data)
@@ -408,7 +412,6 @@ static void aic_sdmc_set_iocfg(struct rt_mmcsd_host *rthost,
                                struct rt_mmcsd_io_cfg *io_cfg)
 {
     struct aic_sdmc *host;
-    static uint8_t is_enable;
 
     RT_ASSERT(rthost != RT_NULL);
     RT_ASSERT(rthost->private_data != RT_NULL);
@@ -444,15 +447,17 @@ static void aic_sdmc_set_iocfg(struct rt_mmcsd_host *rthost,
     case MMCSD_POWER_UP:
         break;
     case MMCSD_POWER_ON:
-        if (!is_enable) {
-            is_enable = 1;
+        if (!host->is_enable) {
+            host->is_enable = 1;
             hal_sdmc_reset(&host->host, SDMC_HCTRL1_RESET_ALL);
             host->clock = 0;
+            aic_sdmc_setup_bus(host, io_cfg->clock);
+        } else {
             aic_sdmc_setup_bus(host, io_cfg->clock);
         }
         break;
     case MMCSD_POWER_OFF:
-        is_enable = 0;
+        host->is_enable = 0;
         hal_sdmc_clk_disable(&host->host);
         hal_sdmc_set_cmd(&host->host,
                     SDMC_CMD_PRV_DAT_WAIT | SDMC_CMD_UPD_CLK | SDMC_CMD_START);
@@ -514,11 +519,13 @@ void aic_sdmc_setup_cfg(struct rt_mmcsd_host *rthost)
     rthost->freq_min = SDMC_CLOCK_MIN;
     rthost->freq_max = SDMC_CLOCK_MAX;
     rthost->valid_ocr = VDD_32_33 | VDD_33_34;
-    rthost->flags = MMCSD_BUSWIDTH_4 | MMCSD_MUTBLKWRITE | \
+    rthost->flags = MMCSD_MUTBLKWRITE | \
                   MMCSD_SUP_HIGHSPEED | MMCSD_SUP_SDIO_IRQ;
 
-    if (host->pdata->buswidth8)
-            rthost->flags |= MMCSD_BUSWIDTH_8;
+    if (host->pdata->buswidth == SDMC_CTYPE_4BIT)
+        rthost->flags |= MMCSD_BUSWIDTH_4;
+    else if (host->pdata->buswidth == SDMC_CTYPE_8BIT)
+        rthost->flags |= MMCSD_BUSWIDTH_8;
 
     rthost->max_seg_size = 4096;
     rthost->max_dma_segs = 256;
@@ -562,8 +569,14 @@ static struct aic_sdmc_pdata sdmc_pdata[] = {
         .base = SDMC0_BASE,
         .irq = SDMC0_IRQn,
         .clk = CLK_SDMC0,
+#ifdef AIC_SDMC0_BUSWIDTH1
+        .buswidth = SDMC_CTYPE_1BIT,
+#endif
+#ifdef AIC_SDMC0_BUSWIDTH4
+        .buswidth = SDMC_CTYPE_4BIT,
+#endif
 #ifdef AIC_SDMC0_BUSWIDTH8
-        .buswidth8 = 1,
+        .buswidth = SDMC_CTYPE_8BIT,
 #endif
         .drv_phase = AIC_SDMC0_DRV_PHASE,
         .smp_phase = AIC_SDMC0_SMP_PHASE,
@@ -575,6 +588,15 @@ static struct aic_sdmc_pdata sdmc_pdata[] = {
         .base = SDMC1_BASE,
         .irq = SDMC1_IRQn,
         .clk = CLK_SDMC1,
+#ifdef AIC_SDMC1_BUSWIDTH1
+        .buswidth = SDMC_CTYPE_1BIT,
+#endif
+#ifdef AIC_SDMC1_BUSWIDTH4
+        .buswidth = SDMC_CTYPE_4BIT,
+#endif
+#ifdef AIC_SDMC1_BUSWIDTH8
+        .buswidth = SDMC_CTYPE_8BIT,
+#endif
 #ifdef AIC_SDMC1_IS_SDIO
         .is_sdio = 1,
 #endif
@@ -588,6 +610,15 @@ static struct aic_sdmc_pdata sdmc_pdata[] = {
         .base = SDMC2_BASE,
         .irq = SDMC2_IRQn,
         .clk = CLK_SDMC2,
+#ifdef AIC_SDMC2_BUSWIDTH1
+        .buswidth = SDMC_CTYPE_1BIT,
+#endif
+#ifdef AIC_SDMC2_BUSWIDTH4
+        .buswidth = SDMC_CTYPE_4BIT,
+#endif
+#ifdef AIC_SDMC2_BUSWIDTH8
+        .buswidth = SDMC_CTYPE_8BIT,
+#endif
 #ifdef AIC_SDMC2_IS_SDIO
         .is_sdio = 1,
 #endif

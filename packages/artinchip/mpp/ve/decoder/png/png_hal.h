@@ -127,6 +127,8 @@ struct reg_png_palette_addr
 // [0]: reset
 #define INFLATE_RESET_REG		(PNG_REG_OFFSET_ADDR + 0x50)
 
+#define INFLATE_STATE_REG		(PNG_REG_OFFSET_ADDR + 0x5C)
+
 struct reg_png_clip_base {
 	unsigned clip_base_y : 13; // [12:0]
 	unsigned r0 : 3;

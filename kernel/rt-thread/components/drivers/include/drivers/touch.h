@@ -48,6 +48,9 @@ extern "C" {
 #define  RT_TOUCH_CTRL_POWER_ON          (RT_DEVICE_CTRL_BASE(Touch) + 8)   /* Touch Power On */
 #define  RT_TOUCH_CTRL_POWER_OFF         (RT_DEVICE_CTRL_BASE(Touch) + 9)   /* Touch Power Off */
 #define  RT_TOUCH_CTRL_GET_STATUS        (RT_DEVICE_CTRL_BASE(Touch) + 10)  /* Get Touch Power Status */
+#ifdef AIC_RTP_DRV
+#define  RT_TOUCH_CTRL_PDEB_VALID_CHECK  (RT_DEVICE_CTRL_BASE(Touch) + 11)  /* Determine if the pdeb value is valid*/
+#endif
 
 /* Touch event */
 #define RT_TOUCH_EVENT_NONE              (0)   /* Touch none */

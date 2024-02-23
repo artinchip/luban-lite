@@ -55,6 +55,9 @@
  * registers.
  *
  */
+
+#include "cpuport.h"
+
 #if __riscv_xlen == 64
 	#define portWORD_SIZE 8
 	#define store_x sd
@@ -65,6 +68,16 @@
 	#define portWORD_SIZE 4
 #else
 	#error Assembler did not define __riscv_xlen
+#endif
+
+#if defined(__riscv_d)
+	#define portFWORD_SIZE 8
+	#define store_f fsd
+	#define load_f fld
+#elif defined(__riscv_f)
+	#define store_f fsw
+	#define load_f flw
+	#define portFWORD_SIZE 4
 #endif
 
 #include "freertos_risc_v_chip_specific_extensions.h"
@@ -85,10 +98,6 @@ definitions. */
 	#error freertos_risc_v_chip_specific_extensions.h must define portasmHAS_MTIME to either 1 (MTIME clock present) or 0 (MTIME clock not present).  See https://www.FreeRTOS.org/Using-FreeRTOS-on-RISC-V.html
 #endif
 
-#ifndef portasmHANDLE_INTERRUPT
-	#error portasmHANDLE_INTERRUPT must be defined to the function to be called to handle external/peripheral interrupts.  portasmHANDLE_INTERRUPT can be defined on the assembler command line or in the appropriate freertos_risc_v_chip_specific_extensions.h header file.  https://www.FreeRTOS.org/Using-FreeRTOS-on-RISC-V.html
-#endif
-
 #ifndef portasmHAS_SIFIVE_CLINT
 	#define portasmHAS_SIFIVE_CLINT 0
 #endif
@@ -98,9 +107,18 @@ registers must be saved by the portasmSAVE_ADDITIONAL_REGISTERS and
 portasmRESTORE_ADDITIONAL_REGISTERS macros - which can be defined in a chip
 specific version of freertos_risc_v_chip_specific_extensions.h.  See the notes
 at the top of this file. */
+#if defined(__riscv_p)
+#define portCONTEXT_SIZE ( 31 * portWORD_SIZE )
+#else
 #define portCONTEXT_SIZE ( 30 * portWORD_SIZE )
+#endif
+#if defined(__riscv_d) || defined(__riscv_f)
+#define FLOAT_REG_NUM 32
+#define portFCONTEXT_SIZE ( FLOAT_REG_NUM * portFWORD_SIZE )
+#endif
 
 .global xPortStartFirstTask
+.global PendSV_Handler
 .global freertos_risc_v_trap_handler
 .global pxPortInitialiseStack
 .extern pxCurrentTCB
@@ -116,9 +134,75 @@ at the top of this file. */
 
 /*-----------------------------------------------------------*/
 
+/*
+ * Functions: vPortYield
+ */
+.global vPortYield
+.type   vPortYield, %function
+vPortYield:
+	li      t0, TSPEND_ADDR
+	lb      t1, (t0)
+	li      t2, 0x01
+	or      t1, t1, t2
+	sb      t1, (t0)
+
+	/* make sure wite instruction is complete */
+	fence
+	lb      t1, (t0)
+	fence
+#ifdef __riscv_xthead
+	sync.i
+#else
+	.long   0x01a0000b
+#endif
+
+	ret
+
 .align 8
 .func
+PendSV_Handler:
 freertos_risc_v_trap_handler:
+#ifdef CONFIG_THEAD_EXT_SPSWAPEN
+	csrrw   sp, mscratch, sp
+#endif
+
+	// portasmSAVE_ADDITIONAL_REGISTERS	/* Defined in freertos_risc_v_chip_specific_extensions.h to save any registers unique to the RISC-V implementation. */
+#if defined(__riscv_d) || defined(__riscv_f)
+	addi sp, sp, -portFCONTEXT_SIZE
+	store_f f0, 0 * portFWORD_SIZE( sp )
+	store_f f1, 1 * portFWORD_SIZE( sp )
+	store_f f2, 2 * portFWORD_SIZE( sp )
+	store_f f3, 3 * portFWORD_SIZE( sp )
+	store_f f4, 4 * portFWORD_SIZE( sp )
+	store_f f5, 5 * portFWORD_SIZE( sp )
+	store_f f6, 6 * portFWORD_SIZE( sp )
+	store_f f7, 7 * portFWORD_SIZE( sp )
+	store_f f8, 8 * portFWORD_SIZE( sp )
+	store_f f9, 9 * portFWORD_SIZE( sp )
+	store_f f10, 10 * portFWORD_SIZE( sp )
+	store_f f11, 11 * portFWORD_SIZE( sp )
+	store_f f12, 12 * portFWORD_SIZE( sp )
+	store_f f13, 13 * portFWORD_SIZE( sp )
+	store_f f14, 14 * portFWORD_SIZE( sp )
+	store_f f15, 15 * portFWORD_SIZE( sp )
+	store_f f16, 16 * portFWORD_SIZE( sp )
+	store_f f17, 17 * portFWORD_SIZE( sp )
+	store_f f18, 18 * portFWORD_SIZE( sp )
+	store_f f19, 19 * portFWORD_SIZE( sp )
+	store_f f20, 20 * portFWORD_SIZE( sp )
+	store_f f21, 21 * portFWORD_SIZE( sp )
+	store_f f22, 22 * portFWORD_SIZE( sp )
+	store_f f23, 23 * portFWORD_SIZE( sp )
+	store_f f24, 24 * portFWORD_SIZE( sp )
+	store_f f25, 25 * portFWORD_SIZE( sp )
+	store_f f26, 26 * portFWORD_SIZE( sp )
+	store_f f27, 27 * portFWORD_SIZE( sp )
+	store_f f28, 28 * portFWORD_SIZE( sp )
+	store_f f29, 29 * portFWORD_SIZE( sp )
+	store_f f30, 30 * portFWORD_SIZE( sp )
+	store_f f31, 31 * portFWORD_SIZE( sp )
+#endif
+
 	addi sp, sp, -portCONTEXT_SIZE
 	store_x x1, 1 * portWORD_SIZE( sp )
 	store_x x5, 2 * portWORD_SIZE( sp )
@@ -152,101 +236,30 @@ freertos_risc_v_trap_handler:
 	csrr t0, mstatus					/* Required for MPIE bit. */
 	store_x t0, 29 * portWORD_SIZE( sp )
 
-	portasmSAVE_ADDITIONAL_REGISTERS	/* Defined in freertos_risc_v_chip_specific_extensions.h to save any registers unique to the RISC-V implementation. */
+#if defined(__riscv_p)
+	csrr t0, vxsat
+	store_x t0, 30 * portWORD_SIZE( sp )
+#endif
+
+	csrr a1, mepc
+	store_x a1, 0( sp )					/* Save updated exception return address. */
 
 	load_x  t0, pxCurrentTCB			/* Load pxCurrentTCB. */
 	store_x  sp, 0( t0 )				/* Write sp to first TCB member. */
 
-	csrr a0, mcause
-	csrr a1, mepc
-
-test_if_asynchronous:
-	srli a2, a0, __riscv_xlen - 1		/* MSB of mcause is 1 if handing an asynchronous interrupt - shift to LSB to clear other bits. */
-	beq a2, x0, handle_synchronous		/* Branch past interrupt handing if not asynchronous. */
-	store_x a1, 0( sp )					/* Asynch so save unmodified exception return address. */
-
-handle_asynchronous:
-
-#if( portasmHAS_MTIME != 0 )
-
-	test_if_mtimer:						/* If there is a CLINT then the mtimer is used to generate the tick interrupt. */
-
-		addi t0, x0, 1
-
-		slli t0, t0, __riscv_xlen - 1   /* LSB is already set, shift into MSB.  Shift 31 on 32-bit or 63 on 64-bit cores. */
-		addi t1, t0, 7					/* 0x8000[]0007 == machine timer interrupt. */
-		bne a0, t1, test_if_external_interrupt
-
-		load_x t0, pullMachineTimerCompareRegister  /* Load address of compare register into t0. */
-		load_x t1, pullNextTime  		/* Load the address of ullNextTime into t1. */
-
-		#if( __riscv_xlen == 32 )
-
-			/* Update the 64-bit mtimer compare match value in two 32-bit writes. */
-			li t4, -1
-			lw t2, 0(t1)				/* Load the low word of ullNextTime into t2. */
-			lw t3, 4(t1)				/* Load the high word of ullNextTime into t3. */
-			sw t4, 0(t0)				/* Low word no smaller than old value to start with - will be overwritten below. */
-			sw t3, 4(t0)				/* Store high word of ullNextTime into compare register.  No smaller than new value. */
-			sw t2, 0(t0)				/* Store low word of ullNextTime into compare register. */
-			lw t0, uxTimerIncrementsForOneTick	/* Load the value of ullTimerIncrementForOneTick into t0 (could this be optimized by storing in an array next to pullNextTime?). */
-			add t4, t0, t2				/* Add the low word of ullNextTime to the timer increments for one tick (assumes timer increment for one tick fits in 32-bits). */
-			sltu t5, t4, t2				/* See if the sum of low words overflowed (what about the zero case?). */
-			add t6, t3, t5				/* Add overflow to high word of ullNextTime. */
-			sw t4, 0(t1)				/* Store new low word of ullNextTime. */
-			sw t6, 4(t1)				/* Store new high word of ullNextTime. */
-
-		#endif /* __riscv_xlen == 32 */
-
-		#if( __riscv_xlen == 64 )
-
-			/* Update the 64-bit mtimer compare match value. */
-			ld t2, 0(t1)			 	/* Load ullNextTime into t2. */
-			sd t2, 0(t0)				/* Store ullNextTime into compare register. */
-			ld t0, uxTimerIncrementsForOneTick  /* Load the value of ullTimerIncrementForOneTick into t0 (could this be optimized by storing in an array next to pullNextTime?). */
-			add t4, t0, t2				/* Add ullNextTime to the timer increments for one tick. */
-			sd t4, 0(t1)				/* Store ullNextTime. */
-
-		#endif /* __riscv_xlen == 64 */
-
-		load_x sp, xISRStackTop			/* Switch to ISR stack before function call. */
-		jal xTaskIncrementTick
-		beqz a0, processed_source		/* Don't switch context if incrementing tick didn't unblock a task. */
-		jal vTaskSwitchContext
-		j processed_source
-
-	test_if_external_interrupt:			/* If there is a CLINT and the mtimer interrupt is not pending then check to see if an external interrupt is pending. */
-		addi t1, t1, 4					/* 0x80000007 + 4 = 0x8000000b == Machine external interrupt. */
-		bne a0, t1, as_yet_unhandled	/* Something as yet unhandled. */
-
-#endif /* portasmHAS_MTIME */
-
-	load_x sp, xISRStackTop				/* Switch to ISR stack before function call. */
-	jal portasmHANDLE_INTERRUPT			/* Jump to the interrupt handler if there is no CLINT or if there is a CLINT and it has been determined that an external interrupt is pending. */
-	j processed_source
-
-handle_synchronous:
-	addi a1, a1, 4						/* Synchronous so updated exception return address to the instruction after the instruction that generated the exeption. */
-	store_x a1, 0( sp )					/* Save updated exception return address. */
-
-test_if_environment_call:
-	li t0, 11 							/* 11 == environment call. */
-	bne a0, t0, is_exception			/* Not an M environment call, so some other exception. */
 	load_x sp, xISRStackTop				/* Switch to ISR stack before function call. */
 	jal vTaskSwitchContext
-	j processed_source
 
-is_exception:
-	csrr t0, mcause						/* For viewing in the debugger only. */
-	csrr t1, mepc						/* For viewing in the debugger only */
-	csrr t2, mstatus
-	j is_exception						/* No other exceptions handled yet. */
+#ifdef TSPEND_NEED_CLEAR
+	/* clear software interrupt */
+	li      t0, TSPEND_ADDR
+	li      t1, 0x0
+	sw      t1, (t0)
+	/* make sure wite instruction is complete */
+	fence
+	lb      t1, (t0)
+#endif
 
-as_yet_unhandled:
-	csrr t0, mcause						/* For viewing in the debugger only. */
-	j as_yet_unhandled
-
-processed_source:
 	load_x  t1, pxCurrentTCB			/* Load pxCurrentTCB. */
 	load_x  sp, 0( t1 )				 	/* Read sp from first TCB member. */
 
@@ -254,7 +267,10 @@ processed_source:
 	load_x t0, 0( sp )
 	csrw mepc, t0
 
-	portasmRESTORE_ADDITIONAL_REGISTERS	/* Defined in freertos_risc_v_chip_specific_extensions.h to restore any registers unique to the RISC-V implementation. */
+#if defined(__riscv_p)
+	load_x t0, 30( sp )
+	csrw vxsat, t0
+#endif
 
 	/* Load mstatus with the interrupt enable bits used by the task. */
 	load_x  t0, 29 * portWORD_SIZE( sp )
@@ -290,6 +306,46 @@ processed_source:
 	load_x  x31, 28 * portWORD_SIZE( sp )	/* t6 */
 	addi sp, sp, portCONTEXT_SIZE
 
+	//portasmRESTORE_ADDITIONAL_REGISTERS	/* Defined in freertos_risc_v_chip_specific_extensions.h to restore any registers unique to the RISC-V implementation. */
+#if defined(__riscv_d) || defined(__riscv_f)
+	load_f f0, 0 * portFWORD_SIZE( sp )
+	load_f f1, 1 * portFWORD_SIZE( sp )
+	load_f f2, 2 * portFWORD_SIZE( sp )
+	load_f f3, 3 * portFWORD_SIZE( sp )
+	load_f f4, 4 * portFWORD_SIZE( sp )
+	load_f f5, 5 * portFWORD_SIZE( sp )
+	load_f f6, 6 * portFWORD_SIZE( sp )
+	load_f f7, 7 * portFWORD_SIZE( sp )
+	load_f f8, 8 * portFWORD_SIZE( sp )
+	load_f f9, 9 * portFWORD_SIZE( sp )
+	load_f f10, 10 * portFWORD_SIZE( sp )
+	load_f f11, 11 * portFWORD_SIZE( sp )
+	load_f f12, 12 * portFWORD_SIZE( sp )
+	load_f f13, 13 * portFWORD_SIZE( sp )
+	load_f f14, 14 * portFWORD_SIZE( sp )
+	load_f f15, 15 * portFWORD_SIZE( sp )
+	load_f f16, 16 * portFWORD_SIZE( sp )
+	load_f f17, 17 * portFWORD_SIZE( sp )
+	load_f f18, 18 * portFWORD_SIZE( sp )
+	load_f f19, 19 * portFWORD_SIZE( sp )
+	load_f f20, 20 * portFWORD_SIZE( sp )
+	load_f f21, 21 * portFWORD_SIZE( sp )
+	load_f f22, 22 * portFWORD_SIZE( sp )
+	load_f f23, 23 * portFWORD_SIZE( sp )
+	load_f f24, 24 * portFWORD_SIZE( sp )
+	load_f f25, 25 * portFWORD_SIZE( sp )
+	load_f f26, 26 * portFWORD_SIZE( sp )
+	load_f f27, 27 * portFWORD_SIZE( sp )
+	load_f f28, 28 * portFWORD_SIZE( sp )
+	load_f f29, 29 * portFWORD_SIZE( sp )
+	load_f f30, 30 * portFWORD_SIZE( sp )
+	load_f f31, 31 * portFWORD_SIZE( sp )
+	addi sp, sp, portFCONTEXT_SIZE
+#endif
+
+#ifdef CONFIG_THEAD_EXT_SPSWAPEN
+	csrrw   sp, mscratch, sp
+#endif
 	mret
 	.endfunc
 /*-----------------------------------------------------------*/
@@ -298,20 +354,15 @@ processed_source:
 .func
 xPortStartFirstTask:
 
-#if( portasmHAS_SIFIVE_CLINT != 0 )
-	/* If there is a clint then interrupts can branch directly to the FreeRTOS
-	trap handler.  Otherwise the interrupt controller will need to be configured
-	outside of this file. */
-	la t0, freertos_risc_v_trap_handler
-	csrw mtvec, t0
-#endif /* portasmHAS_CLILNT */
-
 	load_x  sp, pxCurrentTCB			/* Load pxCurrentTCB. */
 	load_x  sp, 0( sp )				 	/* Read sp from first TCB member. */
 
-	load_x  x1, 0( sp ) /* Note for starting the scheduler the exception return address is used as the function return address. */
+	load_x  x1, 0( sp )					/* Note for starting the scheduler the exception return address is used as the function return address. */
 
-	portasmRESTORE_ADDITIONAL_REGISTERS	/* Defined in freertos_risc_v_chip_specific_extensions.h to restore any registers unique to the RISC-V implementation. */
+#if defined(__riscv_p)
+	load_x t0, 30( sp )
+	csrw vxsat, t0
+#endif
 
 	load_x  x6, 3 * portWORD_SIZE( sp )		/* t1 */
 	load_x  x7, 4 * portWORD_SIZE( sp )		/* t2 */
@@ -346,6 +397,43 @@ xPortStartFirstTask:
 	load_x  x5, 2 * portWORD_SIZE( sp )		/* Initial x5 (t0) value. */
 
 	addi	sp, sp, portCONTEXT_SIZE
+
+	//portasmRESTORE_ADDITIONAL_REGISTERS	/* Defined in freertos_risc_v_chip_specific_extensions.h to restore any registers unique to the RISC-V implementation. */
+#if defined(__riscv_d) || defined(__riscv_f)
+	load_f f0, 0 * portFWORD_SIZE( sp )
+	load_f f1, 1 * portFWORD_SIZE( sp )
+	load_f f2, 2 * portFWORD_SIZE( sp )
+	load_f f3, 3 * portFWORD_SIZE( sp )
+	load_f f4, 4 * portFWORD_SIZE( sp )
+	load_f f5, 5 * portFWORD_SIZE( sp )
+	load_f f6, 6 * portFWORD_SIZE( sp )
+	load_f f7, 7 * portFWORD_SIZE( sp )
+	load_f f8, 8 * portFWORD_SIZE( sp )
+	load_f f9, 9 * portFWORD_SIZE( sp )
+	load_f f10, 10 * portFWORD_SIZE( sp )
+	load_f f11, 11 * portFWORD_SIZE( sp )
+	load_f f12, 12 * portFWORD_SIZE( sp )
+	load_f f13, 13 * portFWORD_SIZE( sp )
+	load_f f14, 14 * portFWORD_SIZE( sp )
+	load_f f15, 15 * portFWORD_SIZE( sp )
+	load_f f16, 16 * portFWORD_SIZE( sp )
+	load_f f17, 17 * portFWORD_SIZE( sp )
+	load_f f18, 18 * portFWORD_SIZE( sp )
+	load_f f19, 19 * portFWORD_SIZE( sp )
+	load_f f20, 20 * portFWORD_SIZE( sp )
+	load_f f21, 21 * portFWORD_SIZE( sp )
+	load_f f22, 22 * portFWORD_SIZE( sp )
+	load_f f23, 23 * portFWORD_SIZE( sp )
+	load_f f24, 24 * portFWORD_SIZE( sp )
+	load_f f25, 25 * portFWORD_SIZE( sp )
+	load_f f26, 26 * portFWORD_SIZE( sp )
+	load_f f27, 27 * portFWORD_SIZE( sp )
+	load_f f28, 28 * portFWORD_SIZE( sp )
+	load_f f29, 29 * portFWORD_SIZE( sp )
+	load_f f30, 30 * portFWORD_SIZE( sp )
+	load_f f31, 31 * portFWORD_SIZE( sp )
+	addi sp, sp, portFCONTEXT_SIZE
+#endif
 	ret
 	.endfunc
 /*-----------------------------------------------------------*/
@@ -415,6 +503,22 @@ xPortStartFirstTask:
 .align 8
 .func
 pxPortInitialiseStack:
+#if defined(__riscv_d) || defined(__riscv_f)
+	addi t0, x0, FLOAT_REG_NUM			/* The number of float registers. */
+chip_float_stack_frame:					/* First add any float registers to the stack frame being created. */
+	beq t0, x0, 1f						/* No more float registers to save. */
+	addi a0, a0, -portFWORD_SIZE		/* Make space for float register. */
+	store_f f0, 0(a0)					/* Give the float register an initial value of zero. */
+	addi t0, t0, -1						/* Decrement the count of float registers remaining. */
+	j chip_float_stack_frame			/* Until no more float registers. */
+1:
+#endif
+
+#if defined(__riscv_p)
+	csrr t0, vxsat
+	addi a0, a0, -portWORD_SIZE
+	store_x t0, 0(a0)					/* vxsat onto the stack. */
+#endif
 
 	csrr t0, mstatus					/* Obtain current mstatus value. */
 	andi t0, t0, ~0x8					/* Ensure interrupts are disabled when the stack is restored within an ISR.  Required when a task is created after the schedulre has been started, otherwise interrupts would be disabled anyway. */
@@ -428,14 +532,7 @@ pxPortInitialiseStack:
 	store_x a2, 0(a0)					/* Task parameters (pvParameters parameter) goes into register X10/a0 on the stack. */
 	addi a0, a0, -(6 * portWORD_SIZE)	/* Space for registers x5-x9. */
 	store_x x0, 0(a0)					/* Return address onto the stack, could be portTASK_RETURN_ADDRESS */
-	addi t0, x0, portasmADDITIONAL_CONTEXT_SIZE /* The number of chip specific additional registers. */
-chip_specific_stack_frame:				/* First add any chip specific registers to the stack frame being created. */
-	beq t0, x0, 1f						/* No more chip specific registers to save. */
-	addi a0, a0, -portWORD_SIZE			/* Make space for chip specific register. */
-	store_x x0, 0(a0)					/* Give the chip specific register an initial value of zero. */
-	addi t0, t0, -1						/* Decrement the count of chip specific registers remaining. */
-	j chip_specific_stack_frame			/* Until no more chip specific registers. */
-1:
+
 	addi a0, a0, -portWORD_SIZE
 	store_x a1, 0(a0)					/* mret value (pxCode parameter) onto the stack. */
 	ret

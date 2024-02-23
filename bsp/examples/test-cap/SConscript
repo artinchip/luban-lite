@@ -1,0 +1,13 @@
+Import('AIC_ROOT')
+Import('PRJ_KERNEL')
+from building import *
+
+cwd = GetCurrentDir()
+CPPPATH = []
+src = []
+if GetDepend('AIC_CAP_DRV_TEST'):
+    src = Glob('*.c')
+
+group = DefineGroup('test-cap', src, depend = [''], CPPPATH = CPPPATH)
+
+Return('group')

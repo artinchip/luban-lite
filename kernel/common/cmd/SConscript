@@ -2,10 +2,7 @@ Import('AIC_ROOT')
 Import('PRJ_KERNEL')
 from building import *
 
-if GetDepend('KERNEL_RTTHREAD') == True:
-    src = Glob('*.c')
-else:
-    src = []
+src = Glob('*.c')
 
 cwd = GetCurrentDir()
 CPPPATH = [cwd + '/../include/', ]

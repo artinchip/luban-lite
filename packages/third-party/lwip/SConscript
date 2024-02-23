@@ -261,10 +261,9 @@ contrib/ports/drv/aic/sys/ethernetif.c
 lwipexample_SRCS = Split("""
 contrib/examples/example_app/test.c
 contrib/examples/example_app/netif_startup.c
-contrib/examples/lwiperf/lwiperf_example.c
 """)
 
-# 20.1 
+# 20.1
 
 src = []
 path = []
@@ -315,7 +314,7 @@ if GetDepend(['AIC_GMAC_DRV']):
     path += [cwd + '/contrib/ports/drv/aic/sys/',
             cwd + '/contrib/ports/drv/aic/']
 
-if GetDepend(['LPKG_LWIP_EXAMPLES_TEST']):
+if GetDepend(['LPKG_LWIP_EXAMPLES']):
     src += lwipexample_SRCS
 
 group = DefineGroup('lwIP', src, depend = ['LPKG_USING_LWIP'], CPPPATH = path)

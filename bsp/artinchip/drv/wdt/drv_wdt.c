@@ -29,6 +29,7 @@ static int aic_wdt_ping(u32 ch)
     struct aic_wdt *chan = &g_wdt_dev.chan;
 
     hal_wdt_op_clr(chan->clr_thd);
+    hal_wdt_clr_int();
     LOG_D("Clear the watchdog");
     return 0;
 }
@@ -191,8 +192,15 @@ rt_err_t drv_wdt_init(rt_watchdog_t *wdt)
         return -RT_EINVAL;
     }
 
-    if (hal_clk_enable_deassertrst(CLK_WDT) < 0) {
-        LOG_E("Watchdog reset deassert failed!");
+    hal_reset_assert(RESET_WDT);
+    if (ret < -1) {
+        LOG_E("Watchdog reset assert failed.");
+        return -RT_EINVAL;
+    }
+
+    hal_reset_deassert(RESET_WDT);
+    if (ret < -1) {
+        LOG_E("Watchdog reset deassert failed.");
         return -RT_EINVAL;
     }
 
@@ -200,6 +208,7 @@ rt_err_t drv_wdt_init(rt_watchdog_t *wdt)
 
     wdt_dev->dbg_continue = 0;
     wdt_dev->cur_chan = 0;
+
     return ret;
 }
 

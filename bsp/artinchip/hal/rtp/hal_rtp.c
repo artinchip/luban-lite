@@ -47,6 +47,9 @@
 #define RTP_INTR_RISE_DET_IE    BIT(1)
 #define RTP_INTR_PRES_DET_IE    BIT(0)
 
+#define RTP_PDEB_SLRDET_DEBDC_SHIFT     16
+#define RTP_PDEB_SLRDET_DEBDC_MASK      GENMASK(23, 16)
+
 #define RTP_PCTL_PRES_DET_BYPASS        BIT(16)
 
 #define RTP_MMSC_VREF_MINUS_SEL_SHIFT   22
@@ -309,15 +312,15 @@ static void rtp_report_abs(struct aic_rtp_dev *rtp, u16 down)
     struct aic_rtp_dat *dat = &rtp->latest;
     struct aic_rtp_event e = {0};
 
-    if (dat->x_minus == AIC_RTP_INVALID_VAL
-        || dat->y_minus == AIC_RTP_INVALID_VAL)
-        return;
+    if (dat->x_minus == AIC_RTP_INVALID_VAL || dat->y_minus == AIC_RTP_INVALID_VAL)
+        e.down = 0;
 
     if (rtp->pressure_det) {
         int pressure = rtp_press_calc(rtp);
 
         if (pressure == AIC_RTP_INVALID_VAL)
-            return;
+            e.down = 0;
+
         e.pressure = pressure;
     }
 
@@ -326,9 +329,10 @@ static void rtp_report_abs(struct aic_rtp_dev *rtp, u16 down)
     e.down = down;
     e.timestamp = dat->timestamp;
 
+    hal_rtp_ebuf_write(&rtp->ebuf, &e);
+
     if (rtp->callback)
         rtp->callback();
-    hal_rtp_ebuf_write(&rtp->ebuf, &e);
 }
 
 static void rtp_smp_period(u32 period)
@@ -682,4 +686,24 @@ s32 hal_rtp_clk_init(void)
         return -1;
     }
     return ret;
+}
+
+u32 hal_rtp_pdeb_valid_check(struct aic_rtp_dev *rtp)
+{
+    int psi, debdc, debdc_max;
+
+    debdc_max = RTP_PDEB_SLRDET_DEBDC_MASK >> RTP_PDEB_SLRDET_DEBDC_SHIFT;
+    debdc = rtp->pdeb & debdc_max;
+    psi = (rtp->smp_period * rtp->pclk_rate) / (4096 * 1000);
+
+    /* When psi >=debdc, the current configuration of psi and pdeb is valid */
+    if (psi >= debdc)
+        return 0;
+
+    /* When psi < debdc,return the recommended value of debdc */
+    if (psi > debdc_max)
+        debdc = debdc_max;
+    else
+        debdc = psi;
+    return debdc;
 }

@@ -245,6 +245,7 @@ typedef struct {
 
 /* INEPINT/OUTEPINT device IN/OUT endpoint interrupt register */
 #define TXFIFO_EMP_INT                  (0x1 << 7)
+#define INEP_NAKEFF                     (0x1 << 6)
 #define BACK2BACK_SETUP_RECEIVED        (0x1 << 6)
 #define INTKNEPMIS                      (0x1 << 5)
 #define INTKN_TXFEMP                    (0x1 << 4)

@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <inttypes.h>
 
 
 #include "mpp_log.h"

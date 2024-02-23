@@ -254,6 +254,7 @@ int dfs_mount(const char   *device_name,
     {
         /* can't find filesystem */
         rt_set_errno(-ENODEV);
+        LOG_E("can't find filesystem\n");
         return -1;
     }
 
@@ -261,6 +262,7 @@ int dfs_mount(const char   *device_name,
     if ((*ops == NULL) || ((*ops)->mount == NULL))
     {
         rt_set_errno(-ENOSYS);
+        LOG_E("mount is not implemented.\n");
         return -1;
     }
 
@@ -269,6 +271,7 @@ int dfs_mount(const char   *device_name,
     if (fullpath == NULL) /* not an abstract path */
     {
         rt_set_errno(-ENOTDIR);
+        LOG_E("can't make an abstract path\n");
         return -1;
     }
 
@@ -282,6 +285,7 @@ int dfs_mount(const char   *device_name,
             rt_free(fullpath);
             rt_set_errno(-ENOTDIR);
 
+            LOG_E("can't open file %s\n", fullpath);
             return -1;
         }
         dfs_file_close(&fd);
@@ -301,6 +305,7 @@ int dfs_mount(const char   *device_name,
         else if (strcmp(iter->path, path) == 0)
         {
             rt_set_errno(-EINVAL);
+            LOG_E("the mount point is in using %s\n", path);
             goto err1;
         }
     }
@@ -333,6 +338,7 @@ int dfs_mount(const char   *device_name,
     return 0;
 
 err1:
+    LOG_E("Failed to mount %s to %s\n", device_name, path);
     dfs_unlock();
     rt_free(fullpath);
 

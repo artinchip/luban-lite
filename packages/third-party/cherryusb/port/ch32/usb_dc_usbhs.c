@@ -101,24 +101,24 @@ uint8_t usbd_get_port_speed(const uint8_t port)
     return USB_SPEED_HIGH;
 }
 
-int usbd_ep_open(const struct usbd_endpoint_cfg *ep_cfg)
+int usbd_ep_open(const struct usb_endpoint_descriptor *ep)
 {
-    uint8_t ep_idx = USB_EP_GET_IDX(ep_cfg->ep_addr);
+    uint8_t ep_idx = USB_EP_GET_IDX(ep->bEndpointAddress);
 
-    if (USB_EP_DIR_IS_OUT(ep_cfg->ep_addr)) {
-        g_ch32_usbhs_udc.out_ep[ep_idx].ep_mps = ep_cfg->ep_mps;
-        g_ch32_usbhs_udc.out_ep[ep_idx].ep_type = ep_cfg->ep_type;
+    if (USB_EP_DIR_IS_OUT(ep->bEndpointAddress)) {
+        g_ch32_usbhs_udc.out_ep[ep_idx].ep_mps = USB_GET_MAXPACKETSIZE(ep->wMaxPacketSize);
+        g_ch32_usbhs_udc.out_ep[ep_idx].ep_type = USB_GET_ENDPOINT_TYPE(ep->bmAttributes);
         g_ch32_usbhs_udc.out_ep[ep_idx].ep_enable = true;
         USBHS_DEVICE->ENDP_CONFIG |= (1 << (ep_idx + 16));
         USB_SET_RX_CTRL(ep_idx, USBHS_EP_R_RES_NAK | USBHS_EP_R_TOG_0 | USBHS_EP_R_AUTOTOG);
     } else {
-        g_ch32_usbhs_udc.in_ep[ep_idx].ep_mps = ep_cfg->ep_mps;
-        g_ch32_usbhs_udc.in_ep[ep_idx].ep_type = ep_cfg->ep_type;
+        g_ch32_usbhs_udc.in_ep[ep_idx].ep_mps = USB_GET_MAXPACKETSIZE(ep->wMaxPacketSize);
+        g_ch32_usbhs_udc.in_ep[ep_idx].ep_type = USB_GET_ENDPOINT_TYPE(ep->bmAttributes);
         g_ch32_usbhs_udc.in_ep[ep_idx].ep_enable = true;
         USBHS_DEVICE->ENDP_CONFIG |= (1 << (ep_idx));
         USB_SET_TX_CTRL(ep_idx, USBHS_EP_T_RES_NAK | USBHS_EP_T_TOG_0 | USBHS_EP_T_AUTOTOG);
     }
-    USB_SET_MAX_LEN(ep_idx, ep_cfg->ep_mps);
+    USB_SET_MAX_LEN(ep_idx, USB_GET_MAXPACKETSIZE(ep->wMaxPacketSize));
     return 0;
 }
 
@@ -258,7 +258,7 @@ void USBD_IRQHandler(void)
 
         if (token == PID_IN) {
             if (ep_idx == 0x00) {
-                if (g_ch32_usbhs_udc.in_ep[ep_idx].xfer_len > g_ch32_usbhs_udc.in_ep[ep_idx].ep_mps) {
+                if (g_ch32_usbhs_udc.in_ep[ep_idx].xfer_len >= g_ch32_usbhs_udc.in_ep[ep_idx].ep_mps) {
                     g_ch32_usbhs_udc.in_ep[ep_idx].xfer_len -= g_ch32_usbhs_udc.in_ep[ep_idx].ep_mps;
                     g_ch32_usbhs_udc.in_ep[ep_idx].actual_xfer_len += g_ch32_usbhs_udc.in_ep[ep_idx].ep_mps;
                     ep0_tx_data_toggle ^= 1;

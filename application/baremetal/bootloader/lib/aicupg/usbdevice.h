@@ -673,6 +673,10 @@ void usbd_rcv_complete(struct usb_endpoint_instance *endpoint, int len,
                        int urb_bad);
 void usbd_tx_complete(struct usb_endpoint_instance *endpoint);
 
+void usbd_connection_check_start(void);
+void usbd_connection_check_end(void);
+int usbd_connection_check_status(void);
+
 #ifdef __cplusplus
 }
 #endif

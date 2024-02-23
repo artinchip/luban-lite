@@ -9,9 +9,16 @@ if AIC_I2S_CODEC_SELECT
 
         config AIC_I2S_CODEC_ES8388
             bool "es8388"
+
+        config AIC_I2S_CODEC_TLV320
+            bool "tlv320aic3101"
     endchoice
 endif
 
 if AIC_I2S_CODEC_ES8388
 source "bsp/peripheral/codec/es8388/Kconfig"
+endif
+
+if AIC_I2S_CODEC_TLV320
+source "bsp/peripheral/codec/tlv320aic3101/Kconfig"
 endif

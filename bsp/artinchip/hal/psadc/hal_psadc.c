@@ -72,17 +72,17 @@ static void psadc_reg_enable(int offset, int bit, int enable)
     psadc_writel(tmp, offset);
 }
 
-void aich_psadc_enable(int enable)
+void hal_psadc_enable(int enable)
 {
     psadc_reg_enable(PSADC_MCR, PSADC_MCR_EN, enable);
 }
 
-void aic_psadc_single_queue_mode(int enable)
+void hal_psadc_single_queue_mode(int enable)
 {
     psadc_reg_enable(PSADC_MCR, PSADC_MCR_QUE_COMB, enable);
 }
 
-void aich_psadc_qc_irq_enable(int enable)
+void hal_psadc_qc_irq_enable(int enable)
 {
     psadc_reg_enable(PSADC_MCR, PSADC_MCR_Q1_INTE, enable);
 }
@@ -108,7 +108,7 @@ static void psadc_fifo_init(void)
     psadc_writel(val, PSADC_Q2FCR);
 }
 
-int  aich_psadc_ch_init(struct aic_psadc_ch *chan, u32 pclk)
+int  hal_psadc_ch_init(struct aic_psadc_ch *chan, u32 pclk)
 {
     psadc_fifo_init();
     psadc_writel(chan->id, PSADC_NODE1);
@@ -119,9 +119,7 @@ int  aich_psadc_ch_init(struct aic_psadc_ch *chan, u32 pclk)
     return 0;
 }
 
-
-
-void aich_psadc_status_show(struct aic_psadc_ch *chan)
+void hal_psadc_status_show(struct aic_psadc_ch *chan)
 {
     int version = psadc_readl(PSADC_VERSION);
 
@@ -133,7 +131,7 @@ void aich_psadc_status_show(struct aic_psadc_ch *chan)
                chan->available ? 1 : 0);
 }
 
-static void aic_psadc_read_ch(u32 ch)
+static void psadc_read_ch(u32 ch)
 {
     u32 data = psadc_readl(PSADC_Q1FDR) & PSADC_Q1FDR_DATA_MASK;
     aic_psadc_ch_data = data;
@@ -160,7 +158,7 @@ struct aic_psadc_ch *hal_psadc_ch_is_valid(u32 ch)
     return NULL;
 }
 
-int aich_psadc_read(struct aic_psadc_ch *chan, u32 *val, u32 timeout)
+int hal_psadc_read(struct aic_psadc_ch *chan, u32 *val, u32 timeout)
 {
     int ret = 0;
     u32 ch = chan->id;
@@ -173,7 +171,7 @@ int aich_psadc_read(struct aic_psadc_ch *chan, u32 *val, u32 timeout)
     ret = aicos_sem_take(chan->complete, timeout);
     if (ret < 0) {
         hal_log_err("Ch%d read timeout!\n", ch);
-        aich_psadc_qc_irq_enable(0);
+        hal_psadc_qc_irq_enable(0);
         return -ETIMEDOUT;
     }
 
@@ -183,7 +181,7 @@ int aich_psadc_read(struct aic_psadc_ch *chan, u32 *val, u32 timeout)
     return 0;
 }
 
-irqreturn_t aich_psadc_isr(int irq, void *arg)
+irqreturn_t hal_psadc_isr(int irq, void *arg)
 {
     u32 q_flag = 0;
     u32 chan = 0;
@@ -192,7 +190,7 @@ irqreturn_t aich_psadc_isr(int irq, void *arg)
     psadc_writel(q_flag, PSADC_MSR);
 
     if (q_flag | PSADC_MSR_Q1_INT)
-        aic_psadc_read_ch(chan);
+        psadc_read_ch(chan);
 
     if (q_flag | PSADC_MSR_Q1_FERR)
         psadc_fifo_flush(chan);

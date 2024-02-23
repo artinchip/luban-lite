@@ -76,7 +76,7 @@ static rt_err_t aic_i2c_bus_control(struct rt_i2c_bus_device *bus,
     return RT_EOK;
 }
 
-static const struct rt_i2c_bus_device_ops i2c_ops = {
+const struct rt_i2c_bus_device_ops i2c_ops = {
     aic_i2c_master_xfer,
     RT_NULL, // slave
     aic_i2c_bus_control,  // bus control

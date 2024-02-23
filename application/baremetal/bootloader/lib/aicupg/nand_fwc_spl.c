@@ -65,12 +65,21 @@ static s32 get_good_blocks_for_spl(struct mtd_dev *mtd, u32 *spl_blocks,
     ulong offset;
     s32 i, blkidx, ret = 0, cnt = 0;
     u8 buf[2];
+    struct aic_spinand *flash = (struct aic_spinand *)mtd->priv;
 
     for (i = 0; i < num; i++)
         spl_blocks[i] = SPL_INVALID_BLOCK_IDX;
 
     for (i = 0; i < SPL_CANDIDATE_BLOCK_NUM; i++) {
         blkidx = spl_candidate_block_table[i];
+
+        /* For multi-plane device, don't use block 1 & 3, because
+         * boot rom cannot read data from block 1 and 3
+         */
+        if ((flash->info->planes_per_lun != 1) &&
+            (blkidx == 1 || blkidx == 3))
+            continue;
+
         offset = mtd->erasesize * blkidx;
         if (mtd_block_isbad(mtd, offset)) {
             pr_err("Block %d is bad.\n", blkidx);

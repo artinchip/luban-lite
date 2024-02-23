@@ -1,0 +1,78 @@
+from building import *
+Import('rtconfig')
+
+src   = []
+cwd   = GetCurrentDir()
+CPPPATH = []
+LOCAL_CFLAGS = ''
+group = []
+
+# check if .a files exist
+def check_a_exist(path):
+    file_dirs = os.listdir(path)
+    for file_dir in file_dirs:
+        if os.path.splitext(file_dir)[1] in ['.a']:
+            return True
+    return False
+
+def check_c_exist(path):
+    file_dirs = os.listdir(path)
+    for file_dir in file_dirs:
+        if os.path.splitext(file_dir)[1] in ['.c']:
+            return True
+    return False
+
+if GetDepend('AIC_NFTL_SUPPORT'):
+    if GetDepend('AIC_NFLT_USED_LIB'):
+        print("nftl use lib ....")
+        if GetDepend('AIC_SPINAND_DRV'):
+            CPPPATH += [cwd + '/nftl_api/inc']
+            if rtconfig.PLATFORM in ['gcc', 'armclang']:
+                LOCAL_CFLAGS += ' -std=c99'
+            elif rtconfig.PLATFORM in ['armcc']:
+                LOCAL_CFLAGS += ' --c99'
+
+            if GetDepend('DRIVER_BARE_DRV_EN'):
+                CPPPATH += [cwd + '/nftl_port/boot/inc/']
+                src += ['nftl_port/boot/src/nftl_port_hw.c']
+
+            if GetDepend('DRIVER_DRV_EN'):
+                CPPPATH += [cwd + '/nftl_port/rtos/inc/']
+                src += ['nftl_port/rtos/src/nftl_port_hw.c']
+                src += ['nftl_api/src/nftl_test.c']
+
+        prj_chip=GetDepend('PRJ_CHIP').strip('"')
+        LIBNAME="nftl_lib_" + prj_chip
+        group = DefineGroup('nftl', src, depend = [''], CPPPATH = CPPPATH, LOCAL_CFLAGS = LOCAL_CFLAGS, LIBS = [LIBNAME], LIBPATH = [cwd])
+
+    else:
+        print("nftl no no no use lib ....")
+        if GetDepend('AIC_SPINAND_DRV'):
+            CPPPATH += [cwd + '/nftl_api/inc']
+            if GetDepend('DRIVER_BARE_DRV_EN'):
+                CPPPATH += [cwd + '/nftl_port/boot/inc']
+                src += ['nftl_port/boot/src/nftl_port_hw.c']
+            if GetDepend('DRIVER_DRV_EN'):
+                CPPPATH += [cwd + '/nftl_port/rtos/inc']
+                src += ['nftl_port/rtos/src/nftl_port_hw.c']
+                src += ['nftl_api/src/nftl_test.c']
+
+            if rtconfig.PLATFORM in ['gcc', 'armclang']:
+                LOCAL_CFLAGS += ' -std=c99'
+            elif rtconfig.PLATFORM in ['armcc']:
+                LOCAL_CFLAGS += ' --c99'
+
+        # add src and include to group.
+        group = DefineGroup('nftl', src, depend = ['AIC_SPINAND_DRV'], CPPPATH = CPPPATH, LOCAL_CFLAGS = LOCAL_CFLAGS)
+
+        # aic-nftl
+        objs = []
+        list = os.listdir(cwd)
+
+        for d in list:
+            path = os.path.join(cwd, d)
+            if os.path.isfile(os.path.join(path, 'SConscript')):
+                objs = objs + SConscript(os.path.join(d, 'SConscript'))
+        group += objs
+
+Return('group')

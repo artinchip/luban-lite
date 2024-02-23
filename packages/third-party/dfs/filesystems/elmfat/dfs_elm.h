@@ -19,16 +19,17 @@ extern "C" {
 #define CACHE_LINE_SIZE     64
 #endif
 
-/* Definitions of physical drive number for each drive */
-#define SDMC_DISK        0
-#define SPINAND_DISK     1       /* spinand disk */
-#define USB_DISK         2       /* usb disk */
-#define SPINOR_DISK      3       /* spinor disk */
-#define RAM_DISK         4       /* Example: ram disk */
+#define DEVICE_TYPE_SDMC_DISK        ((const void *)0)      /* eMMC/SD */
+#define DEVICE_TYPE_SPINAND_DISK     ((const void *)1)      /* SPINAND */
+#define DEVICE_TYPE_USB_DISK         ((const void *)2)      /* USB pendrive */
+#define DEVICE_TYPE_SPINOR_DISK      ((const void *)3)      /* SPINOR */
+#define DEVICE_TYPE_RAM_DISK         ((const void *)4)      /* RAM */
+#define DTL(x)                       (long)(x)
 
-struct dev_info {
+struct elm_dev_info {
     char *dev_name;
-    int dev_type;
+    long dev_type;
+    void *priv;
 };
 
 int elm_init(void);

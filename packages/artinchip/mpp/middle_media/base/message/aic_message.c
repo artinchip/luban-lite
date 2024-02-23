@@ -35,7 +35,7 @@ s32  aic_msg_create(struct aic_message_queue* msg_que)
 	/*create empty msg node*/
 	for (i=0;i<ONE_TIME_CREATE_MESSAGE_MAX_ITEMS;i++) {
 		msg = (struct aic_message*)mpp_alloc(sizeof(struct aic_message));
-		if(NULL == msg){
+		if (NULL == msg) {
 		    break;
 		}
 		memset(msg,0x00,sizeof(struct aic_message));
@@ -68,7 +68,7 @@ void aic_msg_destroy(struct aic_message_queue* msg_que)
 	}
 	pthread_mutex_unlock(&msg_que->mutex);
 
-	loge("free cnt:%d,free cnt :%d\n",cnt,msg_que->msg_node_cnt);
+	printf("[%s:%d] free cnt:%d,free cnt :%d\n",__FUNCTION__,__LINE__,cnt,msg_que->msg_node_cnt);
 
 	if (cnt != msg_que->msg_node_cnt) {
 		loge("why not eq,check code !!!,free cnt:%d,malloc cnt :%d\n",cnt,msg_que->msg_node_cnt);
@@ -128,7 +128,7 @@ s32  aic_msg_put(struct aic_message_queue* msg_que, struct aic_message *msg)
 		logd(" no empty node,need to extend more!");
 		for(i=0;i<ONE_TIME_CREATE_MESSAGE_MAX_ITEMS;i++) {
 			message = (struct aic_message*)mpp_alloc(sizeof(struct aic_message));
-			if(NULL == message){
+			if (NULL == message) {
 				break;
 			}
 			memset(message,0x00,sizeof(struct aic_message));
@@ -152,8 +152,7 @@ s32  aic_msg_put(struct aic_message_queue* msg_que, struct aic_message *msg)
 		if (message->data) {
 			message->data_size = msg->data_size;
 			memcpy(message->data, msg->data, msg->data_size);
-		}
-		else{
+		} else {
 			logd(" malloc msg data fail!");
 			pthread_mutex_unlock(&msg_que->mutex);
 			return -1;
@@ -164,7 +163,7 @@ s32  aic_msg_put(struct aic_message_queue* msg_que, struct aic_message *msg)
 	mpp_list_del(&message->list);
 	mpp_list_add_tail(&message->list, &msg_que->ready_msg_list);
 	msg_que->msg_cnt++;
-	if(msg_que->need_signal){
+	if (msg_que->need_signal) {
 		pthread_cond_signal(&msg_que->msg_cond);
 	}
 
@@ -193,7 +192,7 @@ s32  aic_msg_get(struct aic_message_queue* msg_que, struct aic_message *msg)
 	//loge("pthread_mutex_lock\n");
 	pthread_mutex_lock(&msg_que->mutex);
 	//loge("pthread_mutex_lock\n");
-	if(mpp_list_empty(&msg_que->ready_msg_list)){
+	if (mpp_list_empty(&msg_que->ready_msg_list)) {
 		pthread_mutex_unlock(&msg_que->mutex);
 		return -1;
 	}
@@ -209,8 +208,7 @@ s32  aic_msg_get(struct aic_message_queue* msg_que, struct aic_message *msg)
 			mpp_free(message->data);
 			message->data = NULL;
 			message->data_size = 0;
-		}
-		else {
+		} else {
 			loge(" malloc msg data fail!");
 			pthread_mutex_unlock(&msg_que->mutex);
 			return -1;
@@ -257,16 +255,15 @@ s32  aic_msg_wait_new_msg(struct aic_message_queue* msg_que,u64 us)
 	u64  tmp;
 
 	pthread_mutex_lock(&msg_que->mutex);
-	if(msg_que->msg_cnt != 0){
+	if (msg_que->msg_cnt != 0) {
 		pthread_mutex_unlock(&msg_que->mutex);
 		return 0;
 	}
-	if(us == 0){
+	if (us == 0) {
 		msg_que->need_signal = 1;
 		ret = pthread_cond_wait(&msg_que->msg_cond,&msg_que->mutex);
 		msg_que->need_signal = 0;
-	}else{
-
+	} else {
 		//ret = clock_gettime(CLOCK_MONOTONIC,&out_time);
 		ret = clock_gettime(CLOCK_REALTIME,&out_time);
 		//printf("clock_gettime ret:%d,tv_sec:%ld,tv_nsec:%ld\n",ret,out_time.tv_sec,out_time.tv_nsec);

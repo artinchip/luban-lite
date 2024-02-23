@@ -9,29 +9,41 @@
 #include "inc/spinand.h"
 #include "inc/manufacturer.h"
 
-#define SPINAND_MFR_ETRON		0xD5
+#define SPINAND_MFR_ETRON 0xD5
 
-struct spi_nand_cmd_cfg etron_cmd_cfg_table[] = {
-    /*opcode    opcode_bits addr_bytes	addr_bits	dummy_bytes	data_nbits*/
-    { SPINAND_CMD_READ_FROM_CACHE, 1, 2, 1, 1, 1 },
-    { SPINAND_CMD_READ_FROM_CACHE_X2, 1, 2, 1, 1, 2 },
-    { SPINAND_CMD_READ_FROM_CACHE_X4, 1, 2, 1, 1, 4 },
-    { SPINAND_CMD_PROG_LOAD, 1, 2, 1, 0, 1 },
-    { SPINAND_CMD_PROG_LOAD_X4, 1, 2, 1, 0, 4 },
-    { SPINAND_CMD_END },
-};
+static int em73c044vcf_ecc_get_status(struct aic_spinand *flash, u8 status)
+{
+    switch (status & STATUS_ECC_MASK) {
+        case STATUS_ECC_NO_BITFLIPS:
+            return 0;
+        case STATUS_ECC_HAS_1_4_BITFLIPS:
+            return 4;
+        case STATUS_ECC_UNCOR_ERROR:
+            return -SPINAND_ERR_ECC;
+        case STATUS_ECC_MASK:
+            return 4;
+        default:
+            break;
+    }
+
+    return -SPINAND_ERR;
+}
 
 const struct aic_spinand_info etron_spinand_table[] = {
-    /*devid page_size oob_size block_per_lun pages_per_eraseblock is_die_select*/
+    /*devid page_size oob_size block_per_lun pages_per_eraseblock planes_per_lun
+    is_die_select*/
     /*EM73C044VCF-H*/
-    { 0x25, 2048, 64, 1024, 64, 0, "etron 128MB: 2048+64@64@1024",
-      etron_cmd_cfg_table },
+    { DEVID(0x25), PAGESIZE(2048), OOBSIZE(64), BPL(1024), PPB(64), PLANENUM(1),
+      DIE(0), "etron 128MB: 2048+64@64@1024", cmd_cfg_table,
+      em73c044vcf_ecc_get_status},
     /*EM73D044VCO-H*/
-    { 0x3A, 2048, 128, 2048, 64, 0, "etron 256MB: 2048+128@64@2048",
-      etron_cmd_cfg_table },
+    { DEVID(0x3A), PAGESIZE(2048), OOBSIZE(128), BPL(2048), PPB(64),
+      PLANENUM(1), DIE(0), "etron 256MB: 2048+128@64@2048", cmd_cfg_table,
+      em73c044vcf_ecc_get_status},
     /*EM73E044VCE-H*/
-    { 0x3B, 2048, 128, 4096, 64, 0, "etron 512MB: 2048+128@64@4096",
-      etron_cmd_cfg_table },
+    { DEVID(0x3B), PAGESIZE(2048), OOBSIZE(128), BPL(4096), PPB(64),
+      PLANENUM(1), DIE(0), "etron 512MB: 2048+128@64@4096", cmd_cfg_table,
+      em73c044vcf_ecc_get_status},
 };
 
 const struct aic_spinand_info *etron_spinand_detect(struct aic_spinand *flash)

@@ -1,0 +1,14 @@
+Import('RTT_ROOT')
+Import('rtconfig')
+from building import *
+
+cwd     = GetCurrentDir()
+
+# add the chip drivers.
+src     = Glob("*.c") + Glob("*.cpp") + Glob("*.S")
+
+LOCAL_CPPPATH = [cwd]
+CPPPATH = [cwd + '/include']
+group   = DefineGroup('Chip', src, depend = ['AIC_CHIP_D12X'], LOCAL_CPPPATH = LOCAL_CPPPATH, CPPPATH = CPPPATH)
+
+Return('group')

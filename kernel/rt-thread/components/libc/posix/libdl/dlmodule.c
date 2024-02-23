@@ -146,6 +146,7 @@ static void _dlmodule_thread_entry(void* parameter)
 {
     int argc = 0;
     char *argv[RT_MODULE_ARG_MAX];
+    int ret = 0;
 
     struct rt_dlmodule *module = (struct rt_dlmodule*)parameter;
 
@@ -168,10 +169,11 @@ static void _dlmodule_thread_entry(void* parameter)
         module->cmd_line);
 
     if (module->entry_addr)
-        module->entry_addr(argc, argv);
+        ret = module->entry_addr(argc, argv);
 
 __exit:
-    _dlmodule_exit();
+    if (ret != RT_DLMODULE_DEAMON)
+        _dlmodule_exit();
 
     return;
 }
@@ -504,6 +506,8 @@ struct rt_dlmodule* dlmodule_load(const char* filename)
 
     /* increase module reference count */
     module->nref ++;
+
+    LOG_I("Module: load %s to 0x%lx succeed.", filename, module->mem_space);
 
     /* deal with cache */
 #ifdef RT_USING_CACHE

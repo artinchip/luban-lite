@@ -11,6 +11,7 @@
 #include <aic_core.h>
 #include "hal_i2s_format.h"
 
+extern struct codec *register_codec;
 struct codec;
 
 struct codec_ops {

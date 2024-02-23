@@ -64,6 +64,9 @@ int dfs_init(void)
 
     /* create device filesystem lock */
     fslock = aicos_mutex_create();
+#ifdef KERNEL_BAREMETAL
+    aicos_mutex_init(fslock);
+#endif
 
 #ifdef DFS_USING_WORKDIR
     /* set current working directory */
@@ -95,6 +98,7 @@ INIT_PREV_EXPORT(dfs_init);
  */
 void dfs_lock(void)
 {
+#ifndef KERNEL_BAREMETAL
     int result = -RT_EBUSY;
 
     while (result == -RT_EBUSY)
@@ -106,6 +110,7 @@ void dfs_lock(void)
     {
         RT_ASSERT(0);
     }
+#endif
 }
 
 /**
@@ -115,7 +120,9 @@ void dfs_lock(void)
  */
 void dfs_unlock(void)
 {
+#ifndef KERNEL_BAREMETAL
     aicos_mutex_give(fslock);
+#endif
 }
 
 #ifdef DFS_USING_POSIX

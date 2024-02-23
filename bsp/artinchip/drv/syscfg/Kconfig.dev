@@ -19,10 +19,11 @@ menu "Syscfg Parameter"
 	endif
 
 	menuconfig AIC_SYSCFG_LDO1X_ENABLE
-        bool "SYSCFG LDO1X enable"
+		bool "SYSCFG LDO1X enable"
 		default n
 		if AIC_SYSCFG_LDO1X_ENABLE
 			config AIC_SYSCFG_LDO1X_VOL_VAL
+				depends on AIC_SYSCFG_DRV_V11
 				int "LDO1X voltage value level <0-15>"
 				default 6
 				help
@@ -42,23 +43,27 @@ menu "Syscfg Parameter"
 					LDO1X_VAL_1_70V = 13,
 					LDO1X_VAL_1_80V = 14,
 					LDO1X_VAL_1_90V = 15
-		endif
-
-	menuconfig AIC_SYSCFG_LDO18_ENABLE
-        bool "SYSCFG LDO18 enable"
-		default y
-		if AIC_SYSCFG_LDO18_ENABLE
-			config AIC_SYSCFG_LDO18_VOL_VAL
-				int "LDO18 voltage value level <0-7>"
-				default 7
+			config AIC_SYSCFG_LDO1X_VOL_VAL
+				depends on AIC_SYSCFG_DRV_V12
+				int "LDO1X voltage value level <0-15>"
+				default 6
 				help
-					LDO18_VAL_1_71V = 0,
-					LDO18_VAL_1_74V = 1,
-					LDO18_VAL_1_77V = 2,
-					LDO18_VAL_1_80V = 3,
-					LDO18_VAL_1_83V = 4,
-					LDO18_VAL_1_86V = 5,
-					LDO18_VAL_1_89V = 6,
-					LDO18_VAL_1_92V = 7
+					LDO1X_VAL_1_000V = 0,
+					LDO1X_VAL_1_025V = 1,
+					LDO1X_VAL_1_050V = 2,
+					LDO1X_VAL_1_075V = 3,
+					LDO1X_VAL_1_100V = 4,
+					LDO1X_VAL_1_125V = 5,
+					LDO1X_VAL_1_150V = 6,
+					LDO1X_VAL_1_175V = 7,
+					LDO1X_VAL_1_200V = 8,
+					LDO1X_VAL_1_225V = 9,
+					LDO1X_VAL_1_250V = 10,
+					LDO1X_VAL_1_275V = 11,
+					LDO1X_VAL_1_300V = 12,
+					LDO1X_VAL_1_325V = 13,
+					LDO1X_VAL_1_350V = 14,
+					LDO1X_VAL_1_375V = 15
+
 		endif
 endmenu

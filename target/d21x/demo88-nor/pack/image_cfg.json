@@ -41,8 +41,8 @@
                 "attr": ["mtd", "required"],
                 "part": ["os"]
             },
-            "res": {
-                "file": "app.fatfs",
+            "rodata": {
+                "file": "rodata.fatfs",
                 "attr": ["mtd", "optional"],
                 "part": ["rodata"]
             },

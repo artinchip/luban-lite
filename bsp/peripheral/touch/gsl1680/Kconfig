@@ -1,0 +1,34 @@
+menu "GSL1680 touch panel options"
+
+config AIC_TOUCH_PANEL_GSL1680
+    bool "Using touch panel gsl1680"
+    default n
+    select AIC_I2C_DRV
+
+config AIC_TOUCH_PANEL_GSL1680_I2C_CHA
+    string "gsl1680 using i2c channel index"
+    default "i2c2"
+    depends on AIC_TOUCH_PANEL_GSL1680
+
+config AIC_TOUCH_PANEL_GSL1680_RST_PIN
+    string "gsl1680 reset pin"
+    default "PA.10"
+    depends on AIC_TOUCH_PANEL_GSL1680
+
+config AIC_TOUCH_PANEL_GSL1680_INT_PIN
+    string "gsl1680 irq pin"
+    default "PA.11"
+    depends on AIC_TOUCH_PANEL_GSL1680
+
+config AIC_TOUCH_PANEL_GSL1680_X_RANGE
+    int "gsl1680 x coordinate range"
+    default 480
+    depends on AIC_TOUCH_PANEL_GSL1680
+
+config AIC_TOUCH_PANEL_GSL1680_Y_RANGE
+    int "gsl1680 y coordinate range"
+    default 272
+    depends on AIC_TOUCH_PANEL_GSL1680
+
+endmenu
+

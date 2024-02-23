@@ -33,15 +33,12 @@
 
 static void usage(char *app)
 {
-    printf("Usage: %s [Options], built on %s %s\n", app, __DATE__, __TIME__);
-    printf(
-    "\t    --Framebuffer uses double buffer in this test, "
-    "ensure that fb0 is properly configure"
-    "\n\n"
-    "\t-t, --type, Select scale type (default 2)\n"
-    "\t    --type, 0: wide stretch, 1: height stretch, 2: width and height stretch"
-    "\n\n"
-    "\t-u, --usage\n");
+    printf("Usage: %s [Options]: \n", app);
+
+    printf("\t    --Framebuffer uses double buffer in this test, ensure that fb0 is properly configure\n\n");
+    printf("\t-t, --type, Select scale type (default 2)\n");
+    printf("\t    --type, 0: wide stretch, 1: height stretch, 2: width and height stretch\n\n");
+    printf("\t-u, --usage\n");
 }
 
 static long long int str2int(char *_str)
@@ -51,10 +48,11 @@ static long long int str2int(char *_str)
         return -1;
     }
 
-    if (strncmp(_str, "0x", 2))
-        return atoi(_str);
-    else
-        return strtoll(_str, NULL, 16);
+    if (strncmp(_str, "0x", 2)) {
+        return (long long)atoi(_str);
+    } else {
+        return (long long)strtoll(_str, NULL, 16);
+    }
 }
 
 static int bitblt_run(struct mpp_ge *ge, struct ge_bitblt *blt)
@@ -325,7 +323,7 @@ static void scale_test(int argc, char **argv)
     int ret = -1;
     int scale_type = 0;
 
-    int bmp_fd = 0;
+    int bmp_fd = -1;
     enum mpp_pixel_format bmp_fmt = 0;
     struct mpp_ge *ge = NULL;
     struct ge_bitblt blt = {0};
@@ -347,15 +345,15 @@ static void scale_test(int argc, char **argv)
             scale_type = str2int(optarg);
             if ((scale_type > 2) || (scale_type < 0)) {
                 printf("scale_type invalid, please set against\n");
-                goto EXIT;
+                return;
             }
             break;
         case 'u':
             usage(argv[0]);
-            goto EXIT;
+            return;
         default:
             LOGE("Invalid parameter: %#x\n", ret);
-            goto EXIT;
+            return;
         }
     }
 
@@ -369,7 +367,7 @@ static void scale_test(int argc, char **argv)
 
     bmp_fd = bmp_open(SCALE_IMAGE, &bmp_head);
     if (bmp_fd < 0) {
-        LOGE("open bmp error\n");
+        LOGE("open bmp error, path = %s\n", SCALE_IMAGE);
         goto EXIT;
     }
 
@@ -402,19 +400,19 @@ static void scale_test(int argc, char **argv)
     }
 
 EXIT:
-    if (!bmp_fd)
+    if (bmp_fd > 0)
         bmp_close(bmp_fd);
 
-    if (!ge)
+    if (ge)
         mpp_ge_close(ge);
 
-    if (!fb_info)
+    if (fb_info)
         fb_close(fb_info);
 
-    if (!bmp_buffer)
+    if (bmp_buffer)
         ge_buf_free(bmp_buffer);
 
-    if (!dst_buffer)
+    if (dst_buffer)
         ge_buf_free(dst_buffer);
 }
 MSH_CMD_EXPORT_ALIAS(scale_test, ge_scale, ge scale test);

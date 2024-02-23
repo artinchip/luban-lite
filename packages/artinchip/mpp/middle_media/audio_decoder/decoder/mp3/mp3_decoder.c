@@ -49,18 +49,18 @@ static enum mad_flow input(void *priv, struct mad_stream *stream)
     struct mp3_audio_decoder *mp3_dcecoder = (struct mp3_audio_decoder *)priv;
     int unproc_data_len = 0;
     int need_proc_data_len = 0;
-    if(mp3_dcecoder->stop_flag == 1 || mp3_dcecoder->stream_end == 1){
+    if (mp3_dcecoder->stop_flag == 1 || mp3_dcecoder->stream_end == 1) {
         logd("MAD_FLOW_STOP!!!!\n");
         return MAD_FLOW_STOP;
     }
     unproc_data_len = stream->bufend - stream->next_frame;
     // 1 get unprocess data and data len,move unporocess data to buffer start.
-    if(unproc_data_len > 0){
+    if (unproc_data_len > 0) {
         memcpy(mp3_dcecoder->mad_buffer,stream->next_frame,unproc_data_len);
     }
     // 2
-    if(mp3_dcecoder->curr_packet_unused_len > 0){
-        if(mp3_dcecoder->curr_packet_unused_len + unproc_data_len <= MAD_BUFFER_LEEN){
+    if (mp3_dcecoder->curr_packet_unused_len > 0) {
+        if (mp3_dcecoder->curr_packet_unused_len + unproc_data_len <= MAD_BUFFER_LEEN) {
             memcpy(mp3_dcecoder->mad_buffer+unproc_data_len
                     ,mp3_dcecoder->curr_packet->data+mp3_dcecoder->curr_packet->size - mp3_dcecoder->curr_packet_unused_len
                     ,mp3_dcecoder->curr_packet_unused_len);
@@ -68,7 +68,7 @@ static enum mad_flow input(void *priv, struct mad_stream *stream)
             mp3_dcecoder->curr_packet_unused_len = 0;
             audio_pm_enqueue_empty_packet(mp3_dcecoder->decoder.pm, mp3_dcecoder->curr_packet);
             logd("need_proc_data_len:%d,unproc_data_len:%d,curr_packet_unused_len:%d\n",need_proc_data_len,unproc_data_len,mp3_dcecoder->curr_packet_unused_len);
-        }else{
+        } else {
             memcpy(mp3_dcecoder->mad_buffer+unproc_data_len
                     ,mp3_dcecoder->curr_packet->data+mp3_dcecoder->curr_packet->size - mp3_dcecoder->curr_packet_unused_len
                     ,MAD_BUFFER_LEEN -unproc_data_len);
@@ -78,15 +78,15 @@ static enum mad_flow input(void *priv, struct mad_stream *stream)
             logd("need_proc_data_len:%d,unproc_data_len:%d,curr_packet_unused_len:%d\n",need_proc_data_len,unproc_data_len,mp3_dcecoder->curr_packet_unused_len);
         }
         mad_stream_buffer(stream, mp3_dcecoder->mad_buffer,need_proc_data_len);
-        if((mp3_dcecoder->curr_packet->flag & PACKET_FLAG_EOS) && (mp3_dcecoder->curr_packet_unused_len == 0)) {
+        if ((mp3_dcecoder->curr_packet->flag & PACKET_FLAG_EOS) && (mp3_dcecoder->curr_packet_unused_len == 0)) {
             //logd("PACKET_FLAG_EOS--->MAD_FLOW_STOP!!!!\n");
             mp3_dcecoder->stream_end = 1;
         }
         return MAD_FLOW_CONTINUE;
     }
     // get ready packet
-    while((mp3_dcecoder->curr_packet = audio_pm_dequeue_ready_packet(mp3_dcecoder->decoder.pm)) == NULL){
-        if(mp3_dcecoder->stop_flag == 1){// force to stop
+    while ((mp3_dcecoder->curr_packet = audio_pm_dequeue_ready_packet(mp3_dcecoder->decoder.pm)) == NULL) {
+        if (mp3_dcecoder->stop_flag == 1) {// force to stop
             logd("force to stop!!!\n");
             return MAD_FLOW_STOP;
         }
@@ -95,11 +95,11 @@ static enum mad_flow input(void *priv, struct mad_stream *stream)
 	mp3_dcecoder->curr_packet_info.flag = mp3_dcecoder->curr_packet->flag;
 	mp3_dcecoder->curr_packet_info.pts = mp3_dcecoder->curr_packet->pts;
 
-    if(mp3_dcecoder->first_packet){
+    if (mp3_dcecoder->first_packet) {
         mp3_dcecoder->first_pts = mp3_dcecoder->curr_packet->pts;
         mp3_dcecoder->first_packet = 0;
     }
-    if(unproc_data_len + mp3_dcecoder->curr_packet->size <= MAD_BUFFER_LEEN){
+    if (unproc_data_len + mp3_dcecoder->curr_packet->size <= MAD_BUFFER_LEEN) {
         memcpy(mp3_dcecoder->mad_buffer+unproc_data_len
                     ,mp3_dcecoder->curr_packet->data
                     ,mp3_dcecoder->curr_packet->size);
@@ -108,7 +108,7 @@ static enum mad_flow input(void *priv, struct mad_stream *stream)
         audio_pm_enqueue_empty_packet(mp3_dcecoder->decoder.pm, mp3_dcecoder->curr_packet);
         logd("need_proc_data_len:%d,unproc_data_len:%d,curr_packet_unused_len:%d\n",need_proc_data_len,unproc_data_len,mp3_dcecoder->curr_packet_unused_len);
 
-    }else{
+    } else {
         memcpy(mp3_dcecoder->mad_buffer+unproc_data_len
                     ,mp3_dcecoder->curr_packet->data
                     ,MAD_BUFFER_LEEN -unproc_data_len);
@@ -172,27 +172,27 @@ static enum mad_flow output(void *priv, struct mad_header const *header, struct 
     right_ch = pcm->samples[1];
     int data_size = nchannels * nsamples * mp3_dcecoder->bits_per_sample/8;
 
-    if(mp3_dcecoder->first_frame){
+    if (mp3_dcecoder->first_frame) {
         mp3_dcecoder->frame_duration = pcm->length*1000*1000/pcm->samplerate;
         mp3_dcecoder->first_frame = 0;
         printf("frame_duration:%"PRId64",samplerate:%u,pcm->length:%d\n",mp3_dcecoder->frame_duration,pcm->samplerate,pcm->length);
     }
 
-    if(mp3_dcecoder->decoder.fm == NULL){
+    if (mp3_dcecoder->decoder.fm == NULL) {
         struct audio_frame_manager_cfg cfg;
         cfg.bits_per_sample = mp3_dcecoder->bits_per_sample;
         cfg.samples_per_frame = nchannels*nsamples;
         cfg.frame_count = mp3_dcecoder->frame_count;
         mp3_dcecoder->decoder.fm = audio_fm_create(&cfg);
-        if(mp3_dcecoder->decoder.fm == NULL){
+        if (mp3_dcecoder->decoder.fm == NULL) {
             loge("audio_fm_create fail!!!\n");
             return MAD_FLOW_STOP;
         }
     }
 
     //get empty frame
-    while((frame = audio_fm_decoder_get_frame(mp3_dcecoder->decoder.fm)) == NULL){
-        if(mp3_dcecoder->stop_flag == 1){// force to stop
+    while ((frame = audio_fm_decoder_get_frame(mp3_dcecoder->decoder.fm)) == NULL) {
+        if (mp3_dcecoder->stop_flag == 1) {// force to stop
             printf("[%s:%d]force to stop!!!!\n",__FUNCTION__,__LINE__);
             return MAD_FLOW_STOP;
         }
@@ -201,13 +201,13 @@ static enum mad_flow output(void *priv, struct mad_header const *header, struct 
     //logd("audio_fm_dequeue_empty_frame\n");
     //if(audio_fm_dequeue_empty_frame(mp3_dcecoder->decoder.fm, &frame, data_size))
 
-    if(frame->size < data_size){
-        if(frame->data){
+    if (frame->size < data_size) {
+        if (frame->data) {
             printf("[%s:%d]frame->data realloc:%d!!\n",__FUNCTION__,__LINE__,data_size);
             mpp_free(frame->data);
             frame->data = NULL;
             frame->data = mpp_alloc(data_size);
-            if(frame->data == NULL){
+            if (frame->data == NULL) {
                 loge("mpp_alloc frame->data fail!!!\n");
                 return MAD_FLOW_STOP;
             }
@@ -222,25 +222,10 @@ static enum mad_flow output(void *priv, struct mad_header const *header, struct 
     frame->id = mp3_dcecoder->frame_id++;
     frame->flag = mp3_dcecoder->curr_packet_info.flag;
 
-    if(frame->flag&PACKET_FLAG_EOS){
+    if (frame->flag&PACKET_FLAG_EOS) {
         printf("[%s:%d]last frame:%u!!\n",__FUNCTION__,__LINE__,frame->flag);
     }
 
-    logd("output frame,"\
-        "bits_per_sample:%d,"\
-        "channels:%d,"\
-        "flag:0x%x,"\
-        "pts:"FMT_x64\
-        "sample_rate:%d,"\
-        "frame_id:%"PRId32","\
-        "size:%d\n"\
-        ,frame->bits_per_sample
-        ,frame->channels
-        ,frame->flag
-        ,frame->pts
-        ,frame->sample_rate
-        ,frame->id
-        ,frame->size);
 
     data = (s8 *)frame->data;
     while (nsamples--) {
@@ -257,7 +242,7 @@ static enum mad_flow output(void *priv, struct mad_header const *header, struct 
         }
     }
 
-    if(audio_fm_decoder_put_frame(mp3_dcecoder->decoder.fm, frame) != 0){
+    if (audio_fm_decoder_put_frame(mp3_dcecoder->decoder.fm, frame) != 0) {
         loge("plese check code,why!!!\n");
         return MAD_FLOW_STOP;
     }
@@ -265,7 +250,7 @@ static enum mad_flow output(void *priv, struct mad_header const *header, struct 
     frame_rate++;
     clock_gettime(CLOCK_REALTIME,&cur);
     diff = (cur.tv_sec - pre.tv_sec)*1000*1000 + (cur.tv_nsec - pre.tv_nsec)/1000;
-    if(diff > 1*1000*1000){
+    if (diff > 1*1000*1000) {
         //printf("[%s:%d]:%ld:%d\n",__FUNCTION__,__LINE__,diff,frame_rate);
         pre = cur;
         frame_rate = 0;
@@ -335,7 +320,7 @@ int __mp3_decode_destroy(struct aic_audio_decoder *decoder)
     mpp_free(mp3_decoder->mad_handle);
     audio_pm_destroy(mp3_decoder->decoder.pm);
     audio_fm_destroy(mp3_decoder->decoder.fm);
-    if(mp3_decoder->mad_buffer){
+    if (mp3_decoder->mad_buffer) {
         mpp_free(mp3_decoder->mad_buffer);
         mp3_decoder->mad_buffer = NULL;
     }
@@ -359,27 +344,27 @@ int __mp3_decode_frame(struct aic_audio_decoder *decoder)
 {
     s32 ret;
     struct mp3_audio_decoder *mp3_decoder = (struct mp3_audio_decoder *)decoder;
-    if(!mp3_decoder->decode_thread_id){
+    if (!mp3_decoder->decode_thread_id) {
         ret = pthread_create(&mp3_decoder->decode_thread_id,&mp3_decoder->phtread_atrr, mp3_decode_thread, mp3_decoder);
-        if (ret || !mp3_decoder->decode_thread_id){
+        if (ret || !mp3_decoder->decode_thread_id) {
             loge("pthread_create fail!");
             return DEC_ERR_NOT_SUPPORT;
-        }else{
-            printf("[%s:%d]pthread_create mp3_decode_thread threadId:%ld ok!",__FUNCTION__,__LINE__,mp3_decoder->decode_thread_id);
+        } else {
+            printf("[%s:%d]pthread_create mp3_decode_thread threadId:%ld ok!",__FUNCTION__,__LINE__,(unsigned long)mp3_decoder->decode_thread_id);
         }
     }
 
-    if(!mp3_decoder->decoder.fm){
+    if (!mp3_decoder->decoder.fm) {
         return DEC_ERR_FM_NOT_CREATE;
     }
 
-    if(audio_fm_get_render_frame_num(mp3_decoder->decoder.fm) > 0){
+    if (audio_fm_get_render_frame_num(mp3_decoder->decoder.fm) > 0) {
         return DEC_OK;
-    }else if (audio_fm_get_empty_frame_num(mp3_decoder->decoder.fm) == 0) {
+    } else if (audio_fm_get_empty_frame_num(mp3_decoder->decoder.fm) == 0) {
         return DEC_NO_EMPTY_FRAME;
-    }else if (audio_pm_get_ready_packet_num(mp3_decoder->decoder.pm) == 0){
+    } else if (audio_pm_get_ready_packet_num(mp3_decoder->decoder.pm) == 0) {
         return DEC_NO_READY_PACKET;
-    }else{
+    } else {
         return DEC_NO_RENDER_FRAME;
     }
 
@@ -403,7 +388,7 @@ int __mp3_decode_reset(struct aic_audio_decoder *decoder)
      mp3_decoder->first_packet = 1;
      mp3_decoder->frame_duration = 0;
      mp3_decoder->first_pts = 0;
-     mp3_decoder->frame_id = 0;	 
+     mp3_decoder->frame_id = 0;
      audio_pm_reset(mp3_decoder->decoder.pm);
      audio_fm_reset(mp3_decoder->decoder.fm);
     return 0;
@@ -426,7 +411,7 @@ struct aic_audio_decoder* create_mp3_decoder()
         return NULL;
     memset(s, 0, sizeof(struct mp3_audio_decoder));
     s->mad_handle = (struct mad_decoder*)mpp_alloc(sizeof(struct mad_decoder));
-    if(s->mad_handle == NULL){
+    if (s->mad_handle == NULL) {
         mpp_free(s);
         return NULL;
     }

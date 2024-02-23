@@ -64,9 +64,23 @@ static rt_err_t _adc_control(rt_device_t dev, int cmd, void *args)
         }
     }
 #ifdef AIC_GPAI_DRV
+    else if (cmd == RT_ADC_CMD_CONFIG_DMA && adc->ops->config_dma)
+    {
+        return adc->ops->config_dma(adc, args);
+
+    }
+    else if (cmd == RT_ADC_CMD_GET_DMA_DATA && adc->ops->get_dma_data)
+    {
+        return adc->ops->get_dma_data(adc, (rt_uint32_t)(long)args);
+
+    }
     else if (cmd == RT_ADC_CMD_IRQ_COUNT && adc->ops->get_irq_count)
     {
-        return adc->ops->get_irq_count(adc, *(rt_uint32_t *)args);
+        return adc->ops->get_irq_count(adc, (rt_uint32_t)(long)args);
+    }
+    else if (cmd == RT_ADC_CMD_OBTAIN_DATA_MODE && adc->ops->get_obtaining_data_mode)
+    {
+        return adc->ops->get_obtaining_data_mode(adc, (rt_uint32_t)(long)args);
     }
 #endif
     else if (cmd == RT_ADC_CMD_GET_VREF && adc->ops->get_vref && args)
@@ -138,7 +152,7 @@ rt_err_t rt_adc_control(rt_adc_device_t dev, int cmd, void *args)
     RT_ASSERT(dev);
 
     /*get the resolution in bits*/
-    return _adc_control((rt_device_t) dev, cmd, &args);
+    return _adc_control((rt_device_t) dev, cmd, args);
 }
 #endif
 

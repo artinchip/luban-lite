@@ -22,19 +22,20 @@
 #include "sdmc.h"
 
 #define MSEC_PER_SEC        1000
+
 static u32 aic_sdmc_buswidth(u32 type)
 {
     switch (type) {
-    case SDMC_CTYPE_8BIT:
-        return 8;
-    case SDMC_CTYPE_4BIT:
-        return 4;
-    case SDMC_CTYPE_1BIT:
-        return 1;
-    default:
-    case SDMC_CTYPE_RESERVED:
-        pr_warn("Invalid Card type %d\n", type);
-        return 1;
+        case SDMC_CTYPE_8BIT:
+            return 8;
+        case SDMC_CTYPE_4BIT:
+            return 4;
+        case SDMC_CTYPE_1BIT:
+            return 1;
+        default:
+        case SDMC_CTYPE_RESERVED:
+            pr_warn("Invalid Card type %d\n", type);
+            return 1;
     }
 }
 
@@ -43,7 +44,7 @@ static u32 aic_sdmc_get_timeout(struct aic_sdmc *host, const u32 size)
     unsigned int timeout;
 
     timeout = size * 8;
-    timeout /= aic_sdmc_buswidth(host->buswidth);
+    timeout /= aic_sdmc_buswidth(host->pdata->buswidth);
     timeout *= 10;      /* wait 10 times as long */
     timeout /= (host->clock / MSEC_PER_SEC);
     timeout /= host->ddr_mode ? 2 : 1;
@@ -56,7 +57,7 @@ static int aic_sdmc_data_transfer(struct aic_sdmc *host,
 {
     int ret = 0;
     u32 mask, size, total;
-    u32 timeout, end, start = aic_get_time_ms();
+    u64 timeout, end, start = aic_get_time_ms();
 
     total = data->blksize * data->blks;
     timeout = aic_sdmc_get_timeout(host, total);
@@ -80,9 +81,8 @@ static int aic_sdmc_data_transfer(struct aic_sdmc *host,
             if (data->flags == MMC_DATA_READ &&
                     (mask & (SDMC_INT_RXDR | SDMC_INT_DAT_DONE))) {
                 size = hal_sdmc_data_rx(&host->host, (u32 *)data->buf, size);
-            }
-            else if (data->flags == MMC_DATA_WRITE &&
-                     (mask & SDMC_INT_TXDR)) {
+            } else if (data->flags == MMC_DATA_WRITE &&
+                       (mask & SDMC_INT_TXDR)) {
                 size = hal_sdmc_data_tx(&host->host, (u32 *)data->buf, size);
             }
         }
@@ -94,7 +94,7 @@ static int aic_sdmc_data_transfer(struct aic_sdmc *host,
 
         end = aic_get_time_ms();
         if (end - start > timeout) {
-            pr_err("Data timeout %d - %d > %d! size %d/%d, mode %s-%s, status 0x%x\n",
+            pr_err("Data timeout %lld - %lld > %lld! size %d/%d, mode %s-%s, status 0x%x\n",
                     end, start,
                     timeout, size * 4, total,
                     host->fifo_mode ? "FIFO" : "IDMA",
@@ -187,8 +187,8 @@ void aic_sdmc_request(struct aic_sdmc *host, struct aic_sdmc_cmd *cmd,
     s32 ret = 0, flags = 0, i;
     u32 retry = SDMC_TIMEOUT;
     u32 mask = 0;
-    u32 timeout = 500000;
-    u32 start = aic_get_time_us();
+    u64 timeout = 500000;
+    u64 start = aic_get_time_us();
     struct bounce_buffer bbstate;
     ALLOC_CACHE_ALIGN_BUFFER(struct aic_sdmc_idma_desc, cur_idma,
                              data ? DIV_ROUND_UP(data->blks, 8) : 0);
@@ -226,6 +226,9 @@ void aic_sdmc_request(struct aic_sdmc *host, struct aic_sdmc_cmd *cmd,
 
             hal_sdmc_idma_prepare(&host->host, data->blksize, data->blks,
                                   cur_idma, bbstate.bounce_buffer);
+        } else {
+            if (hal_sdmc_get_idma_status(&host->host))
+                hal_sdmc_idma_disable(&host->host);
         }
     }
 #ifdef SDMC_DUMP_CMD
@@ -335,8 +338,7 @@ static int aic_sdmc_setup_bus(struct aic_sdmc *host, u32 freq)
         /* bypass mode */
         mux = 1;
         div = 0;
-    }
-    else {
+    } else {
         div = aic_sdmc_get_best_div(sclk, freq);
         if (div <= 4) {
             mux = DIV_ROUND_UP(div, 2);
@@ -352,7 +354,7 @@ static int aic_sdmc_setup_bus(struct aic_sdmc *host, u32 freq)
     }
     aic_sdmc_set_ext_clk_mux(&host->host, mux);
     printf("SDMC%d BW %d, sclk %d KHz, clk %d KHz(%d KHz), div %d-%d\n",
-            host->index, aic_sdmc_buswidth(host->buswidth),
+            host->index, aic_sdmc_buswidth(host->pdata->buswidth),
             sclk / 1000, freq / 1000,
             div ? sclk / mux / div / 2 / 1000 : sclk / mux / 1000,
             mux, div);
@@ -396,24 +398,11 @@ void aic_sdmc_set_cfg(struct aic_sdmc *host)
 {
     aic_sdmc_setup_bus(host, host->dev->clock);
 
-    switch (host->dev->bus_width) {
-    case 8:
-        host->buswidth = SDMC_CTYPE_8BIT;
-        break;
-    case 4:
-        host->buswidth = SDMC_CTYPE_4BIT;
-        break;
-    default:
-        host->buswidth = SDMC_CTYPE_1BIT;
-        break;
-    }
-
-    if (host->buswidth != SDMC_CTYPE_1BIT)
+    if (host->pdata->buswidth != SDMC_CTYPE_1BIT)
         pr_info("SDMC%d Buswidth %d, DDR mode %d, Current clock: %d KHz\n",
-            host->index,
-            aic_sdmc_buswidth(host->buswidth), host->ddr_mode,
-            host->dev->clock / 1000);
+            host->index, aic_sdmc_buswidth(host->pdata->buswidth),
+            host->ddr_mode, host->dev->clock / 1000);
 
-    hal_sdmc_set_buswidth(&host->host, host->buswidth);
+    hal_sdmc_set_buswidth(&host->host, host->pdata->buswidth);
     hal_sdmc_set_ddrmode(&host->host, host->ddr_mode);
 }

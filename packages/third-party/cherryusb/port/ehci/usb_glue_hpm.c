@@ -3,39 +3,30 @@
 #include "hpm_soc.h"
 #include "hpm_usb_drv.h"
 
-#define USB_PHY_INIT_DELAY_COUNT (16U) /**< a delay count for USB phy initialization */
+#if !defined(CONFIG_USB_EHCI_HPMICRO) || !CONFIG_USB_EHCI_HPMICRO
+#error "hpm ehci must set CONFIG_USB_EHCI_HPMICRO=1"
+#endif
 
-/* Initialize USB phy */
-static void usb_phy_init(USB_Type *ptr)
-{
-    uint32_t status;
+#if !defined(CONFIG_USB_EHCI_HCOR_OFFSET) || CONFIG_USB_EHCI_HCOR_OFFSET != 0x140
+#error "hpm ehci must config CONFIG_USB_EHCI_HCOR_OFFSET to 0x140"
+#endif
 
-    ptr->OTG_CTRL0 |= USB_OTG_CTRL0_OTG_UTMI_RESET_SW_MASK;     /* set otg_utmi_reset_sw for naneng usbphy */
-    ptr->OTG_CTRL0 &= ~USB_OTG_CTRL0_OTG_UTMI_SUSPENDM_SW_MASK; /* clr otg_utmi_suspend_m for naneng usbphy */
-    ptr->PHY_CTRL1 &= ~USB_PHY_CTRL1_UTMI_CFG_RST_N_MASK;       /* clr cfg_rst_n */
+#if defined(CONFIG_USB_EHCI_PRINT_HW_PARAM) || !defined(CONFIG_USB_EHCI_PORT_POWER)
+#error "hpm ehci must enable CONFIG_USB_EHCI_PORT_POWER and disable CONFIG_USB_EHCI_PRINT_HW_PARAM"
+#endif
 
-    do {
-        status = USB_OTG_CTRL0_OTG_UTMI_RESET_SW_GET(ptr->OTG_CTRL0); /* wait for reset status */
-    } while (status == 0);
+struct usbh_bus *hpm_usb_bus0;
 
-    ptr->OTG_CTRL0 |= USB_OTG_CTRL0_OTG_UTMI_SUSPENDM_SW_MASK; /* set otg_utmi_suspend_m for naneng usbphy */
+#ifdef HPM_USB1_BASE
+struct usbh_bus *hpm_usb_bus1;
+#endif
 
-    for (int i = 0; i < USB_PHY_INIT_DELAY_COUNT; i++) {
-        ptr->PHY_CTRL0 = USB_PHY_CTRL0_GPIO_ID_SEL_N_SET(0); /* used for delay */
-    }
-
-    ptr->OTG_CTRL0 &= ~USB_OTG_CTRL0_OTG_UTMI_RESET_SW_MASK; /* clear otg_utmi_reset_sw for naneng usbphy */
-
-    /* otg utmi clock detection */
-    ptr->PHY_STATUS |= USB_PHY_STATUS_UTMI_CLK_VALID_MASK; /* write 1 to clear valid status */
-    do {
-        status = USB_PHY_STATUS_UTMI_CLK_VALID_GET(ptr->PHY_STATUS); /* get utmi clock status */
-    } while (status == 0);
-
-    ptr->PHY_CTRL1 |= USB_PHY_CTRL1_UTMI_CFG_RST_N_MASK; /* set cfg_rst_n */
-
-    ptr->PHY_CTRL1 |= USB_PHY_CTRL1_UTMI_OTG_SUSPENDM_MASK; /* set otg_suspendm */
-}
+const uint8_t hpm_irq_table[] = {
+    IRQn_USB0,
+#ifdef HPM_USB1_BASE
+    IRQn_USB1
+#endif
+};
 
 static void usb_host_mode_init(USB_Type *ptr)
 {
@@ -56,22 +47,23 @@ static void usb_host_mode_init(USB_Type *ptr)
     ptr->USBCMD &= ~USB_USBCMD_ITC_MASK;
 }
 
-void usb_hc_low_level_init()
+void usb_hc_low_level_init(struct usbh_bus *bus)
 {
-    usb_phy_init((USB_Type *)HPM_USB0_BASE);
-    intc_m_enable_irq(IRQn_USB0);
+    usb_phy_init((USB_Type *)(bus->hcd.reg_base));
+    intc_m_enable_irq(hpm_irq_table[bus->hcd.hcd_id]);
 }
 
-void usb_hc_low_level2_init()
+void usb_hc_low_level2_init(struct usbh_bus *bus)
 {
-    usb_host_mode_init((USB_Type *)HPM_USB0_BASE);
+    usb_host_mode_init((USB_Type *)(bus->hcd.reg_base));
 }
 
-uint8_t usbh_get_port_speed(const uint8_t port)
+uint8_t usbh_get_port_speed(struct usbh_bus *bus, const uint8_t port)
 {
+    (void)port;
     uint8_t speed;
 
-    speed = usb_get_port_speed((USB_Type *)HPM_USB0_BASE);
+    speed = usb_get_port_speed((USB_Type *)(bus->hcd.reg_base));
 
     if (speed == 0x00) {
         return USB_SPEED_FULL;
@@ -86,17 +78,18 @@ uint8_t usbh_get_port_speed(const uint8_t port)
     return 0;
 }
 
-extern void USBH_IRQHandler(void);
+extern void USBH_IRQHandler(struct usbh_bus *bus);
 
-void isr_usb0(void)
+void isr_usbh0(void)
 {
-    USBH_IRQHandler();
+    USBH_IRQHandler(hpm_usb_bus0);
 }
-SDK_DECLARE_EXT_ISR_M(IRQn_USB0, isr_usb0)
+SDK_DECLARE_EXT_ISR_M(IRQn_USB0, isr_usbh0)
 
 #ifdef HPM_USB1_BASE
-void isr_usb1(void)
+void isr_usbh1(void)
 {
+    USBH_IRQHandler(hpm_usb_bus1);
 }
-SDK_DECLARE_EXT_ISR_M(IRQn_USB1, isr_usb1)
+SDK_DECLARE_EXT_ISR_M(IRQn_USB1, isr_usbh1)
 #endif

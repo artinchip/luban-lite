@@ -6,8 +6,8 @@
  * Authors: Mingfeng.Li <mingfeng.li@artinchip.com>
  */
 
-#include <rtthread.h>
 #if defined(RT_USING_FINSH) && defined(AIC_AXICFG_DRV)
+#include <rtthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>

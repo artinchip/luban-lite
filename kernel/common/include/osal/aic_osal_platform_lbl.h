@@ -51,7 +51,6 @@ typedef enum irqreturn irqreturn_t;
 typedef irqreturn_t (*irq_handler_t)(int, void *);
 typedef irqreturn_t (*pin_irq_handler_t)(void *);
 
-
 static inline int aicos_request_irq(unsigned int irq, irq_handler_t handler, unsigned int flags,
                                  const char *name, void *data)
 {
@@ -69,12 +68,6 @@ static inline void aicos_irq_enable(unsigned int irq)
 static inline void aicos_irq_disable(unsigned int irq)
 {
     drv_irq_disable(irq);
-}
-
-extern unsigned int g_aicos_irq_nested_cnt;
-static inline int aicos_in_irq(void)
-{
-    return g_aicos_irq_nested_cnt;
 }
 
 //--------------------------------------------------------------------+

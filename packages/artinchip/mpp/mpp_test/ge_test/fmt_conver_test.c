@@ -44,7 +44,7 @@ static struct StrToFormat *format_table = NULL;
 
 static void usage(char *app)
 {
-    printf("Usage: %s [Options], built on %s %s\n", app, __DATE__, __TIME__);
+    printf("Usage: %s [Options]: \n", app);
     printf("\t-m, --mode, select format conversion type (default rgbtorgb), \n"
            "\tFormat conversion supports rgbtorgb, yuvtoyuv, yuvtorgb and rgbtoyuv.\n");
     printf("\t-u, --usage\n");
@@ -307,7 +307,7 @@ static int format_conver_run(struct mpp_ge *ge, struct ge_bitblt *blt,
 
     for (i = src_select_region_left; i < src_select_region_right; i++) {
         src_format = format_table[i].format;
-        if (!dst_buffer)
+        if (dst_buffer)
             ge_buf_free(dst_buffer);
 
         src_buffer = ge_buf_malloc(bmp_head->width, abs(bmp_head->height), src_format);
@@ -331,7 +331,7 @@ static int format_conver_run(struct mpp_ge *ge, struct ge_bitblt *blt,
 
         for (j = dst_select_region_left; j < dst_select_region_right; j++) {
             dst_format = format_table[j].format;
-            if (!dst_buffer)
+            if (dst_buffer)
                 ge_buf_free(dst_buffer);
 
             dst_buffer = ge_buf_malloc(bmp_head->width, abs(bmp_head->height), dst_format);
@@ -362,7 +362,7 @@ int ge_format_test(int argc, char **argv)
     int ret = -1;
     int mode = RGB_TO_RGB;
 
-    int bmp_fd = 0;
+    int bmp_fd = -1;
     enum mpp_pixel_format bmp_fmt = 0;
     struct ge_buf *bmp_buffer = NULL;
     struct ge_buf *src_buffer = NULL;
@@ -388,18 +388,18 @@ int ge_format_test(int argc, char **argv)
             mode = str_to_mode(optarg);
             if (mode < 0) {
                 printf("mode set error, please set against\n");
-                goto EXIT;
+                return 0;
             }
             break;
         case 'u':
             usage(argv[0]);
-            goto EXIT;
+            return 0;
         case 'h':
             help();
-            goto EXIT;
+            return 0;
         default:
             LOGE("Invalid parameter: %#x\n", ret);
-            goto EXIT;
+            return 0;
         }
     }
 
@@ -413,7 +413,7 @@ int ge_format_test(int argc, char **argv)
 
     bmp_fd = bmp_open(DITHER_IMAGE, &bmp_head);
     if (bmp_fd < 0) {
-        LOGE("open bmp DITHER_IMAGE error\n");
+        LOGE("open bmp error, path = %s\n", DITHER_IMAGE);
         goto EXIT;
     }
 
@@ -438,20 +438,20 @@ int ge_format_test(int argc, char **argv)
         goto EXIT;
     }
 EXIT:
-    if (!bmp_fd)
+    if (bmp_fd > 0)
         bmp_close(bmp_fd);
 
-    if (!ge)
+    if (ge)
         mpp_ge_close(ge);
 
-    if (!fb_info)
+    if (fb_info)
         fb_close(fb_info);
 
-    if (!bmp_buffer)
+    if (bmp_buffer)
         ge_buf_free(bmp_buffer);
-    if (!src_buffer)
+    if (src_buffer)
         ge_buf_free(src_buffer);
-    if (!dst_buffer)
+    if (dst_buffer)
         ge_buf_free(dst_buffer);
 
     return 0;

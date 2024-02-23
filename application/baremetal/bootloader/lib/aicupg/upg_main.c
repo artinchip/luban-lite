@@ -18,7 +18,7 @@
 #define false 0
 #define true  1
 
-static struct upg_internal upg_info = {
+struct upg_internal upg_info = {
     .cur_cmd = NULL,
     .dev_type = UPG_DEV_TYPE_RAM,
     .dev_id = 0,
@@ -78,6 +78,12 @@ s32 aicupg_set_upg_cfg(struct upg_cfg *cfg)
     memcpy(&upg_info.cfg, cfg, sizeof(*cfg));
     pr_debug("%s, mode = %d\n", __func__, upg_info.cfg.mode);
 
+    return 0;
+}
+
+s32 aicupg_initialize(struct upg_init *param)
+{
+    upg_info.init.mode = param->mode;
     return 0;
 }
 

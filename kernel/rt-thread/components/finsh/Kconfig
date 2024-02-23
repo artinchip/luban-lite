@@ -20,6 +20,10 @@ if RT_USING_MSH
         string "The msh prompt name"
         default "aic"
 
+    config FINSH_POLL_MODE
+        bool "Run msh in pool mode, not IRQ mode"
+        default n
+
     config FINSH_THREAD_PRIORITY
         int "The priority level value of thread"
         default 20

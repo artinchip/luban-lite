@@ -1,10 +1,5 @@
 menu "Board options"
 
-#============================================
-# Peripheral Devices
-#============================================
-comment "Peripheral Devices:"
-
 #---------------------------
 # cmu device global option
 #---------------------------
@@ -221,27 +216,27 @@ config AIC_USING_SDMC0
 
 config AIC_USING_SDMC1
     bool "Using SDMC1"
-    default y
+    default n
     select AIC_SDMC_DRV
 
 source "bsp/artinchip/drv/sdmc/Kconfig"
+
+#---------------------------
+# WLAN device global option
+#---------------------------
+comment "WLAN Related:"
+
+menuconfig AIC_WIRELESS_LAN
+        bool "Using Wireless Lan"
+        default n
+
+source "bsp/peripheral/wireless/Kconfig"
 
 #================================================
 # Analog Class
 #================================================
 
 comment "Analog Related:"
-
-#---------------------------
-# RTP device global option
-#---------------------------
-
-config AIC_USING_RTP
-    bool "Using RTP"
-    default n
-    select AIC_RTP_DRV
-
-source "bsp/artinchip/drv/rtp/Kconfig"
 
 #---------------------------
 # TSEN device global option
@@ -255,6 +250,14 @@ config AIC_USING_TSEN
 #---------------------------
 # GPAI device global option
 #---------------------------
+
+config AIC_USING_GPAI
+    bool "Using GPAI"
+    default n
+    select AIC_GPAI_DRV
+
+menu "GPAI options"
+    depends on AIC_USING_GPAI
 
 config AIC_USING_GPAI0
     bool "Using GPAI0"
@@ -296,6 +299,8 @@ config AIC_USING_GPAI7
     default n
     select AIC_GPAI_DRV
 
+source "bsp/artinchip/drv/gpai/Kconfig.dev"
+endmenu
 #================================================
 # MutiMedia Class
 #================================================

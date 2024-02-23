@@ -27,6 +27,7 @@ extern struct aic_panel dbi_ili9341;
 extern struct aic_panel dbi_st77903;
 extern struct aic_panel dbi_ili9486l;
 extern struct aic_panel srgb_hx8238;
+extern struct aic_panel rgb_st7701s;
 
 void panel_di_enable(struct aic_panel *panel, u32 ms);
 void panel_di_disable(struct aic_panel *panel, u32 ms);
@@ -49,6 +50,18 @@ void panel_send_command(u8 *para_cmd, u32 size, struct aic_panel *panel);
 void panel_get_gpio(struct gpio_desc *desc, char *name);
 
 void panel_gpio_set_value(struct gpio_desc *desc, u32 value);
+
+#ifdef AIC_PANEL_SPI_EMULATION
+struct panel_spi_device {
+    struct gpio_desc cs;
+    struct gpio_desc sdi;
+    struct gpio_desc scl;
+};
+
+void panel_spi_data_wr(u8 data);
+void panel_spi_cmd_wr(u8 cmd);
+void panel_spi_device_emulation(char *cs, char *sdi, char *scl);
+#endif
 
 #endif /* _PANEL_COM_H_ */
 

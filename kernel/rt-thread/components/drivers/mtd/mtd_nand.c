@@ -273,7 +273,7 @@ int mtd_nand_read_cont(const char *name, int block, int page, int size)
     rt_err_t result;
     rt_uint8_t *data_ptr;
     struct rt_mtd_nand_device *nand;
-    rt_uint32_t start_us;
+    rt_uint64_t start_us;
 
     nand = RT_MTD_NAND_DEVICE(rt_device_find(name));
     if (nand == RT_NULL)
@@ -429,7 +429,7 @@ help:
         rt_kprintf("         write    <name> <bn> <pn>  Run write test on page <pn> of block <bn> of device <name>\n");
         rt_kprintf("         erase    <name> <bn>       Erase on block <bn> of device <name>\n");
         rt_kprintf("         eraseall <name>            Erase all block on device <name>\n");
-        return ;
+        return;
     }
     else if (!rt_strcmp(argv[1], "id"))
     {

@@ -139,8 +139,8 @@ struct qspi_slave_state {
 struct qspi_bm_transfer {
     u8 *tx_data;
     u8 *rx_data;
-    u32 rx_len;
-    u32 tx_len;
+    u32 rx_bits_len;
+    u32 tx_bits_len;
 };
 
 #ifdef AIC_QSPI_DRV_V11

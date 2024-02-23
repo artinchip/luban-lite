@@ -21,19 +21,21 @@
 
 #define VE_CLOCK   (200000000)
 
+#define VE_SRAM_MAP 0x164
+
 #define VE_IRQ_REG 0x0C
 #define AVC_EN_REG 0x10
 #define JPG_EN_REG 0x14
 #define PNG_EN_REG 0x18
-
-//#define CONFIG_ARTINCHIP_VE_VERSION 100
-
 
 #ifdef AIC_VE_DRV_V10
 #define JPG_STATUS_REG  (0x2004)
 #define PNG_STATUS_REG  (0xC04)
 #define AVC_STATUS_REG  (0x128)
 #elif defined(AIC_VE_DRV_V30)
+#define JPG_STATUS_REG  (0x204)
+#define PNG_STATUS_REG  (0x104)
+#elif defined(AIC_VE_DRV_V40)
 #define JPG_STATUS_REG  (0x204)
 #define PNG_STATUS_REG  (0x104)
 #endif
@@ -52,9 +54,7 @@
 struct aic_ve_client {
     u32 status;                     // finish status
     aicos_event_t wait_event;
-	aicos_mutex_t lock;
-    //aic_osal_event_t wait_event;    // finish event aicos_event_t
-    //aic_osal_mutex_t lock;          // lock for ve resource
+    aicos_mutex_t lock;
 };
 
 struct aic_ve_client client = {0};
@@ -147,9 +147,12 @@ int hal_ve_probe(void)
     client.wait_event = aicos_event_create();
     aicos_request_irq(VE_IRQn, hal_ve_handle, 0, NULL, (void*)&client);
     aicos_irq_enable(VE_IRQn);
-    //hal_log_info("++++ aich_ve_probe, client: %p", &client);
     pr_debug("++++ aich_ve_probe, client: %p", &client);
 
+#ifdef AIC_VE_DRV_V40
+    // switch system sram to VE
+    writel(1, SYSCFG_BASE + VE_SRAM_MAP);
+#endif
     return 0;
 }
 

@@ -3,8 +3,8 @@
         "size": "8G", // Size of SD/eMMC
         "partitions": { // Partition table apply to device
             "spl": { "offset": "0x4400", "size": "256k" },
-            "os":  { "size": "4m" },
-            "rodata":  { "size": "4m" },
+            "os":  { "size": "8m" },
+            "rodata":  { "size": "12m" },
             "data":  { "size": "35m" },
         },
     },
@@ -37,20 +37,20 @@
                 "part": ["spl"]
             },
             "os": {
-                "file": "os.aic",
+                "file": "d21x_os.itb",
                 "attr": ["block", "required"],
                 "part": ["os"]
             },
-            //"res": {
-            //    "file": "app.fatfs",
-            //    "attr": ["block", "optional"],
-            //    "part": ["rodata"]
-            //},
-            //"app": {
-            //    "file": "user.ext4",
-            //    "attr": ["block", "optional"],
-            //    "part": ["data"]
-            //},
+            "res": {
+                "file": "rodata.fatfs",
+                "attr": ["block", "optional"],
+                "part": ["rodata"]
+            },
+            "app": {
+                "file": "data.fatfs",
+                "attr": ["block", "optional"],
+                "part": ["data"]
+            },
         },
     },
     "temporary": { // Pre-proccess to generate image components from raw data
@@ -74,14 +74,10 @@
                     "pbp": "d21x.pbp",
                 },
             },
-            "os.aic": {
-                "head_ver": "0x00010001",
-                "loader": {
-                    "file": "d21x.bin",
-                    "load address": "0x40000000",
-                    "entry point":  "0x40000100",
-                    "run in dram": "false",
-                }
+        },
+        "itb": {
+            "d21x_os.itb": {
+                "its": "d21x_os.its"
             },
         },
     },

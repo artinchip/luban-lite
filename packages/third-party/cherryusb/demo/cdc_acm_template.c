@@ -6,7 +6,7 @@
 #define CDC_OUT_EP 0x02
 #define CDC_INT_EP 0x83
 
-#define USBD_VID           0xFFFF
+#define USBD_VID           0x33C3
 #define USBD_PID           0xFFFF
 #define USBD_MAX_POWER     100
 #define USBD_LANGID_STRING 1033
@@ -171,8 +171,8 @@ struct usbd_endpoint cdc_in_ep = {
     .ep_cb = usbd_cdc_acm_bulk_in
 };
 
-struct usbd_interface intf0;
-struct usbd_interface intf1;
+static struct usbd_interface intf0;
+static struct usbd_interface intf1;
 
 void cdc_acm_init(void)
 {

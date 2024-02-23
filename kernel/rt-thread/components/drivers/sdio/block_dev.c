@@ -10,6 +10,7 @@
 
 #include <rtthread.h>
 #include <dfs_fs.h>
+#include <disk_part.h>
 
 #include <drivers/mmcsd_core.h>
 
@@ -340,7 +341,7 @@ static rt_int32_t mmcsd_set_blksize(struct rt_mmcsd_card *card)
 }
 
 #ifdef RT_USING_DEVICE_OPS
-const static struct rt_device_ops mmcsd_blk_ops =
+static const struct rt_device_ops mmcsd_blk_ops =
 {
     rt_mmcsd_init,
     rt_mmcsd_open,
@@ -421,6 +422,28 @@ static struct mmcsd_blk_device * rt_mmcsd_create_blkdev(struct rt_mmcsd_card *ca
     return blk_dev;
 }
 
+static unsigned long mmcsd_write(struct blk_desc *blk_dev, u64 start,
+                                 u64 blkcnt, void *buffer)
+{
+    int err;
+
+    err = rt_mmcsd_req_blk(blk_dev->priv, start, buffer, blkcnt, 1);
+    if (err == RT_EOK)
+        return blkcnt;
+    return 0;
+}
+
+static unsigned long mmcsd_read(struct blk_desc *blk_dev, u64 start, u64 blkcnt,
+                                const void *buffer)
+{
+    int err;
+
+    err = rt_mmcsd_req_blk(blk_dev->priv, start, (void *)buffer, blkcnt, 0);
+    if (err == RT_EOK)
+        return blkcnt;
+    return 0;
+}
+
 rt_int32_t rt_mmcsd_blk_probe(struct rt_mmcsd_card *card)
 {
     rt_int32_t err = 0;
@@ -456,29 +479,40 @@ rt_int32_t rt_mmcsd_blk_probe(struct rt_mmcsd_card *card)
         /* Initial blk_device link-list. */
         rt_list_init(&card->blk_devices);
 
-        for (i = 0; i < RT_MMCSD_MAX_PARTITION; i++)
-        {
-            /* Get the first partition */
-            status = dfs_filesystem_get_partition(&part, sector, i);
-            if (status == RT_EOK)
-            {
+        struct aic_partition *parts, *p;
+        struct blk_desc dev_desc;
+        struct disk_blk_ops ops;
+
+        ops.blk_write = mmcsd_write;
+        ops.blk_read = mmcsd_read;
+        aic_disk_part_set_ops(&ops);
+        dev_desc.blksz = card->card_blksize;
+        dev_desc.lba_count = card->card_capacity * (1024 / card->card_blksize);
+        dev_desc.priv = card;
+        parts = aic_disk_get_parts(&dev_desc);
+        p = parts;
+        i = 0;
+        while (p) {
                 /* Given name is with allocated host id and its partition index. */
                 if (card->card_type == CARD_TYPE_MMC)
                     rt_snprintf(dname, sizeof(dname), "mmc%dp%d", host_id, i);
                 else
                     rt_snprintf(dname, sizeof(dname), "sd%dp%d", host_id, i);
+                part.type = 0;
+                part.offset = p->start / card->card_blksize;
+                part.size = p->size / card->card_blksize;
                 blk_dev = rt_mmcsd_create_blkdev(card, (const char*)dname, &part);
                 if ( blk_dev == RT_NULL )
                 {
                     err = -RT_ENOMEM;
+                    aic_part_free(parts);
                     goto exit_rt_mmcsd_blk_probe;
                 }
-            }
-            else
-            {
-                break;
-            }
+                p = p->next;
+                i++;
         }
+        if (parts)
+                aic_part_free(parts);
 
         /* Always create the super node, given name is with allocated host id. */
         if (card->card_type == CARD_TYPE_MMC)

@@ -16,6 +16,7 @@ from Cryptodome.Signature import PKCS1_v1_5
 
 DATA_ALIGNED_SIZE = 2048
 META_ALIGNED_SIZE = 512
+BURNER = False # Whether or not to generate the image used by the burner
 VERBOSE = False
 
 def parse_image_cfg(cfgfile):
@@ -41,10 +42,10 @@ def parse_image_cfg(cfgfile):
     return cfg
 
 def get_file_path(path, alternate_dir):
-    if os.path.exists(path):
-        return path
     if os.path.exists(alternate_dir + path):
         return alternate_dir + path
+    if os.path.exists(path):
+        return path
     return None
 
 def aic_boot_get_resource_file_size(cfg, keydir, datadir):
@@ -62,7 +63,7 @@ def aic_boot_get_resource_file_size(cfg, keydir, datadir):
                 sys.exit(1)
             statinfo = os.stat(filepath)
             files["resource/private"] = statinfo.st_size
-            files["round(resource/private)"] = round_up(statinfo.st_size, 4)
+            files["round(resource/private)"] = round_up(statinfo.st_size, 32)
 
         if "pubkey" in cfg["resource"]:
             filepath = get_file_path(cfg["resource"]["pubkey"], keydir)
@@ -73,7 +74,7 @@ def aic_boot_get_resource_file_size(cfg, keydir, datadir):
                 sys.exit(1)
             statinfo = os.stat(filepath)
             files["resource/pubkey"] = statinfo.st_size
-            files["round(resource/pubkey)"] = round_up(statinfo.st_size, 4)
+            files["round(resource/pubkey)"] = round_up(statinfo.st_size, 32)
         if "pbp" in cfg["resource"]:
             filepath = get_file_path(cfg["resource"]["pbp"], datadir)
             if filepath == None:
@@ -81,7 +82,7 @@ def aic_boot_get_resource_file_size(cfg, keydir, datadir):
                 sys.exit(1)
             statinfo = os.stat(filepath)
             files["resource/pbp"] = statinfo.st_size
-            files["round(resource/pbp)"] = round_up(statinfo.st_size, 16)
+            files["round(resource/pbp)"] = round_up(statinfo.st_size, 32)
     if "encryption" in cfg:
         if "iv" in cfg["encryption"]:
             filepath = get_file_path(cfg["encryption"]["iv"], keydir)
@@ -92,7 +93,7 @@ def aic_boot_get_resource_file_size(cfg, keydir, datadir):
                 sys.exit(1)
             statinfo = os.stat(filepath)
             files["encryption/iv"] = statinfo.st_size
-            files["round(encryption/iv)"] = round_up(statinfo.st_size, 4)
+            files["round(encryption/iv)"] = round_up(statinfo.st_size, 32)
     if "loader" in cfg:
         if "file" in cfg["loader"]:
             filepath = get_file_path(cfg["loader"]["file"], datadir)
@@ -244,6 +245,16 @@ def aic_boot_get_resource_bytes(cfg, filesizes):
     """ Pack all resource data into boot image's resource section
     """
     resbytes = bytearray(0)
+    if "resource/pbp" in filesizes:
+        pbp_size = filesizes["round(resource/pbp)"]
+        try:
+            fpath = get_file_path(cfg["resource"]["pbp"], cfg["datadir"])
+            with open(fpath, "rb") as f:
+                pbp_data = f.read(pbp_size)
+        except IOError:
+            print('Failed to open pbp file')
+            sys.exit(1)
+        resbytes = resbytes + pbp_data + bytearray(pbp_size - len(pbp_data))
     if "resource/private" in filesizes:
         priv_size = filesizes["round(resource/private)"]
         try:
@@ -279,16 +290,6 @@ def aic_boot_get_resource_bytes(cfg, filesizes):
             print('Failed to open iv file')
             sys.exit(1)
         resbytes = resbytes + ivdata + bytearray(iv_size - len(ivdata))
-    if "resource/pbp" in filesizes:
-        pbp_size = filesizes["round(resource/pbp)"]
-        try:
-            fpath = get_file_path(cfg["resource"]["pbp"], cfg["datadir"])
-            with open(fpath, "rb") as f:
-                pbp_data = f.read(pbp_size)
-        except IOError:
-            print('Failed to open pbp file')
-            sys.exit(1)
-        resbytes = resbytes + pbp_data + bytearray(pbp_size - len(pbp_data))
     if len(resbytes) > 0:
         res_size = round_up(len(resbytes), 256)
         if len(resbytes) != res_size:
@@ -338,6 +339,15 @@ def aic_boot_checksum(bootimg):
         offset = offset + 4
     return (~total) & 0xFFFFFFFF
 
+def aic_calc_checksum(start, size):
+    offset = 0
+    total = 0
+    while offset < size:
+        val = int.from_bytes(start[offset: offset + 4], byteorder='little', signed=False)
+        total = total + val
+        offset = offset + 4
+    return (~total) & 0xFFFFFFFF
+
 def aic_boot_add_header(h, n):
     return h + n.to_bytes(4, byteorder='little', signed=False)
 
@@ -378,6 +388,12 @@ def aic_boot_gen_header_bytes(cfg, filesizes):
     sign_key_offset = 0
     sign_key_length = 0
     next_res_offset = filesizes["resource_start"]
+    pbp_data_offset = 0
+    pbp_data_length = 0
+    if "resource" in cfg and "pbp" in cfg["resource"]:
+        pbp_data_offset = next_res_offset
+        pbp_data_length = filesizes["resource/pbp"]
+        next_res_offset = pbp_data_offset + filesizes["round(resource/pbp)"]
     priv_data_offset = 0
     priv_data_length = 0
     if "resource" in cfg and "private" in cfg["resource"]:
@@ -408,12 +424,6 @@ def aic_boot_gen_header_bytes(cfg, filesizes):
         iv_data_offset = next_res_offset
         iv_data_length = 16
         next_res_offset = iv_data_offset + filesizes["round(encryption/iv)"]
-    pbp_data_offset = 0
-    pbp_data_length = 0
-    if "resource" in cfg and "pbp" in cfg["resource"]:
-        pbp_data_offset = next_res_offset
-        pbp_data_length = filesizes["resource/pbp"]
-        next_res_offset = pbp_data_offset + filesizes["round(resource/pbp)"]
     # Generate header bytes
     header_bytes = magic.encode(encoding="utf-8")
     header_bytes = aic_boot_add_header(header_bytes, checksum)
@@ -461,8 +471,14 @@ def aic_boot_gen_header_for_ext(cfg, filesizes):
     load_address = 0
     entry_point = 0
     if "loader" in cfg:
-        load_address = int(cfg["loader"]["load address"], 16)
-        entry_point = int(cfg["loader"]["entry point"], 16)
+        if "load address ext" in cfg["loader"]:
+            load_address = int(cfg["loader"]["load address ext"], 16)
+        else:
+            load_address = int(cfg["loader"]["load address"], 16)
+        if "entry point ext" in cfg["loader"]:
+            entry_point = int(cfg["loader"]["entry point ext"], 16)
+        else:
+            entry_point = int(cfg["loader"]["entry point"], 16)
     sign_algo = 0
     sign_offset = 0
     sign_length = 0
@@ -657,9 +673,9 @@ def itb_create_image(itsname, itbname, keydir, dtbname, script_dir):
     # If the key exists, generate image signature information and write it to the itb file.
     # If the key exists, write the public key to the dtb file.
     if keydir != None and dtbname != None:
-        cmd = [mkcmd, "-E", "-f", itsname, "-k", keydir, "-K", dtbname, "-r", itbname]
+        cmd = [mkcmd, "-E", "-B 0x800", "-f", itsname, "-k", keydir, "-K", dtbname, "-r", itbname]
     else:
-        cmd = [mkcmd, "-E", "-f", itsname, itbname]
+        cmd = [mkcmd, "-E", "-B 0x800", "-f", itsname, itbname]
 
     ret = subprocess.run(cmd, stdout=subprocess.PIPE)
     if ret.returncode != 0:
@@ -703,6 +719,20 @@ def calc_crc32(fname, size):
                 break
     return hash & 0xffffffff
 
+def size_str_to_int(size_str):
+    if "k" in size_str or "K" in size_str:
+        numstr = re.sub(r"[^0-9]", "", size_str)
+        return (int(numstr) * 1024)
+    if "m" in size_str or "M" in size_str:
+        numstr = re.sub(r"[^0-9]", "", size_str)
+        return (int(numstr) * 1024 * 1024)
+    if "g" in size_str or "G" in size_str:
+        numstr = re.sub(r"[^0-9]", "", size_str)
+        return (int(numstr) * 1024 * 1024 * 1024)
+    if "0x" in size_str or "0X" in size_str:
+        return int(size_str, 16)
+    return 0
+
 def str_to_nbytes(s, n):
     """ String to n bytes
     """
@@ -712,10 +742,30 @@ def str_to_nbytes(s, n):
         ba.extend([0] * nzero)
     return bytes(ba)
 
+def str_from_nbytes(s):
+    """ String from n bytes
+    """
+    return str(s, encoding='utf-8')
+
 def int_to_uint32_bytes(n):
     """ Int value to uint32 bytes
     """
     return n.to_bytes(4, byteorder='little', signed=False)
+
+def int_to_uint8_bytes(n):
+    """ Int value to uint8 bytes
+    """
+    return n.to_bytes(1, byteorder='little', signed=False)
+
+def int_from_uint32_bytes(s):
+    """ Int value from uint32 bytes
+    """
+    return int.from_bytes(s, byteorder='little', signed=False)
+
+def gen_bytes(n, length):
+    """ gen len uint8 bytes
+    """
+    return bytearray([n] * length)
 
 """
 struct artinchip_fw_hdr{
@@ -798,9 +848,10 @@ struct artinchip_fwc_meta {
     u32  crc;
     u32  ram;
     char attr[64]
+    char filename[64]
 };
 """
-def img_gen_fwc_meta(name, part, offset, size, crc, ram, attr):
+def img_gen_fwc_meta(name, part, offset, size, crc, ram, attr, filename):
     """ Generate Firmware component's meta data
     Args:
         cfg: Dict from JSON
@@ -814,11 +865,123 @@ def img_gen_fwc_meta(name, part, offset, size, crc, ram, attr):
     buff = buff + int_to_uint32_bytes(crc)
     buff = buff + int_to_uint32_bytes(ram)
     buff = buff + str_to_nbytes(attr, 64)
+    buff = buff + str_to_nbytes(filename, 64)
 
     if VERBOSE:
         print("\t\tMeta for {:<25} offset {:<10} size {} ({})".format(name,
             hex(offset), hex(size), size))
     return buff
+
+PAGE_TABLE_MAX_ENTRY = 101
+def img_gen_page_table(binfile, cfg, datadir):
+    """ Generate page table data
+    Args:
+        cfg: Dict from JSON
+        datadir: working directory for image data
+    """
+    page_size = 0
+    page_cnt = 64
+
+    if "array_organization" in cfg["image"]["info"]["media"]:
+        orglist = cfg["image"]["info"]["media"]["array_organization"]
+        for item in orglist:
+            page_size = int(re.sub(r"[^0-9]", "", item["page"]))
+            block_size = int(re.sub(r"[^0-9]", "", item["block"]))
+
+    spl_file = cfg["image"]["target"]["spl"]["file"]
+    filesize = round_up(cfg["image"]["target"]["spl"]["filesize"], DATA_ALIGNED_SIZE);
+    page_per_blk = block_size // page_size
+    page_cnt = filesize // (page_size * 1024)
+    path = get_file_path(spl_file, datadir)
+    if path == None:
+        sys.exit(1)
+
+    step = page_size * 1024
+
+    entry_page = page_cnt + 1
+    buff = str_to_nbytes("AICP", 4)
+    buff = buff + int_to_uint32_bytes(entry_page) # The first SPL hold start 65 page
+    buff = buff + int_to_uint8_bytes(page_size)
+    buff = buff + gen_bytes(0xFF, 11)
+
+    with open(path, "rb") as fwcfile:
+        pageaddr1 = 0
+        pageaddr2 = PAGE_TABLE_MAX_ENTRY
+
+        offset2 = (pageaddr2) * (page_size * 1024)
+
+        fwcfile.seek(offset2, 0)
+        bindata = fwcfile.read(step)
+        checksum2 = aic_calc_checksum(bindata, page_size * 1024)
+
+        if (pageaddr1 < PAGE_TABLE_MAX_ENTRY):
+            buff = buff + int_to_uint32_bytes(pageaddr1)
+        else:
+            buff = buff + int_to_uint32_bytes(0xFFFFFFFF)
+
+        if (pageaddr2 < (2 * PAGE_TABLE_MAX_ENTRY) and pageaddr2 <= (page_cnt + 1)):
+            buff = buff + int_to_uint32_bytes(pageaddr2)
+            buff = buff + int_to_uint32_bytes(checksum2)
+            buff = buff + int_to_uint32_bytes(0xFFFFFFFF)
+        else:
+            buff = buff + int_to_uint32_bytes(0xFFFFFFFF)
+            buff = buff + int_to_uint32_bytes(0xFFFFFFFF)
+            buff = buff + int_to_uint32_bytes(0xFFFFFFFF)
+
+        if (pageaddr1 < PAGE_TABLE_MAX_ENTRY):
+            buff = buff + int_to_uint32_bytes(0)
+        else:
+            buff = buff + int_to_uint32_bytes(0xFFFFFFFF)
+
+        for i in range(1, page_cnt + 1):
+            pageaddr1 = i
+            pageaddr2 = PAGE_TABLE_MAX_ENTRY + i
+
+            offset1 = (pageaddr1 - 1) * (page_size * 1024)
+            offset2 = (pageaddr2 - 1) * (page_size * 1024)
+
+            fwcfile.seek(offset1, 0)
+            bindata = fwcfile.read(step)
+            checksum1 = aic_calc_checksum(bindata, page_size * 1024)
+
+            fwcfile.seek(offset2, 0)
+            bindata = fwcfile.read(step)
+            checksum2 = aic_calc_checksum(bindata, page_size * 1024)
+
+            if (page_cnt + 1 > PAGE_TABLE_MAX_ENTRY):
+                print("SPL too large")
+                sys.exit(1)
+
+            if (pageaddr1 < PAGE_TABLE_MAX_ENTRY):
+                buff = buff + int_to_uint32_bytes(pageaddr1)
+            else:
+                buff = buff + int_to_uint32_bytes(0xFFFFFFFF)
+
+            if (pageaddr2 < (2 * PAGE_TABLE_MAX_ENTRY) and pageaddr2 <= (page_cnt + 1)):
+                buff = buff + int_to_uint32_bytes(pageaddr2)
+                buff = buff + int_to_uint32_bytes(checksum2)
+                buff = buff + int_to_uint32_bytes(0xFFFFFFFF)
+            else:
+                buff = buff + int_to_uint32_bytes(0xFFFFFFFF)
+                buff = buff + int_to_uint32_bytes(0xFFFFFFFF)
+                buff = buff + int_to_uint32_bytes(0xFFFFFFFF)
+
+            if (pageaddr1 < PAGE_TABLE_MAX_ENTRY):
+                buff = buff + int_to_uint32_bytes(checksum1)
+            else:
+                buff = buff + int_to_uint32_bytes(0xFFFFFFFF)
+    buff = buff + gen_bytes(0xFF, page_size * 1024 - len(buff))
+    checksum = aic_calc_checksum(buff, page_size * 1024)
+    buff = buff[0:36] + int_to_uint32_bytes(checksum) + buff[40:]
+
+    binfile.seek(0, 0)
+    binfile.write(buff)
+    binfile.flush()
+
+    if VERBOSE:
+        print("\tPage table is generated.")
+
+    return 0
 
 def check_partition_exist(table, partval):
     if isinstance(partval, list):
@@ -830,8 +993,17 @@ def check_partition_exist(table, partval):
                 if part not in table:
                     print("{} not in table {}".format(part, table))
                     return False
-                if vol not in table[part]["ubi"]:
-                    print("{} not in ubi {}".format(vol, table[part]["ubi"]))
+
+                if "ubi" in table[part]:
+                    if vol not in table[part]["ubi"]:
+                        print("{} not in ubi {}".format(vol, table[part]["ubi"]))
+                        return False
+                elif "nftl" in table[part]:
+                    if vol not in table[part]["nftl"]:
+                        print("{} not in nftl {}".format(vol, table[part]["nftl"]))
+                        return False
+                else:
+                    print("{} not in {}".format(vol, table[part]))
                     return False
             else:
                 if item not in table:
@@ -881,7 +1053,8 @@ def img_write_fwc_meta_section(imgfile, cfg, sect, meta_off, file_off, datadir):
                 part = str(partval)
         else:
             part = ""
-        meta = img_gen_fwc_meta(name, part, file_off, file_size, crc, ram, attr)
+        file_name = fwcset[fwc]["file"]
+        meta = img_gen_fwc_meta(name, part, file_off, file_size, crc, ram, attr, file_name)
         imgfile.write(meta)
         fwcset[fwc]["meta_off"] = meta_off
         fwcset[fwc]["file_off"] = file_off
@@ -920,7 +1093,8 @@ def img_write_fwc_meta_to_imgfile(imgfile, cfg, meta_start, file_start, datadir)
     name = "image.info"
     ram = 0xFFFFFFFF
     attr = "required"
-    meta = img_gen_fwc_meta(name, part, info_offset, info_size, crc, ram, attr)
+    file_name = "info.bin"
+    meta = img_gen_fwc_meta(name, part, info_offset, info_size, crc, ram, attr, file_name)
     imgfile.write(meta)
     # Only meta offset increase
     meta_offset += META_ALIGNED_SIZE
@@ -968,6 +1142,133 @@ def img_write_fwc_file_to_imgfile(imgfile, cfg, file_start, datadir):
     imgfile.flush()
     return 0
 
+BIN_FILE_MAX_SIZE = 300 * 1024 * 1024
+def img_write_fwc_file_to_binfile(binfile, cfg, datadir):
+    """ Write FW component's file data
+    Args:
+        imgfile: Image bin file handle
+        cfg: Dict from JSON
+        file_start: file data area start offset
+        datadir: working directory
+    """
+    page_size = 0
+    block_size = 0
+    media_size = 0
+
+    if "array_organization" in cfg["image"]["info"]["media"]:
+        orglist = cfg["image"]["info"]["media"]["array_organization"]
+        for item in orglist:
+            page_size = int(re.sub(r"[^0-9]", "", item["page"]))
+            block_size = int(re.sub(r"[^0-9]", "", item["block"]))
+
+    media_type = str(cfg["image"]["info"]["media"]["type"])
+    media_size = size_str_to_int(cfg[media_type]["size"])
+
+    if (media_size > BIN_FILE_MAX_SIZE):
+        media_size = BIN_FILE_MAX_SIZE;
+
+    step = 1024 * 1024
+    buff = gen_bytes(0xFF, step)
+    while True:
+        binfile.write(buff)
+        if int(binfile.tell()) >= int(media_size):
+            break;
+
+    page_table_size = page_size * 1024;
+
+    buff = bytes()
+    start_block = 0;
+    last_block = 0;
+    used_block = 0;
+
+    if VERBOSE:
+        print("\tPacking file data:")
+    for section in ["target"]:
+        fwcset = cfg["image"][section]
+        for fwc in fwcset:
+            path = get_file_path(fwcset[fwc]["file"], datadir)
+            if path == None:
+                continue
+            if path.find(".ubifs") != -1:
+                path = path.replace(".ubifs", ".ubi")
+                if os.path.exists(path) == False:
+                    print("File {} is not exist".format(path))
+                    continue
+            if VERBOSE:
+                print("\t\t" + os.path.split(path)[1])
+            # Read fwc file content, and write to image file
+            part_offset = fwcset[fwc]["part_offset"];
+            part_size = fwcset[fwc]["part_size"];
+            part_name = fwcset[fwc]["part"][0];
+            filesize = round_up(os.stat(path).st_size, DATA_ALIGNED_SIZE)
+
+            # gen part table
+            if fwc == "spl" and cfg["image"]["info"]["media"]["type"] == "spi-nand":
+                filesize += page_table_size
+
+            if cfg["image"]["info"]["media"]["type"] == "spi-nand":
+                start_block = part_offset // block_size // 1024
+                if filesize % (block_size * 1024) != 0:
+                    used_block = filesize // block_size // 1024 + 1
+                else:
+                    used_block = filesize // block_size // 1024
+                last_block = start_block + used_block - 1
+            elif cfg["image"]["info"]["media"]["type"] == "spi-nor":
+                block_size = 64
+                start_block = part_offset // block_size // 1024
+                if filesize % (block_size * 1024) != 0:
+                    used_block = filesize // block_size // 1024 + 1
+                else:
+                    used_block = filesize // block_size // 1024
+                last_block = start_block + used_block - 1
+            elif cfg["image"]["info"]["media"]["type"] == "mmc":
+                block_size = 512
+                start_block = part_offset // block_size
+                if filesize % (block_size * 1024) != 0:
+                    used_block = filesize // block_size + 1
+                else:
+                    used_block = filesize // block_size
+                last_block = start_block + used_block - 1
+
+            buff = buff + int_to_uint32_bytes(start_block)
+            buff = buff + int_to_uint32_bytes(last_block)
+            buff = buff + int_to_uint32_bytes(used_block)
+            buff = buff + int_to_uint32_bytes(0xFFFFFFFF)
+
+            if fwc == "spl" and cfg["image"]["info"]["media"]["type"] == "spi-nand":
+                part_offset += page_table_size
+                filesize -= page_table_size
+            binfile.seek(part_offset, 0)
+            step = 1024 * 1024
+            with open(path, "rb") as fwcfile:
+                while True:
+                    bindata = fwcfile.read(step)
+                    if not bindata:
+                        break
+                    binfile.write(bindata)
+            binfile.seek(part_offset + filesize, 0)
+            if (part_size - filesize < 0):
+                print("file {} size({}) exceeds {} partition size({})".format(fwcset[fwc]["file"], filesize, part_name, part_size))
+                sys.exit(1)
+
+            remain = part_size - filesize;
+            while remain > 0:
+                if (remain < step):
+                    binfile.write(gen_bytes(0xFF, remain))
+                    remain -= remain
+                else:
+                    binfile.write(gen_bytes(0xFF, step))
+                    remain -= step
+    binfile.flush()
+
+    buff = buff + gen_bytes(0xFF, 16)
+    part_table_file = datadir + "burner/" + "{}".format(cfg["image"]["part_table"])
+    with open(part_table_file, "wb") as partfile:
+        partfile.write(buff)
+        partfile.flush()
+
+    return 0
+
 def img_get_fwc_file_size(cfg, datadir):
     """ Scan directory and get Firmware component's file size, update to cfg
     Args:
@@ -989,6 +1290,86 @@ def img_get_fwc_file_size(cfg, datadir):
                     continue
             statinfo = os.stat(path)
             fwcset[fwc]["filesize"] = statinfo.st_size
+    return 0
+
+def img_get_part_size(cfg, datadir):
+    part_name = ""
+    part_size = 0
+    part_offs = 0
+    total_siz = 0
+
+    fwcset = cfg["image"]["target"]
+    media_type = cfg["image"]["info"]["media"]["type"]
+    if media_type == "spi-nand" or media_type == "spi-nor":
+        total_siz = size_str_to_int(cfg[media_type]["size"])
+        partitions = cfg[media_type]["partitions"]
+        if len(partitions) == 0:
+            print("Partition table is empty")
+            sys.exit(1)
+
+        for part in partitions:
+            if "size" not in partitions[part]:
+                print("No size value for partition: {}".format(part))
+            # get part size
+            part_size = size_str_to_int(partitions[part]["size"])
+            if partitions[part]["size"] == "-":
+                part_size = total_siz - part_offs
+            if "offset" in partitions[part]:
+                part_offs = size_str_to_int(partitions[part]["offset"])
+            if "ubi" in partitions[part]:
+                volumes = partitions[part]["ubi"]
+                if len(volumes) == 0:
+                    print("Volume of {} is empty".format(part))
+                    sys.exit(1)
+                for vol in volumes:
+                    if "size" not in volumes[vol]:
+                        print("No size value for ubi volume: {}".format(vol))
+                    vol_size = size_str_to_int(volumes[vol]["size"])
+                    if volumes[vol]["size"] == "-":
+                        vol_size = part_size
+                    if "offset" in volumes[vol]:
+                        part_offs = size_str_to_int(volumes[vol]["offset"])
+                    part_name = part + ":" + vol
+                    for fwc in fwcset:
+                        if fwcset[fwc]["part"][0] == part_name:
+                            fwcset[fwc]["part_size"] = vol_size;
+                            fwcset[fwc]["part_offset"] = part_offs;
+                    # print("part_name:{}, part_offset:{}, vol_size:{}".format(part_name, part_offs, vol_size));
+                    part_offs += vol_size
+            else:
+                part_name = part
+                for fwc in fwcset:
+                    if fwcset[fwc]["part"][0] == part_name:
+                        fwcset[fwc]["part_size"] = part_size;
+                        fwcset[fwc]["part_offset"] = part_offs;
+                # print("part_name:{}, part_offset:{}, part_size:{}".format(part_name, part_offs, part_size));
+                part_offs += part_size
+    elif media_type == "mmc":
+        total_siz = size_str_to_int(cfg[media_type]["size"])
+        partitions = cfg[media_type]["partitions"]
+        if len(partitions) == 0:
+            print("Partition table is empty")
+            sys.exit(1)
+        for part in partitions:
+            if "size" not in partitions[part]:
+                print("No size value for partition: {}".format(part))
+            # get part size
+            part_size = size_str_to_int(partitions[part]["size"])
+            if partitions[part]["size"] == "-":
+                part_size = total_siz - part_offs
+            if "offset" in partitions[part]:
+                part_offs = size_str_to_int(partitions[part]["offset"])
+            part_name = part
+            for fwc in fwcset:
+                if fwcset[fwc]["part"][0] == part_name:
+                    fwcset[fwc]["part_size"] = part_size;
+                    fwcset[fwc]["part_offset"] = part_offs;
+            # print("part_name:{}, part_offset:{}, part_size:{}".format(part_name, part_offs, part_size));
+            part_offs += part_size
+    else:
+        print("Not supported media type: {}".format(media_type))
+        sys.exit(1)
+
     return 0
 
 def round_up(x, y):
@@ -1201,37 +1582,38 @@ def generate_bootcfg(bcfgfile, cfg):
                 "#   Packed image file is example.img, boot1 use it.\n",
                 "\n\n",
                 ]
-    bcfgfile.writelines(comments)
+    bytes_comments = [comment.encode() for comment in comments]
+    bcfgfile.writelines(bytes_comments)
 
     fwcset = cfg["image"]["updater"]
     fwckeys = cfg["image"]["updater"].keys()
     if "spl" in fwckeys:
         fwcname = "spl"
         linestr = "# {}\n".format(fwcset[fwcname]["file"])
-        bcfgfile.write(linestr)
+        bcfgfile.write(linestr.encode())
         linestr = "boot0={}@{}\n".format(hex(fwcset[fwcname]["filesize"]),
                                         hex(fwcset[fwcname]["file_off"]))
-        bcfgfile.write(linestr)
+        bcfgfile.write(linestr.encode())
 
     if "uboot" in fwckeys:
         fwcname = "uboot"
         linestr = "# {}\n".format(fwcset[fwcname]["file"])
-        bcfgfile.write(linestr)
+        bcfgfile.write(linestr.encode())
         linestr = "boot1={}@{}\n".format(hex(fwcset[fwcname]["filesize"]),
                                         hex(fwcset[fwcname]["file_off"]))
-        bcfgfile.write(linestr)
+        bcfgfile.write(linestr.encode())
 
     if "env" in fwckeys:
         fwcname = "env"
         linestr = "# {}\n".format(fwcset[fwcname]["file"])
-        bcfgfile.write(linestr)
+        bcfgfile.write(linestr.encode())
         linestr = "env={}@{}\n".format(hex(fwcset[fwcname]["filesize"]),
                                        hex(fwcset[fwcname]["file_off"]))
-        bcfgfile.write(linestr)
+        bcfgfile.write(linestr.encode())
 
     imgfn = img_gen_fw_file_name(cfg)
     linestr = "image={}\n".format(imgfn)
-    bcfgfile.write(linestr)
+    bcfgfile.write(linestr.encode())
     bcfgfile.flush()
 
 def get_spinand_image_list(cfg, datadir):
@@ -1267,9 +1649,11 @@ def get_spinand_image_list(cfg, datadir):
     cfg["image"]["info"]["product.backup"] = backup
     backup = cfg["image"]["bootcfg"]
     cfg["image"]["bootcfg.backup"] = backup
-    return imglist
+    backup = cfg["image"]["part_table"]
+    cfg["image"]["part_table.backup"] = backup
+    return imglist, orglist
 
-def fixup_spinand_ubi_fwc_name(cfg, paramstr):
+def fixup_spinand_ubi_fwc_name(cfg, paramstr, orgitem):
     for fwcname in cfg["image"]["target"]:
         if "ubi" not in cfg["image"]["target"][fwcname]["attr"]:
             # Not UBI partition
@@ -1285,13 +1669,21 @@ def fixup_spinand_ubi_fwc_name(cfg, paramstr):
     cfg["image"]["info"]["product"] = backup + paramstr
     backup = cfg["image"]["bootcfg.backup"]
     cfg["image"]["bootcfg"] = "{}({})".format(backup, paramstr[1:])
+    backup = cfg["image"]["part_table.backup"]
+    cfg["image"]["part_table"] = "{}({})".format(backup, paramstr[1:])
+    cfg["image"]["info"]["media"]["array_organization"] = [orgitem]
 
-def build_firmware_image(cfg, datadir):
+def build_firmware_image(cfg, datadir, outdir):
     """ Build firmware image
     Args:
         cfg: Dict from JSON
         datadir: working directory for image data
     """
+    # Step0: Get all part size
+    ret = img_get_part_size(cfg, datadir)
+    if ret != 0:
+        return ret
+
     # Step1: Get all FWC file's size
     ret = img_get_fwc_file_size(cfg, datadir)
     if ret != 0:
@@ -1349,21 +1741,60 @@ def build_firmware_image(cfg, datadir):
     if VERBOSE:
         print("\tImage file is generated: {}/{}\n\n".format(img_path, img_name))
 
+    if BURNER:
+        os.makedirs(outdir + "burner/", exist_ok=True)
+        img_bin_fn = outdir + "burner/" + img_gen_fw_file_name(cfg).replace(".img", ".bin")
+        with open(img_bin_fn, 'wb') as binfile:
+            # Only spi-nand need gen page table
+            if cfg["image"]["info"]["media"]["type"] == "spi-nand":
+                ret = img_gen_page_table(binfile, cfg, datadir)
+                if ret != 0:
+                    return ret
+
+            ret = img_write_fwc_file_to_binfile(binfile, cfg, datadir)
+            if ret != 0:
+                return ret
+
+        abspath = "{}".format(img_bin_fn)
+        (img_path, img_name) = os.path.split(abspath)
+        if VERBOSE:
+            print("\tImage bin file is generated: {}/{}\n\n".format(img_path, img_name))
+
     bootcfg_fn = datadir + cfg["image"]["bootcfg"]
-    with open(bootcfg_fn, 'w') as bcfgfile:
+    with open(bootcfg_fn, 'wb') as bcfgfile:
         generate_bootcfg(bcfgfile, cfg)
         bcfgfile.flush()
+    # Always set page_2k_block_128k nand image as default
+    if "page_2k_block_128k" in bootcfg_fn:
+        default_bootcfg_fn = bootcfg_fn.replace('(page_2k_block_128k)', '')
+        with open(default_bootcfg_fn, 'wb') as bcfgfile:
+            generate_bootcfg(bcfgfile, cfg)
+            bcfgfile.flush()
+
     return 0
 
 if __name__ == "__main__":
     default_bin_root = os.path.dirname(sys.argv[0])
+    if sys.platform.startswith("win"):
+        default_bin_root = os.path.dirname(sys.argv[0]) + "/"
     parser = argparse.ArgumentParser()
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("-d", "--datadir", type=str,
+                        help="input image data directory")
+    group.add_argument("-i", "--imgfile", type=str,
+                        help="input unsigned image file")
+    parser.add_argument("-o", "--outdir", type=str,
+                        help="output image file dir")
     parser.add_argument("-c", "--config", type=str,
                         help="image configuration file name")
-    parser.add_argument("-d", "--datadir", type=str,
-                        help="input image data directory")
     parser.add_argument("-k", "--keydir", type=str,
                         help="key material directory")
+    parser.add_argument("-e", "--extract", action='store_true',
+                        help="extract extension file")
+    parser.add_argument("-s", "--sign", action='store_true',
+                        help="sign image file")
+    parser.add_argument("-b", "--burner", action='store_true',
+                        help="generate burner format image")
     parser.add_argument("-v", "--verbose", action='store_true',
                         help="show detail information")
     args = parser.parse_args()
@@ -1373,37 +1804,45 @@ if __name__ == "__main__":
     # If user not specified data directory, use current directory as default
     if args.datadir == None:
         args.datadir = './'
-    if args.datadir.endswith('/') == False:
+    if args.outdir == None:
+        args.outdir = args.datadir
+    if args.datadir.endswith('/') == False and args.datadir.endswith('\\') == False:
         args.datadir = args.datadir + '/'
+    if args.outdir.endswith('/') == False and args.outdir.endswith('\\') == False:
+        args.outdir = args.outdir + '/'
+    if args.config == None:
+        args.config = args.datadir + "image_cfg.json"
     if args.keydir == None:
         args.keydir = args.datadir
-    if args.keydir.endswith('/') == False:
+    if args.keydir.endswith('/') == False and args.keydir.endswith('\\') == False:
         args.keydir = args.keydir + '/'
+    if args.burner:
+        BURNER = True
     if args.verbose:
         VERBOSE = True
 
     cfg = parse_image_cfg(args.config)
     # Pre-process here, e.g: signature, encryption, ...
     if "temporary" in cfg:
-        firmware_component_preproc(cfg, args.datadir, args.keydir,
-                default_bin_root)
+        firmware_component_preproc(cfg, args.datadir, args.keydir, default_bin_root)
 
     cfg["image"]["bootcfg"] = "bootcfg.txt"
+    cfg["image"]["part_table"] = "image_part_table.bin"
     # Finally build the firmware image
     imglist = []
     if cfg["image"]["info"]["media"]["type"] == "spi-nand":
-        imglist = get_spinand_image_list(cfg, args.datadir)
+        imglist, orglist = get_spinand_image_list(cfg, args.datadir)
     if len(imglist) > 0:
         # SPI-NAND UBI case
-        for item in imglist:
+        for imgitem, orgitem in zip(imglist, orglist):
             # fixup file path
-            fixup_spinand_ubi_fwc_name(cfg, item)
-            ret = build_firmware_image(cfg, args.datadir)
+            fixup_spinand_ubi_fwc_name(cfg, imgitem, orgitem)
+            ret = build_firmware_image(cfg, args.datadir, args.outdir)
             if ret != 0:
                 sys.exit(1)
     else:
         # Just create image, no need to fixup anything
-        ret = build_firmware_image(cfg, args.datadir)
+        ret = build_firmware_image(cfg, args.datadir, args.outdir)
         if ret != 0:
             sys.exit(1)
 

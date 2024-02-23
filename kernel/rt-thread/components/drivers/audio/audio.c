@@ -313,7 +313,6 @@ static rt_err_t _audio_dev_open(struct rt_device *dev, rt_uint16_t oflag)
             audio->replay->write_index = 0;
             audio->replay->read_index = 0;
             audio->replay->pos = 0;
-            audio->replay->start_threshold = 0;
             audio->replay->event = REPLAY_EVT_NONE;
         }
         dev->open_flag |= RT_DEVICE_OFLAG_WRONLY;
@@ -411,13 +410,12 @@ static rt_size_t _audio_dev_write(struct rt_device *dev, rt_off_t pos, const voi
                                audio->replay->write_data,
                                block_size,
                                RT_WAITING_FOREVER);
-            audio->replay->start_threshold++;
         }
     }
     rt_mutex_release(&audio->replay->lock);
 
     /* check replay state */
-    if (audio->replay->activated != RT_TRUE && audio->replay->start_threshold > 1)
+    if (audio->replay->activated != RT_TRUE)
     {
         _aduio_replay_start(audio);
         audio->replay->activated = RT_TRUE;

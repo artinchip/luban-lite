@@ -175,7 +175,11 @@ int finsh_getchar(void)
 
     while (rt_device_read(device, -1, &ch, 1) != 1)
     {
+#ifdef FINSH_POLL_MODE
+        rt_thread_mdelay(100);
+#else
         rt_sem_take(&shell->rx_sem, RT_WAITING_FOREVER);
+#endif
         if (shell->device != device)
         {
             device = shell->device;
@@ -226,8 +230,13 @@ void finsh_set_device(const char *device_name)
     /* check whether it's a same device */
     if (dev == shell->device) return;
     /* open this device and set the new device in finsh shell */
+#ifdef FINSH_POLL_MODE
+    if (rt_device_open(dev, RT_DEVICE_OFLAG_RDWR | \
+                       RT_DEVICE_FLAG_STREAM) == RT_EOK)
+#else
     if (rt_device_open(dev, RT_DEVICE_OFLAG_RDWR | RT_DEVICE_FLAG_INT_RX | \
                        RT_DEVICE_FLAG_STREAM) == RT_EOK)
+#endif
     {
         if (shell->device != RT_NULL)
         {

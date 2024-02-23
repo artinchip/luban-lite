@@ -12,7 +12,7 @@
 #include "netif_startup.h"
 #include <aic_core.h>
 
-#ifdef AIC_USING_RTL8733_WLAN0
+#ifdef AIC_USING_REALTEK_WLAN0
 #include "ethernetif_wlan.h"
 #endif
 
@@ -100,22 +100,29 @@ void netif_startup(void)
 #endif /* LWIP_IPV4 */
 #endif /* WLAN */
 
-#ifdef AIC_USING_RTL8733_WLAN0
+#ifdef AIC_USING_REALTEK_WLAN0
 #if LWIP_IPV4
 #if !LWIP_DHCP
-    ip4addr_aton(AIC_DEV_RTL8733_WLAN0_GW, &gw);
-    ip4addr_aton(AIC_DEV_RTL8733_WLAN0_IPADDR, &ipaddr);
-    ip4addr_aton(AIC_DEV_RTL8733_WLAN0_NETMASK, &netmask);
+    ip4addr_aton(AIC_DEV_REALTEK_WLAN0_GW, &gw);
+    ip4addr_aton(AIC_DEV_REALTEK_WLAN0_IPADDR, &ipaddr);
+    ip4addr_aton(AIC_DEV_REALTEK_WLAN0_NETMASK, &netmask);
 #endif /* !LWIP_DHCP */
     /* wlan init */
     init_wlan_netif(&ipaddr, &netmask, &gw);
 #else
     init_wlan_netif();
 #endif /* LWIP_IPV4 */
-#endif /* AIC_USING_RTL8733_WLAN0 */
+#endif /* AIC_USING_REALTEK_WLAN0 */
+
+    if (netif_list == NULL) {
+        printf("LwIP startup error!, Make sure you have enabled gmac or wlan\n");
+        return;
+    }
 
     /* the first netif as the default netif */
-    for (netif = netif_list; netif != NULL; netif = netif->next);
+    for (netif = netif_list; netif->next != NULL; netif = netif->next) {
+
+    }
 
     ifconfig();
 
@@ -125,6 +132,7 @@ void netif_startup(void)
     netif_set_default(netif);
 }
 
+#if NO_SYS
 extern void aic_phy_poll(void);
 void netif_baremetal_poll(void)
 {
@@ -138,3 +146,4 @@ void netif_baremetal_poll(void)
         }
     }
 }
+#endif

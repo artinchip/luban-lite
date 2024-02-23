@@ -2,9 +2,9 @@ import os
 import sys
 
 aic_system = sys.argv[1]
-aic_root = sys.argv[2]
-aic_pack_dir = sys.argv[3]
-prj_out_dir = sys.argv[4]
+aic_root = os.path.normpath(sys.argv[2])
+aic_pack_dir = os.path.normpath(sys.argv[3])
+prj_out_dir = os.path.normpath(sys.argv[4])
 
 os.chdir(prj_out_dir)
 

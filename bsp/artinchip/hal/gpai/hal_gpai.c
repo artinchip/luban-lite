@@ -9,19 +9,26 @@
 #include "aic_core.h"
 #include "hal_gpai.h"
 #include "aic_hal_clk.h"
+#include "hal_dma.h"
 
 /* Register definition of GPAI Controller */
+#if defined(AIC_GPAI_DRV_V10) || defined(AIC_GPAI_DRV_V11)
 #define GPAI_MCR            0x000
-
-#ifdef AIC_GPAI_DRV_V10
 #define GPAI_INTR           0x004
 #endif
-#ifdef AIC_GPAI_DRV_V11
-#define GPAI_INTE           0x004
-#define GPAI_INTS           0x008
+#ifdef AIC_GPAI_DRV_V20
+#define GPAI_MCHS           0x000
+#define GPAI_MCHC           0x004
 #endif
 
-#define GPAI_DRQ            0x00C
+#ifdef AIC_GPAI_DRV_V20
+#define GPAI_INTS           0x008
+#define GPAI_INTC           0x00C
+#define GPAI_INTSAT         0x010
+#define GPAI_DRQS           0x014
+#define GPAI_DRQC           0x018
+#endif
+
 #define GPAI_CHnCR(n)       (0x100 + (((n) & 0x7) << 6) + 0x00)
 #define GPAI_CHnINT(n)      (0x100 + (((n) & 0x7) << 6) + 0x04)
 #define GPAI_CHnPSI(n)      (0x100 + (((n) & 0x7) << 6) + 0x08)
@@ -32,21 +39,38 @@
 #define GPAI_CHnDATA(n)     (0x100 + (((n) & 0x7) << 6) + 0x24)
 #define GPAI_VERSION        0xFFC
 
-#define GPAI_MCR_CH0_EN             BIT(8)
-#define GPAI_MCR_CH_EN(n)           (GPAI_MCR_CH0_EN << (n))
-#define GPAI_MCR_EN                 BIT(0)
+#if defined(AIC_GPAI_DRV_V10) || defined(AIC_GPAI_DRV_V11)
+#define GPAI_MCR_CH0_EN                 BIT(8)
+#define GPAI_MCR_CH_EN(n)               (GPAI_MCR_CH0_EN << (n))
+#define GPAI_MCR_EN                     BIT(0)
 
-#ifdef AIC_GPAI_DRV_V10
-#define GPAI_INTR_CH0_INT_FLAG      BIT(16)
-#define GPAI_INTR_CH_INT_FLAG(n)    (GPAI_INTR_CH0_INT_FLAG << (n))
-#define GPAI_INTR_CH0_INT_EN        BIT(0)
-#define GPAI_INTR_CH_INT_EN(n)      (GPAI_INTR_CH0_INT_EN << (n))
+#define GPAI_INTR_CH0_INT_FLAG          BIT(16)
+#define GPAI_INTR_CH_INT_FLAG(n)        (GPAI_INTR_CH0_INT_FLAG << (n))
+#define GPAI_INTR_CH0_INT_EN            BIT(0)
+#define GPAI_INTR_CH_INT_EN(n)          (GPAI_INTR_CH0_INT_EN << (n))
 #endif
-#ifdef AIC_GPAI_DRV_V11
-#define GPAI_INTS_CH0_INT_FLAG      BIT(0)
-#define GPAI_INTS_CH_INT_FLAG(n)    (GPAI_INTS_CH0_INT_FLAG << (n))
-#define GPAI_INTE_CH0_INT_EN        BIT(0)
-#define GPAI_INTE_CH_INT_EN(n)      (GPAI_INTE_CH0_INT_EN << (n))
+
+#ifdef AIC_GPAI_DRV_V20
+#define GPAI_MCHS_CH0_SET               BIT(8)
+#define GPAI_MCHS_CH_SET(n)             (GPAI_MCHS_CH0_SET << (n))
+#define GPAI_MCHS_MDSET                 BIT(0)
+#define GPAI_MCHC_CH0_CLS               BIT(8)
+#define GPAI_MCHC_CH_CLS(n)             (GPAI_MCHC_CH0_CLS << (n))
+#define GPAI_MCHC_MDCLS                 BIT(0)
+
+#define GPAI_INTS_CH0_INT_SET           BIT(0)
+#define GPAI_INTS_CH_INT_SET(n)         (GPAI_INTS_CH0_INT_SET << (n))
+#define GPAI_INTC_CH0_INT_CLS           BIT(0)
+#define GPAI_INTC_CH_INT_CLS(n)         (GPAI_INTC_CH0_INT_CLS << (n))
+#define GPAI_INTSAT_CH0_INT_FLG         BIT(0)
+#define GPAI_INTSAT_CH_INT_FLG(n)       (GPAI_INTSAT_CH0_INT_FLG << (n))
+
+#define GPAI_DRQS_CH0_DRQ_SAT           BIT(16)
+#define GPAI_DRQS_CH_DRQ_SAT(n)         (GPAI_DRQS_CH0_DRQ_SAT << (n))
+#define GPAI_DRQS_CH0_DRQ_SET           BIT(0)
+#define GPAI_DRQS_CH_DRQ_SET(n)         (GPAI_DRQS_CH0_DRQ_SET << (n))
+#define GPAI_DRQC_CH0_DRQ_CLS           BIT(0)
+#define GPAI_DRQC_CH_DRQ_CLS(n)         (GPAI_DRQC_CH0_DRQ_CLS << (n))
 #endif
 
 #define GPAI_CHnCR_SBC_SHIFT        24
@@ -94,6 +118,9 @@
 #define GPAI_CHnFCR_DAT_RDY_THD_MASK    GENMASK(15, 8)
 #define GPAI_CHnFCR_FLUSH               BIT(0)
 
+#define GPAI_SRC_RX_MAXBURST            1
+#define GPAI_DST_RX_MAXBURST            16
+
 // TODO: irq_handle() should get 'struct aic_gpai_ch *' from 'void *arg'
 extern struct aic_gpai_ch aic_gpai_chs[];
 static u32 aic_gpai_ch_num = 0; // the number of available channel
@@ -128,6 +155,7 @@ static u32 gpai_ms2itv(u32 pclk_rate, u32 ms)
     return tmp;
 }
 
+#if defined(AIC_GPAI_DRV_V10) || defined(AIC_GPAI_DRV_V11)
 static void gpai_reg_enable(int offset, int bit, int enable)
 {
     int tmp = gpai_readl(offset);
@@ -149,12 +177,45 @@ void aich_gpai_ch_enable(u32 ch, int enable)
 {
     gpai_reg_enable(GPAI_MCR, GPAI_MCR_CH_EN(ch), enable);
 }
+#endif
+
+#ifdef AIC_GPAI_DRV_V20
+static void gpai_reg_enable(int offset, int bit)
+{
+    int tmp = gpai_readl(offset);
+    tmp |= bit;
+    gpai_writel(tmp, offset);
+}
+
+void aich_gpai_enable(int enable)
+{
+    if (enable)
+        gpai_reg_enable(GPAI_MCHS, GPAI_MCHS_MDSET);
+    else
+        gpai_reg_enable(GPAI_MCHC, GPAI_MCHC_MDCLS);
+}
+
+void aich_gpai_ch_enable(u32 ch, int enable)
+{
+    if (enable)
+        gpai_reg_enable(GPAI_MCHS, GPAI_MCHS_CH_SET(ch));
+    else
+        gpai_reg_enable(GPAI_MCHC, GPAI_MCHC_CH_CLS(ch));
+}
+
+void hal_gpai_drq_enable(u32 ch, u32 enable)
+{
+    if (enable)
+        gpai_reg_enable(GPAI_DRQS, GPAI_DRQS_CH_DRQ_SET(ch));
+    else
+        gpai_reg_enable(GPAI_DRQC, GPAI_DRQC_CH_DRQ_CLS(ch));
+}
+#endif
 
 static void gpai_int_enable(u32 ch, u32 enable, u32 detail)
 {
+#if defined(AIC_GPAI_DRV_V10) || defined(AIC_GPAI_DRV_V11)
     u32 val = 0;
-
-#ifdef AIC_GPAI_DRV_V10
     val = gpai_readl(GPAI_INTR);
     if (enable) {
         val |= GPAI_INTR_CH_INT_EN(ch);
@@ -166,16 +227,14 @@ static void gpai_int_enable(u32 ch, u32 enable, u32 detail)
     gpai_writel(val, GPAI_INTR);
 #endif
 
-#ifdef AIC_GPAI_DRV_V11
-    val = gpai_readl(GPAI_INTE);
+#ifdef AIC_GPAI_DRV_V20
     if (enable) {
-        val |= GPAI_INTE_CH_INT_EN(ch);
+        gpai_reg_enable(GPAI_INTS, GPAI_INTS_CH_INT_SET(ch));
         gpai_writel(detail, GPAI_CHnINT(ch));
     } else {
-        val &= ~GPAI_INTE_CH_INT_EN(ch);
+        gpai_reg_enable(GPAI_INTC, GPAI_INTC_CH_INT_CLS(ch));
         gpai_writel(0, GPAI_CHnINT(ch));
     }
-    gpai_writel(val, GPAI_INTE);
 #endif
 }
 
@@ -236,7 +295,8 @@ static void gpai_period_mode(struct aic_gpai_ch *chan, u32 pclk)
         acr |= GPAI_CHnACR_LLA_EN;
     }
 
-    gpai_int_enable(ch, 1, detail);
+    if (chan->obtain_data_mode == AIC_GPAI_OBTAIN_DATA_BY_CPU)
+            gpai_int_enable(ch, 1, detail);
 
     gpai_writel(acr, GPAI_CHnACR(ch));
 
@@ -296,8 +356,10 @@ int aich_gpai_read(struct aic_gpai_ch *chan, u32 *val, u32 timeout)
 
 void aich_gpai_status_show(struct aic_gpai_ch *chan)
 {
-    int mcr = gpai_readl(GPAI_MCR);
     int version = gpai_readl(GPAI_VERSION);
+
+#if defined(AIC_GPAI_DRV_V10) || defined(AIC_GPAI_DRV_V11)
+    int mcr = gpai_readl(GPAI_MCR);
 
     printf("In GPAI V%d.%02d:\n"
                "Ch Mode Enable Value  LTA  HTA\n"
@@ -306,6 +368,19 @@ void aich_gpai_status_show(struct aic_gpai_ch *chan)
                chan->id, chan->mode ? "P" : "S",
                mcr & GPAI_MCR_CH_EN(chan->id) ? 1 : 0,
                chan->latest_data, chan->lla_thd, chan->hla_thd);
+#endif
+
+#ifdef AIC_GPAI_DRV_V20
+    int mcr = gpai_readl(GPAI_MCHS);
+
+    printf("In GPAI V%d.%02d:\n"
+               "Ch Mode Enable Value  LTA  HTA\n"
+               "%2d %4s %6d %5d %4d %4d\n",
+               version >> 8, version & 0xff,
+               chan->id, chan->mode ? "P" : "S",
+               mcr & GPAI_MCHS_CH_SET(chan->id) ? 1 : 0,
+               chan->latest_data, chan->lla_thd, chan->hla_thd);
+#endif
 }
 
 static int aic_gpai_read_ch(struct aic_gpai_ch *chan)
@@ -358,20 +433,20 @@ irqreturn_t aich_gpai_isr(int irq, void *arg)
     int i;
     struct aic_gpai_ch *chan = NULL;
 
-#ifdef AIC_GPAI_DRV_V10
+#if defined(AIC_GPAI_DRV_V10) || defined(AIC_GPAI_DRV_V11)
     ch_flag = gpai_readl(GPAI_INTR);
 #endif
-#ifdef AIC_GPAI_DRV_V11
-    ch_flag = gpai_readl(GPAI_INTS);
+#ifdef AIC_GPAI_DRV_V20
+    ch_flag = gpai_readl(GPAI_INTSAT);
 #endif
 
     for (i = 0; i < AIC_GPAI_CH_NUM; i++) {
-#ifdef AIC_GPAI_DRV_V10
+#if defined(AIC_GPAI_DRV_V10) || defined(AIC_GPAI_DRV_V11)
         if (!(ch_flag & GPAI_INTR_CH_INT_FLAG(i)))
             continue;
 #endif
-#ifdef AIC_GPAI_DRV_V11
-        if (!(ch_flag & GPAI_INTS_CH_INT_FLAG(i)))
+#ifdef AIC_GPAI_DRV_V20
+        if (!(ch_flag & GPAI_INTSAT_CH_INT_FLG(i)))
             continue;
 #endif
 
@@ -434,3 +509,64 @@ void hal_gpai_set_ch_num(u32 num)
 {
     aic_gpai_ch_num = num;
 }
+
+#if defined(AIC_GPAI_DRV_V20) && defined(AIC_DMA_DRV)
+
+static void hal_dma_transfer_callback(void *arg)
+{
+    int val;
+    struct aic_gpai_ch *chan;
+
+    void *dma_cb_data = NULL;
+    dma_callback dma_cb = NULL;
+    chan = (struct aic_gpai_ch *)arg;
+
+    val = gpai_readl(GPAI_CHnCR(0));
+    val &= ~GPAI_CHnCR_PERIOD_SAMPLE_EN;
+    gpai_writel(val, GPAI_CHnCR(0));
+    aich_gpai_enable(0);
+
+    dma_cb = chan->dma_rx_info.callback;
+    dma_cb_data = chan->dma_rx_info.callback_param;
+    if (dma_cb)
+        dma_cb(dma_cb_data);
+
+    hal_release_dma_chan(chan->dma_rx_info.dma_chan);
+}
+
+void hal_gpai_config_dma(struct aic_gpai_ch *chan)
+{
+    struct dma_slave_config config;
+    struct aic_dma_transfer_info *info;
+
+    hal_gpai_drq_enable(chan->id, 1);
+
+    config.direction = DMA_DEV_TO_MEM;
+    config.src_addr = GPAI_BASE + GPAI_CHnDATA(chan->id);
+    config.slave_id = chan->dma_port_id;
+    config.src_maxburst = GPAI_SRC_RX_MAXBURST;
+    config.dst_maxburst = GPAI_DST_RX_MAXBURST;
+    config.src_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
+    config.dst_addr_width = DMA_SLAVE_BUSWIDTH_UNDEFINED;
+
+    info = &chan->dma_rx_info;
+
+    info->dma_chan = hal_request_dma_chan();
+    if (!info->dma_chan) {
+        hal_log_err("Gpai request dma channel error\n");
+        return;
+    }
+    hal_dma_chan_register_cb(info->dma_chan, hal_dma_transfer_callback,
+                             (void *)chan);
+    hal_dma_chan_config(info->dma_chan, &config);
+    hal_dma_chan_prep_device(info->dma_chan, (ulong)info->buf,
+                             config.src_addr, info->buf_size,
+                             DMA_DEV_TO_MEM);
+    return;
+}
+
+void hal_gpai_start_dma(struct aic_gpai_ch *chan)
+{
+    hal_dma_chan_start(chan->dma_rx_info.dma_chan);
+}
+#endif

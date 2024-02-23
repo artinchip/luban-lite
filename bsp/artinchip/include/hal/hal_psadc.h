@@ -29,14 +29,14 @@ struct aic_psadc_ch {
     aicos_sem_t complete;
 };
 
-void aich_psadc_enable(int enable);
-void aic_psadc_single_queue_mode(int enable);
-void aich_psadc_qc_irq_enable(int enable);
-int aich_psadc_ch_init(struct aic_psadc_ch *chan, u32 pclk);
-irqreturn_t aich_psadc_isr(int irq, void *arg);
-int aich_psadc_read(struct aic_psadc_ch *chan, u32 *val, u32 timeout);
+void hal_psadc_enable(int enable);
+void hal_psadc_single_queue_mode(int enable);
+void hal_psadc_qc_irq_enable(int enable);
+int hal_psadc_ch_init(struct aic_psadc_ch *chan, u32 pclk);
+irqreturn_t hal_psadc_isr(int irq, void *arg);
+int hal_psadc_read(struct aic_psadc_ch *chan, u32 *val, u32 timeout);
 struct aic_psadc_ch *hal_psadc_ch_is_valid(u32 ch);
 void hal_psadc_set_ch_num(u32 num);
-void aich_psadc_status_show(struct aic_psadc_ch *chan);
+void hal_psadc_status_show(struct aic_psadc_ch *chan);
 
 #endif

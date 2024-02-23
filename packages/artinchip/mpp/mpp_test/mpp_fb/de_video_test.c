@@ -111,7 +111,7 @@ static struct mpp_fb *g_mpp_fb = NULL;
 
 /* Functions */
 
-void usage(char *program)
+static void usage(char *program)
 {
     printf("Usage: %s [options]: \n", program);
     printf("\t -w, --width\t\tneed an integer argument, default is 176\n");
@@ -125,7 +125,7 @@ void usage(char *program)
     printf("Example: %s -w 176 -h 144 -f yuv420p -i my.yuv\n", program);
 }
 
-void format_list(char *program)
+static void format_list(char *program)
 {
     printf("%s support the following formats:\n", program);
     printf("\t yuv420p\n");
@@ -210,6 +210,20 @@ static inline bool is_plane_format(enum mpp_pixel_format format)
         break;
     }
     return false;
+}
+
+static inline bool is_2plane(enum mpp_pixel_format format)
+{
+	switch (format) {
+	case MPP_FMT_NV12:
+	case MPP_FMT_NV21:
+	case MPP_FMT_NV16:
+	case MPP_FMT_NV61:
+		return true;
+	default:
+		break;
+	}
+	return false;
 }
 
 static inline bool is_tile_16_align(enum mpp_pixel_format format)
@@ -360,7 +374,8 @@ static void video_layer_set(struct aicfb_video_layer *vlayer, int index)
 
     if (is_plane_format(vlayer->f->format)) {
         layer.buf.stride[0] = vlayer->w;
-        layer.buf.stride[1] = vlayer->w >> 1;
+		layer.buf.stride[1] = is_2plane(vlayer->f->format) ?
+					vlayer->w : vlayer->w >> 1;
         layer.buf.stride[2] = vlayer->w >> 1;
     }
 
@@ -525,5 +540,5 @@ out:
     if (vid_fd > 0)
         close(vid_fd);
 }
-MSH_CMD_EXPORT_ALIAS(test_de_video_layer, video_layer, de video layer test);
+MSH_CMD_EXPORT_ALIAS(test_de_video_layer, test_video_layer, de video layer test);
 #endif /* RT_USING_FINSH */

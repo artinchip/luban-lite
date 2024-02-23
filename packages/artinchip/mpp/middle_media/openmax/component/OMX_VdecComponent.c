@@ -199,6 +199,14 @@ static OMX_S32 OMX_VdecVideoPixelFormatTrans(enum mpp_pixel_format *eDesPixForma
         *eDesPixFormat = MPP_FMT_NV12;
     } else if (*eSrcPixFormat == OMX_COLOR_FormatYUV420PackedPlanar) {
         *eDesPixFormat = MPP_FMT_NV21;
+    }  else if (*eSrcPixFormat == OMX_COLOR_Format16bitRGB565) {
+        *eDesPixFormat = MPP_FMT_RGB_565;
+    } else if (*eSrcPixFormat == OMX_COLOR_Format32bitARGB8888) {
+        *eDesPixFormat = MPP_FMT_ARGB_8888;
+    } else if (*eSrcPixFormat == OMX_COLOR_Format24bitRGB888) {
+        *eDesPixFormat = MPP_FMT_RGB_888;
+    } else if (*eSrcPixFormat == OMX_COLOR_Format16bitARGB1555) {
+        *eDesPixFormat = MPP_FMT_ARGB_1555;
     } else {
         *eDesPixFormat = MPP_FMT_YUV420P;
         loge("unsupport pixformat!!!!\n");
@@ -403,7 +411,7 @@ static OMX_ERRORTYPE OMX_VdecComponentTunnelRequest(
         pTunneledInfo = &pVdecDataType->sOutPortTunneledInfo;
         pBufSupplier = &pVdecDataType->sOutBufSupplier;
     } else {
-        loge("component can not find port :%d\n",nPort);
+        loge("component can not find port :%"PRId32"\n",nPort);
         return OMX_ErrorBadParameter;
     }
 
@@ -484,7 +492,7 @@ static OMX_ERRORTYPE OMX_VdecEmptyThisBuffer(
         if (pVdecDataType->sInBufSupplier.eBufferSupplier == OMX_BufferSupplyOutput) {
             if (OMX_VdecListEmpty(&pVdecDataType->sInEmptyPkt,pVdecDataType->sInPktLock)) {
                 if (pVdecDataType->nInPktNodeNum + 1> VDEC_PACKET_NUM_MAX) {
-                    loge("empty node has aready increase to max [%d]!!!\n",pVdecDataType->nInPktNodeNum);
+                    loge("empty node has aready increase to max [%"PRId32"]!!!\n",pVdecDataType->nInPktNodeNum);
                     eError = OMX_ErrorInsufficientResources;
                     pVdecDataType->nReceivePacktFailNum++;
                     goto _EXIT;
@@ -501,7 +509,7 @@ static OMX_ERRORTYPE OMX_VdecEmptyThisBuffer(
                         mpp_list_add_tail(&pPktNode->sList, &pVdecDataType->sInEmptyPkt);
                         aic_pthread_mutex_unlock(&pVdecDataType->sInPktLock);
                         pVdecDataType->nInPktNodeNum++;
-                        printf("[%s:%d]nInPktNodeNum:%d\n",__FUNCTION__,__LINE__,pVdecDataType->nInPktNodeNum);
+                        printf("[%s:%d]nInPktNodeNum:%"PRId32"\n",__FUNCTION__,__LINE__,pVdecDataType->nInPktNodeNum);
                     }
                     if (i == 0) {
                         loge("mpp_alloc empty video node fail\n");
@@ -533,9 +541,9 @@ static OMX_ERRORTYPE OMX_VdecEmptyThisBuffer(
             //mpp_decoder_get_packet is ok then mpp_decoder_put_packet is also ok
             mpp_decoder_put_packet(pVdecDataType->pDecoder, &pkt);
 
-            if (pkt.flag & PACKET_FLAG_EOS) {
-                loge("StreamEndFlag!!!\n");
-            }
+            // if (pkt.flag & PACKET_FLAG_EOS) {
+            //     printf("[%s:%d]:StreamEndFlag\n",__FUNCTION__,__LINE__);
+            // }
 
             rate += pkt.size;
             if (pev.tv_sec == 0) {
@@ -561,14 +569,20 @@ static OMX_ERRORTYPE OMX_VdecEmptyThisBuffer(
             pktNode->sBuff.nFlags = pBuffer->nFlags;
             mpp_list_del(&pktNode->sList);
             mpp_list_add_tail(&pktNode->sList, &pVdecDataType->sInProcessedPkt);
-            aic_pthread_mutex_unlock(&pVdecDataType->sInPktLock);
-
-            sMsg.message_id = OMX_CommandNops;
-            sMsg.data_size = 0;
-            aic_msg_put(&pVdecDataType->sMsgQue, &sMsg);
-
+            if (pVdecDataType->nWaitForReadyPkt == 1) {
+                sMsg.message_id = OMX_CommandNops;
+                sMsg.data_size = 0;
+                aic_msg_put(&pVdecDataType->sMsgQue, &sMsg);
+                pVdecDataType->nWaitForReadyPkt = 0;
+            }
+            if (pktNode->sBuff.nFlags & PACKET_FLAG_EOS) {
+                pVdecDataType->nFlags |= VDEC_INPORT_STREAM_END_FLAG;
+                //pVdecDataType->nStreamEndFlag = OMX_TRUE;
+                 printf("[%s:%d]:StreamEndFlag\n",__FUNCTION__,__LINE__);
+            }
             pVdecDataType->nReceivePacktOkNum++;
-            logd("pVdecDataType->nReceivePacktOkNum:%d\n",pVdecDataType->nReceivePacktOkNum);
+            logd("pVdecDataType->nReceivePacktOkNum:%"PRId32"\n",pVdecDataType->nReceivePacktOkNum);
+            aic_pthread_mutex_unlock(&pVdecDataType->sInPktLock);
         } else if (pVdecDataType->sInBufSupplier.eBufferSupplier == OMX_BufferSupplyInput) {
             eError = OMX_ErrorNotImplemented;
             logw("OMX_ErrorNotImplemented\n");
@@ -640,7 +654,6 @@ static OMX_ERRORTYPE OMX_VdecFillThisBuffer(
                     break;
                 }
         }
-        aic_pthread_mutex_unlock(&pVdecDataType->sOutFrameLock);
         if (bMatch) {//give frame back to decoder
             //loge("bMatch:%d\n",bMatch);
             ret = mpp_decoder_put_frame(pVdecDataType->pDecoder, &pFrameNode1->sFrameInfo);
@@ -650,22 +663,23 @@ static OMX_ERRORTYPE OMX_VdecFillThisBuffer(
                 return OMX_ErrorUndefined;
             }
             pVdecDataType->nSendBackFrameOkNum++;
-            aic_pthread_mutex_lock(&pVdecDataType->sOutFrameLock);
             mpp_list_del(&pFrameNode1->sList);
             mpp_list_add_tail(&pFrameNode1->sList, &pVdecDataType->sOutEmptyFrame);
-            aic_pthread_mutex_unlock(&pVdecDataType->sOutFrameLock);
-
-            sMsg.message_id = OMX_CommandNops;
-            sMsg.data_size = 0;
-            aic_msg_put(&pVdecDataType->sMsgQue, &sMsg);
+            if (pVdecDataType->nWaitForEmptyFrame == 1) {
+                sMsg.message_id = OMX_CommandNops;
+                sMsg.data_size = 0;
+                aic_msg_put(&pVdecDataType->sMsgQue, &sMsg);
+                pVdecDataType->nWaitForEmptyFrame = 0;
+            }
         } else {
             loge("frame not match!!!\n");
             eError =  OMX_ErrorBadParameter;
             pVdecDataType->nSendBackFrameErrorNum++;
         }
-        logi("pVdecDataType->nSendBackFrameOkNum:%d,pAdecDataType->nSendBackFrameErrorNum:%d"
+        logi("pVdecDataType->nSendBackFrameOkNum:%"PRId32",pAdecDataType->nSendBackFrameErrorNum:%"PRId32""
             ,pVdecDataType->nSendBackFrameOkNum
             ,pVdecDataType->nSendBackFrameErrorNum);
+        aic_pthread_mutex_unlock(&pVdecDataType->sOutFrameLock);
     } else {
         loge("no frame need to back \n");
         eError =  OMX_ErrorBadParameter;
@@ -800,9 +814,8 @@ OMX_ERRORTYPE OMX_VdecComponentInit(
     //OMX_U32 cnt;
 
 
-    pthread_attr_t *attr = NULL;
-    attr = (pthread_attr_t*)mpp_alloc(sizeof(pthread_attr_t));
-    dec_thread_attr_init(attr);
+    pthread_attr_t attr;
+    dec_thread_attr_init(&attr);
 
     logw("OMX_VdecComponentInit....");
 
@@ -912,7 +925,7 @@ OMX_ERRORTYPE OMX_VdecComponentInit(
 
     pthread_mutex_init(&pVdecDataType->stateLock, NULL);
     // Create the component thread
-    err = pthread_create(&pVdecDataType->threadId, attr, OMX_VdecComponentThread, pVdecDataType);
+    err = pthread_create(&pVdecDataType->threadId, &attr, OMX_VdecComponentThread, pVdecDataType);
     //if (err || !pVdecDataType->threadId)
     if (err)
     {
@@ -999,12 +1012,13 @@ static int OMX_VdecGiveBackAllPackets(VDEC_DATA_TYPE *pVdecDataType)
                 pVdecDataType->nGiveBackPacktOkNum++;
             } else {
                 pVdecDataType->nGiveBackPacktFailNum++;
+                usleep(5*1000);
                 continue;// must give back ok ,so retry to give back
             }
             aic_pthread_mutex_lock(&pVdecDataType->sInPktLock);
             mpp_list_del(&pktNode1->sList);
             mpp_list_add_tail(&pktNode1->sList, &pVdecDataType->sInEmptyPkt);
-            logi("pVdecDataType->nGiveBackPacktOkNum:%d,pVdecDataType->nGiveBackPacktFailNum:%d\n"
+            logi("pVdecDataType->nGiveBackPacktOkNum:%"PRId32",pVdecDataType->nGiveBackPacktFailNum:%"PRId32"\n"
                 ,pVdecDataType->nGiveBackPacktOkNum
                 ,pVdecDataType->nGiveBackPacktFailNum);
             aic_pthread_mutex_unlock(&pVdecDataType->sInPktLock);
@@ -1209,6 +1223,7 @@ static void* OMX_VdecComponentThread(void* pThreadData)
     OMX_S32 nCmdData;    //OMX_STATETYPE
     VDEC_DATA_TYPE* pVdecDataType = (VDEC_DATA_TYPE*)pThreadData;
     OMX_S32 ret;
+    OMX_S32 dec_ret;
     //OMX_S32 i;
     OMX_S32 bNotifyFrameEnd = 0;
     VDEC_OUT_FRAME *pFrameNode;
@@ -1220,7 +1235,7 @@ _AIC_MSG_GET_:
         if (aic_msg_get(&pVdecDataType->sMsgQue, &message) == 0) {
             nCmd = message.message_id;
             nCmdData = message.param;
-            logi("nCmd:%d, nCmdData:%d\n",nCmd,nCmdData);
+            logi("nCmd:%"PRId32", nCmdData:%"PRId32"\n",nCmd,nCmdData);
             if (OMX_CommandStateSet == nCmd) {
                 aic_pthread_mutex_lock(&pVdecDataType->stateLock);
                 if (pVdecDataType->state == (OMX_STATETYPE)(nCmdData)) {
@@ -1305,154 +1320,141 @@ _AIC_MSG_GET_:
                     mpp_list_del(&pktNode1->sList);
                     mpp_list_add_tail(&pktNode1->sList, &pVdecDataType->sInEmptyPkt);
                     pVdecDataType->nGiveBackPacktOkNum++;
-                    logd("pAdecDataType->nGiveBackPacktOkNum:%d,pAdecDataType->nGiveBackPacktFailNum:%d\n"
+                    logd("pAdecDataType->nGiveBackPacktOkNum:%"PRId32",pAdecDataType->nGiveBackPacktFailNum:%"PRId32"\n"
                         ,pVdecDataType->nGiveBackPacktOkNum
                         ,pVdecDataType->nGiveBackPacktFailNum);
                     aic_pthread_mutex_unlock(&pVdecDataType->sInPktLock);
                 } else {
                     logi("OMX_FillThisBuffer error \n");
                     pVdecDataType->nGiveBackPacktFailNum++;
-                    logd("pAdecDataType->nGiveBackPacktOkNum:%d,pAdecDataType->nGiveBackPacktFailNum:%d\n"
+                    logd("pAdecDataType->nGiveBackPacktOkNum:%"PRId32",pAdecDataType->nGiveBackPacktFailNum:%"PRId32"\n"
                         ,pVdecDataType->nGiveBackPacktOkNum
                         ,pVdecDataType->nGiveBackPacktFailNum);
-                    break;
+                    usleep(5*1000);
+                    continue;
                 }
             }
         }
-        // decode
-        if (!(pVdecDataType->nFlags & VDEC_OUTPORT_SEND_ALL_FRAME_FLAG)) {
-            ret = mpp_decoder_decode(pVdecDataType->pDecoder);
-            if (ret == DEC_OK) {
-                logi("mpp_decoder_decode ok!!!\n");
-                if (OMX_VdecListEmpty(&pVdecDataType->sOutEmptyFrame,pVdecDataType->sOutFrameLock)) {
-                    VDEC_OUT_FRAME *pFrameNode = (VDEC_OUT_FRAME*)mpp_alloc(sizeof(VDEC_OUT_FRAME));
-                    if (NULL == pFrameNode) {
-                        loge("mpp_alloc error \n");
-                        goto _AIC_MSG_GET_;
-                    }
-                    memset(pFrameNode,0x00,sizeof(VDEC_OUT_FRAME));
-                    aic_pthread_mutex_lock(&pVdecDataType->sOutFrameLock);
-                    mpp_list_add_tail(&pFrameNode->sList, &pVdecDataType->sOutEmptyFrame);
-                    aic_pthread_mutex_unlock(&pVdecDataType->sOutFrameLock);
-                    pVdecDataType->nOutFrameNodeNum++;
+
+        //decode
+        dec_ret = mpp_decoder_decode(pVdecDataType->pDecoder);
+        if (dec_ret == DEC_OK) {
+            logd("mpp_decoder_decode ok!!!\n");
+        } else if (dec_ret == DEC_NO_READY_PACKET || dec_ret == DEC_NO_EMPTY_FRAME || dec_ret == DEC_NO_RENDER_FRAME) {
+            logd("mpp_decoder_decode:%"PRId32" !!!\n",dec_ret);
+        } else {
+            //ASSERT();
+            loge("mpp_decoder_decode error serious,do not keep decoding ret:%"PRId32" !!!\n",dec_ret);
+            OMX_VdecEventNotify(pVdecDataType,OMX_EventError,OMX_ErrorMbErrorsInFrame,0,NULL);
+            pVdecDataType->nFlags |= VDEC_OUTPORT_SEND_ALL_FRAME_FLAG;
+            goto _AIC_MSG_GET_;
+        }
+
+        // get frame from decoder
+        do {
+            OMX_S32 result = 0;
+            OMX_BUFFERHEADERTYPE sBuffHead;
+
+            ret = mpp_decoder_get_frame(pVdecDataType->pDecoder, &sFrame);
+            if (ret != DEC_OK) {
+                logd("mpp_decoder_get_frame other error ret:%"PRId32" \n",ret);
+                break;
+            }
+            pVdecDataType->nGetFrameFromDecoderNum++;
+            if (OMX_VdecListEmpty(&pVdecDataType->sOutEmptyFrame,pVdecDataType->sOutFrameLock)) {
+                VDEC_OUT_FRAME *pFrameNode = (VDEC_OUT_FRAME*)mpp_alloc(sizeof(VDEC_OUT_FRAME));
+                if (NULL == pFrameNode) {
+                    loge("mpp_alloc error \n");
+                    mpp_decoder_put_frame(pVdecDataType->pDecoder, &sFrame);
+                    goto _AIC_MSG_GET_;
                 }
-                ret = mpp_decoder_get_frame(pVdecDataType->pDecoder, &sFrame);
-                if (ret == DEC_OK) {
-                    logd("mpp_decoder_get_frame ok\n");
-                    OMX_S32 result = 0;
-                    OMX_BUFFERHEADERTYPE sBuffHead;
-                    sBuffHead.nOutputPortIndex = ADEC_PORT_OUT_INDEX;
-                    sBuffHead.pBuffer = (OMX_U8 *)&sFrame;
-                    if (pVdecDataType->sOutPortTunneledInfo.nTunneledFlag) {
-                        sBuffHead.nInputPortIndex = pVdecDataType->sOutPortTunneledInfo.nTunnelPortIndex;
-                        result = OMX_EmptyThisBuffer(pVdecDataType->sOutPortTunneledInfo.pTunneledComp,&sBuffHead);
-                    } else {
-                        if (pVdecDataType->pCallbacks != NULL && pVdecDataType->pCallbacks->FillBufferDone != NULL) {
-                            result = pVdecDataType->pCallbacks->FillBufferDone(pVdecDataType->hSelf,pVdecDataType->pAppData,&sBuffHead);
-                        }
+                memset(pFrameNode,0x00,sizeof(VDEC_OUT_FRAME));
+                aic_pthread_mutex_lock(&pVdecDataType->sOutFrameLock);
+                mpp_list_add_tail(&pFrameNode->sList, &pVdecDataType->sOutEmptyFrame);
+                aic_pthread_mutex_unlock(&pVdecDataType->sOutFrameLock);
+                pVdecDataType->nOutFrameNodeNum++;
+            }
+            sBuffHead.nOutputPortIndex = VDEC_PORT_OUT_INDEX;
+            sBuffHead.pBuffer = (OMX_U8 *)&sFrame;
+            if (pVdecDataType->sOutPortTunneledInfo.nTunneledFlag) {
+                sBuffHead.nInputPortIndex = pVdecDataType->sOutPortTunneledInfo.nTunnelPortIndex;
+                result = OMX_EmptyThisBuffer(pVdecDataType->sOutPortTunneledInfo.pTunneledComp,&sBuffHead);
+            } else {
+                if (pVdecDataType->pCallbacks != NULL && pVdecDataType->pCallbacks->FillBufferDone != NULL) {
+                    result = pVdecDataType->pCallbacks->FillBufferDone(pVdecDataType->hSelf,pVdecDataType->pAppData,&sBuffHead);
+                }
+            }
+            if (result == 0) {
+                aic_pthread_mutex_lock(&pVdecDataType->sOutFrameLock);
+                pFrameNode = mpp_list_first_entry(&pVdecDataType->sOutEmptyFrame, VDEC_OUT_FRAME, sList);
+                pFrameNode->sFrameInfo = sFrame;
+                mpp_list_del(&pFrameNode->sList);
+                mpp_list_add_tail(&pFrameNode->sList, &pVdecDataType->sOutProcessingFrame);
+                aic_pthread_mutex_unlock(&pVdecDataType->sOutFrameLock);
+                pVdecDataType->nSendFrameOkNum++;
+                if (pFrameNode->sFrameInfo.flags & FRAME_FLAG_EOS) {
+                    pVdecDataType->nFlags |= VDEC_OUTPORT_SEND_ALL_FRAME_FLAG;
+                    if (pVdecDataType->pCallbacks && pVdecDataType->pCallbacks->EventHandler) {
+                        pVdecDataType->pCallbacks->EventHandler(pVdecDataType->hSelf,pVdecDataType->pAppData,OMX_EventBufferFlag,0, 0,NULL);
                     }
+                    printf("[%s:%d]"\
+                        "in port:nReceivePacktOkNum:%"PRId32",nReceivePacktFailNum:%"PRId32",nPutPacktToDecoderOkNum:%"PRId32","\
+                        "nPutPacktToDecoderFailNum:%"PRId32",nGiveBackPacktOkNum:%"PRId32",nGiveBackPacktFailNum:%"PRId32"\n"
+                        ,__FUNCTION__,__LINE__
+                        ,pVdecDataType->nReceivePacktOkNum,pVdecDataType->nReceivePacktFailNum,pVdecDataType->nPutPacktToDecoderOkNum
+                        ,pVdecDataType->nPutPacktToDecoderFailNum,pVdecDataType->nGiveBackPacktOkNum,pVdecDataType->nGiveBackPacktFailNum);
 
-                    if (result == 0) {
-                        static struct timespec pev = {0,0},cur = {0,0};
-                         static int frame_rate = 0;
-                        aic_pthread_mutex_lock(&pVdecDataType->sOutFrameLock);
-                        pFrameNode = mpp_list_first_entry(&pVdecDataType->sOutEmptyFrame, VDEC_OUT_FRAME, sList);
-                        pFrameNode->sFrameInfo = sFrame;
-                        mpp_list_del(&pFrameNode->sList);
-                        mpp_list_add_tail(&pFrameNode->sList, &pVdecDataType->sOutProcessingFrame);
-                        aic_pthread_mutex_unlock(&pVdecDataType->sOutFrameLock);
-
-                        pVdecDataType->nGetFrameFromDecoderNum++;
-                        //loge("pVdecDataType->nGetFrameFromDecoderNum:%d\n",pVdecDataType->nGetFrameFromDecoderNum);
-                        frame_rate++;
-                        if (pev.tv_sec == 0) {
-                            clock_gettime(CLOCK_REALTIME,&pev);
-                        } else {
-                            long diff;
-                            clock_gettime(CLOCK_REALTIME,&cur);
-                            diff = (cur.tv_sec - pev.tv_sec)*1000*1000 + (cur.tv_nsec - pev.tv_nsec)/1000;
-                            if (diff > 1*1000*1000) {
-                                //loge("v_fr:%d,diff:%ld \n",frame_rate,diff);
-                                frame_rate = 0;
-                                pev = cur;
-                            }
-                        }
-
-                        if (pFrameNode->sFrameInfo.flags & FRAME_FLAG_EOS) {
-                            pVdecDataType->nFlags |= VDEC_OUTPORT_SEND_ALL_FRAME_FLAG;
-                            if (pVdecDataType->pCallbacks && pVdecDataType->pCallbacks->EventHandler) {
-                                pVdecDataType->pCallbacks->EventHandler(pVdecDataType->hSelf,pVdecDataType->pAppData,OMX_EventBufferFlag,0, 0,NULL);
-                            }
-                            printf("[%s:%d]"\
-                                "in port:nReceivePacktOkNum:%d,nReceivePacktFailNum:%d,nPutPacktToDecoderOkNum:%d,"\
-                                "nPutPacktToDecoderFailNum:%d,nGiveBackPacktOkNum:%d,nGiveBackPacktFailNum:%d\n"
-                                ,__FUNCTION__,__LINE__
-                                ,pVdecDataType->nReceivePacktOkNum,pVdecDataType->nReceivePacktFailNum,pVdecDataType->nPutPacktToDecoderOkNum
-                                ,pVdecDataType->nPutPacktToDecoderFailNum,pVdecDataType->nGiveBackPacktOkNum,pVdecDataType->nGiveBackPacktFailNum);
-
-                            printf("[%s:%d]"\
-                                "out port:nGetFrameFromDecoderNum:%d,nDropFrameFromDecoderNum:%d,nSendFrameOkNum:%d,"\
-                                "nSendFrameErrorNum:%d,nLeftReadyFrameWhenCompoentExitNum:%d\n"
-                                ,__FUNCTION__,__LINE__
-                                ,pVdecDataType->nGetFrameFromDecoderNum,pVdecDataType->nDropFrameFromDecoderNum,pVdecDataType->nSendFrameOkNum
-                                ,pVdecDataType->nSendFrameErrorNum,pVdecDataType->nLeftReadyFrameWhenCompoentExitNum);
-                        }
-
-                        pVdecDataType->nSendFrameOkNum++;
-                        //loge("pVdecDataType->nSendFrameOkNum:%d\n",pVdecDataType->nSendFrameOkNum);
-                    } else {
-                        //this may drop last frame,so it must deal with this case
-                        ret = mpp_decoder_put_frame(pVdecDataType->pDecoder, &sFrame);
-                        if (sFrame.flags & FRAME_FLAG_EOS) {
-                            printf("[%s:%d]frame end\n",__FUNCTION__,__LINE__);
-                        }
-                        if (ret != 0) {// how to do
-                            loge("mpp_decoder_put_frame error!!!!\n");
-                            //ASSERT();
-                        }
-                        logw("OMX_EmptyThisBuffer or FillBufferDone fail!\n");
-                        pVdecDataType->nSendFrameErrorNum++;
-                    }
-                } else if (ret == DEC_NO_RENDER_FRAME) {
-                    logw("mpp_decoder_get_frame error DEC_NO_RENDER_FRAME !!!\n");
-                    //usleep(1000);
-                } else if (ret == DEC_ERR_FM_NOT_CREATE) {
-                    logw("mpp_decoder_get_frame error DEC_ERR_FM_NOT_CREATE !!!\n");
-                    //usleep(10*1000);
-                } else if (ret == DEC_NO_EMPTY_FRAME) {
-                    logw("mpp_decoder_get_frame error DEC_NO_EMPTY_FRAME !!!\n");
-                    //usleep(1000);
-                } else {
-                    loge("mpp_decoder_get_frame other error \n");
+                    printf("[%s:%d]"\
+                        "out port:nGetFrameFromDecoderNum:%"PRId32",nDropFrameFromDecoderNum:%"PRId32",nSendFrameOkNum:%"PRId32","\
+                        "nSendFrameErrorNum:%"PRId32",nLeftReadyFrameWhenCompoentExitNum:%"PRId32"\n"
+                        ,__FUNCTION__,__LINE__
+                        ,pVdecDataType->nGetFrameFromDecoderNum,pVdecDataType->nDropFrameFromDecoderNum,pVdecDataType->nSendFrameOkNum
+                        ,pVdecDataType->nSendFrameErrorNum,pVdecDataType->nLeftReadyFrameWhenCompoentExitNum);
+                }
+                //loge("pVdecDataType->nGetFrameFromDecoderNum:%d\n",pVdecDataType->nGetFrameFromDecoderNum);
+                //loge("pVdecDataType->nSendFrameOkNum:%d\n",pVdecDataType->nSendFrameOkNum);
+            } else {
+                //this may drop last frame,so it must deal with this case
+                result = mpp_decoder_put_frame(pVdecDataType->pDecoder, &sFrame);
+                if (sFrame.flags & FRAME_FLAG_EOS) {
+                    printf("[%s:%d]frame end\n",__FUNCTION__,__LINE__);
+                }
+                if (result != 0) {// how to do
+                    loge("mpp_decoder_put_frame error!!!!\n");
                     //ASSERT();
                 }
-            } else if (ret == DEC_NO_READY_PACKET) {
-                struct timespec before = {0},after = {0};
-                long diff;
-                clock_gettime(CLOCK_REALTIME,&before);
-                aic_msg_wait_new_msg(&pVdecDataType->sMsgQue, 0);
-                clock_gettime(CLOCK_REALTIME,&after);
-                diff = (after.tv_sec - before.tv_sec)*1000*1000 + (after.tv_nsec - before.tv_nsec)/1000;
-                if (diff > 50*1000) {
-                    printf("[%s:%d]:%ld\n",__FUNCTION__,__LINE__,diff);
-                }
-            } else if (ret == DEC_NO_EMPTY_FRAME) {// no decode on time wait sometime
+                logw("OMX_EmptyThisBuffer or FillBufferDone fail!\n");
+                pVdecDataType->nSendFrameErrorNum++;
+            }
+        } while(1);
+
+        if (dec_ret == DEC_NO_READY_PACKET) {
+            aic_pthread_mutex_lock(&pVdecDataType->sInPktLock);
+            if (!(pVdecDataType->nFlags & VDEC_INPORT_STREAM_END_FLAG)) {
+                pVdecDataType->nWaitForReadyPkt = 1;
+                aic_pthread_mutex_unlock(&pVdecDataType->sInPktLock);
                 aic_msg_wait_new_msg(&pVdecDataType->sMsgQue, 0);
             } else {
-                //ASSERT();
-                loge("mpp_decoder_decode error serious,do not keep decoding ret:%d !!!\n",ret);
+                aic_pthread_mutex_unlock(&pVdecDataType->sInPktLock);
+                aic_msg_wait_new_msg(&pVdecDataType->sMsgQue, 5*1000);
+            }
+        } else if (dec_ret == DEC_NO_EMPTY_FRAME) {
+            if (!(pVdecDataType->nFlags & VDEC_OUTPORT_SEND_ALL_FRAME_FLAG)) {
+                aic_pthread_mutex_lock(&pVdecDataType->sOutFrameLock);
+                pVdecDataType->nWaitForEmptyFrame = 1;
+                aic_pthread_mutex_unlock(&pVdecDataType->sOutFrameLock);
+                aic_msg_wait_new_msg(&pVdecDataType->sMsgQue, 0);
             }
         }
-
+        // send frame back to decoder in OMX_VdecFillThisBuffer
     }
 _EXIT:
-
-    printf("[%s:%d]in port:nReceivePacktOkNum:%d,"\
-        "nReceivePacktFailNum:%d,"\
-        "nPutPacktToDecoderOkNum:%d,"\
-        "nPutPacktToDecoderFailNum:%d,"\
-        "nGiveBackPacktOkNum:%d"\
-        "nGiveBackPacktFailNum:%d\n"
+    printf("[%s:%d]in port:nReceivePacktOkNum:%"PRId32","\
+        "nReceivePacktFailNum:%"PRId32","\
+        "nPutPacktToDecoderOkNum:%"PRId32","\
+        "nPutPacktToDecoderFailNum:%"PRId32","\
+        "nGiveBackPacktOkNum:%"PRId32""\
+        "nGiveBackPacktFailNum:%"PRId32"\n"
         ,__FUNCTION__,__LINE__
         ,pVdecDataType->nReceivePacktOkNum
         ,pVdecDataType->nReceivePacktFailNum
@@ -1461,11 +1463,11 @@ _EXIT:
         ,pVdecDataType->nGiveBackPacktOkNum
         ,pVdecDataType->nGiveBackPacktFailNum);
 
-    printf("[%s:%d]out port:nGetFrameFromDecoderNum:%d,"\
-        "nDropFrameFromDecoderNum:%d,"\
-        "nSendFrameOkNum:%d,"\
-        "nSendFrameErrorNum:%d,"\
-        "nLeftReadyFrameWhenCompoentExitNum:%d\n"
+    printf("[%s:%d]out port:nGetFrameFromDecoderNum:%"PRId32","\
+        "nDropFrameFromDecoderNum:%"PRId32","\
+        "nSendFrameOkNum:%"PRId32","\
+        "nSendFrameErrorNum:%"PRId32","\
+        "nLeftReadyFrameWhenCompoentExitNum:%"PRId32"\n"
         ,__FUNCTION__,__LINE__
         ,pVdecDataType->nGetFrameFromDecoderNum
         ,pVdecDataType->nDropFrameFromDecoderNum

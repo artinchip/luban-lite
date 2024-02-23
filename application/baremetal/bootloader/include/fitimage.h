@@ -17,6 +17,14 @@ struct spl_fit_info {
     int conf_node;      /* FDT offset to selected configuration node */
 };
 
+typedef enum
+{
+    DEVICE_MMC,
+    DEVICE_SPINAND,
+    DEVICE_SPINOR,
+    DEVICE_XIPNOR,
+} boot_dev_type;
+
 /**
  * Information required to load data from a device
  *
@@ -27,6 +35,7 @@ struct spl_fit_info {
 struct spl_load_info {
     void *dev;
     void *priv;
+    boot_dev_type dev_type;
     int bl_len;
 };
 

@@ -13,8 +13,7 @@
 
 int hal_adcim_calibration_set(unsigned int val);
 s32 hal_adcim_probe(void);
-int hal_adcim_auto_calibration(int adc_val, int st_voltage, int scale,
-                               int adc_max_val);
+int hal_adcim_auto_calibration(int adc_val, float def_voltage, int scale);
 
 #ifdef AIC_ADCIM_DM_DRV
 void hal_dm_chan_show(void);

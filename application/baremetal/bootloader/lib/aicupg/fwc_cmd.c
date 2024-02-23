@@ -120,6 +120,8 @@ static void CMD_SET_FWC_META_end(struct upg_cmd *cmd)
             set_current_device_id(0);
         }
 
+        fwc->start_us = aic_get_time_us();
+
         dev_type = get_current_device_type();
         printf("    Media:     %s(%d)\n", get_current_device_name(dev_type),
                dev_type);
@@ -338,6 +340,8 @@ static void CMD_SEND_FWC_DATA_end(struct upg_cmd *cmd)
 {
     enum upg_dev_type dev_type;
     struct fwc_info *fwc;
+    u64 total_len = 0;
+    u32 start_us;
 
     fwc = (struct fwc_info *)cmd->priv;
 
@@ -371,6 +375,15 @@ static void CMD_SEND_FWC_DATA_end(struct upg_cmd *cmd)
         cmd->priv = 0;
         cmd_state_set_next(cmd, CMD_STATE_IDLE);
     }
+
+    total_len = fwc->trans_size;
+    start_us = aic_get_time_us() - fwc->start_us;
+    pr_info("    Partition: %s programming done.\n", fwc->meta.partition);
+    pr_info("    Used time: %u.%u sec, Speed: %lu.%lu KB/s.\n",
+            start_us / 1000000, start_us / 1000 % 1000,
+            (ulong)((total_len * 1000000) / start_us / 1024),
+            (ulong)((total_len * 1000000) / start_us % 1024));
+
     pr_debug("%s, l: %d\n", __func__, __LINE__);
 }
 

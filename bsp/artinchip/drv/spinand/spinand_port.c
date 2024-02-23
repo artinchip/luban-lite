@@ -13,6 +13,8 @@
 #include <drv_qspi.h>
 #include <drv_spienc.h>
 #include <partition_table.h>
+#include <boot_param.h>
+#include <private_param.h>
 #include "spinand.h"
 #include "spinand_parts.h"
 #include "spinand_block.h"
@@ -314,6 +316,42 @@ static rt_err_t spinand_mtd_block_markbad(struct rt_mtd_nand_device *device,
     return result;
 }
 
+static int nand_read_data(void *dev, unsigned long offset, void *buf,
+                          unsigned long len)
+{
+    struct aic_spinand *flash = dev;
+    rt_err_t result;
+    rt_off_t page;
+
+    result = rt_mutex_take(flash->lock, RT_WAITING_FOREVER);
+    RT_ASSERT(result == RT_EOK);
+
+    page = offset / flash->info->page_size;
+    result = spinand_read_page(flash, page, buf, len, NULL, 0);
+
+    rt_mutex_release(flash->lock);
+
+    return result;
+}
+
+static char *aic_spinand_get_partition_string(struct aic_spinand *flash)
+{
+    char *parts = NULL;
+    void *res_addr = NULL;
+
+    res_addr = aic_get_boot_resource_from_nand(flash, flash->info->page_size,
+                                               nand_read_data);
+    parts = private_get_partition_string(res_addr);
+    if (parts == NULL)
+        parts = IMAGE_CFG_JSON_PARTS_MTD;
+    if (parts) {
+        parts = rt_strdup(parts);
+    }
+    if (res_addr)
+        free(res_addr);
+    return parts;
+}
+
 static struct rt_mtd_nand_driver_ops spinand_ops = {
     spinand_read_id,           spinand_mtd_read,
     spinand_mtd_write,         NULL,
@@ -327,6 +365,8 @@ rt_err_t rt_hw_mtd_spinand_init(struct aic_spinand *flash)
     rt_uint32_t blocksize;
     int i = 0, cnt;
     rt_err_t result;
+    char *partstr = NULL;
+    struct nftl_mtd *nftl_parts = NULL;
 
     if (flash->IsInited)
         return RT_EOK;
@@ -341,13 +381,34 @@ rt_err_t rt_hw_mtd_spinand_init(struct aic_spinand *flash)
     if (result != RT_EOK)
         return -RT_ERROR;
 
-    parts = mtd_parts_parse(IMAGE_CFG_JSON_PARTS_MTD);
+    partstr = aic_spinand_get_partition_string(flash);
+
+#ifdef IMAGE_CFG_JSON_PARTS_NFTL
+    nftl_parts = build_nftl_list(IMAGE_CFG_JSON_PARTS_NFTL);
+#endif
+
+    parts = mtd_parts_parse(partstr);
+    if (partstr)
+        free(partstr);
     p = parts;
     cnt = 0;
     while (p) {
         cnt++;
+
+        if (partition_nftl_is_exist(p->name, nftl_parts)) {
+            p->attr = PART_ATTR_NFTL;
+        } else {
+            p->attr = PART_ATTR_MTD;
+        }
+
         p = p->next;
     }
+
+
+#ifdef IMAGE_CFG_JSON_PARTS_NFTL
+    free_nftl_list(nftl_parts);
+#endif
+
     g_mtd_partitions_cnt = cnt;
     g_mtd_partitions = rt_malloc(sizeof(struct rt_mtd_nand_device) * cnt);
     if (!g_mtd_partitions) {
@@ -362,12 +423,12 @@ rt_err_t rt_hw_mtd_spinand_init(struct aic_spinand *flash)
         g_mtd_partitions[i].pages_per_block = flash->info->pages_per_eraseblock;
         g_mtd_partitions[i].oob_size = flash->info->oob_size;
         g_mtd_partitions[i].oob_free = 32;
-        g_mtd_partitions[i].plane_num = flash->info->is_die_select;
         g_mtd_partitions[i].ops = &spinand_ops;
         g_mtd_partitions[i].block_start = p->start / blocksize;
         g_mtd_partitions[i].block_end = (p->start + p->size - 1) / blocksize;
         g_mtd_partitions[i].block_total = p->size / blocksize;
         g_mtd_partitions[i].priv = flash;
+        g_mtd_partitions[i].attr = p->attr;
 
         result = rt_mtd_nand_register_device(p->name, &g_mtd_partitions[i]);
         RT_ASSERT(result == RT_EOK);
@@ -397,7 +458,7 @@ rt_err_t rt_hw_mtd_spinand_init(struct aic_spinand *flash)
     return result;
 }
 
-rt_err_t rt_hw_mtd_spinand_register(const char *device_name)
+rt_err_t rt_hw_mtd_spinand_register(const char *device_name, u32 bus_hz)
 {
     rt_device_t pDev;
     rt_err_t result;
@@ -413,13 +474,12 @@ rt_err_t rt_hw_mtd_spinand_register(const char *device_name)
         return -RT_ERROR;
     }
 
-    //SPINAND_FLASH_QSPI = (struct rt_qspi_device *)pDev;
     device = (struct rt_qspi_device *)pDev;
     spinand->user_data = device;
 
     device->config.parent.mode = RT_SPI_MODE_0;
     device->config.parent.data_width = 8;
-    device->config.parent.max_hz = 100000000;
+    device->config.parent.max_hz = bus_hz;
     device->config.ddr_mode = 0;
     device->config.qspi_dl_width = 4;
 
@@ -496,7 +556,7 @@ static int ncontread(int argc, char **argv)
     rt_uint8_t *data_ptr = RT_NULL;
     struct rt_mtd_nand_device *device;
     rt_uint32_t partition, page, size;
-    rt_uint32_t start_us;
+    rt_uint64_t start_us;
 
     if (argc != 4) {
         pr_err("Usage %s: %s <partition_no> <page> <size>.\n", __func__,
@@ -773,8 +833,10 @@ MSH_CMD_EXPORT(ncontread, test nand cont read);
 
 static int rt_hw_spinand_register(void)
 {
+#if defined(AIC_QSPI0_DEVICE_SPINAND)
     aic_qspi_bus_attach_device("qspi0", "spinand0", 0, 4, RT_NULL, RT_NULL);
-    rt_hw_mtd_spinand_register("spinand0");
+    rt_hw_mtd_spinand_register("spinand0", AIC_QSPI0_DEVICE_SPINAND_FREQ);
+#endif
     return RT_EOK;
 }
 

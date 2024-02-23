@@ -11,21 +11,12 @@
 
 #define SPINAND_MFR_UMTEK		0x52
 
-struct spi_nand_cmd_cfg umtek_cmd_cfg_table[] = {
-    /*opcode    opcode_bits addr_bytes	addr_bits	dummy_bytes	data_nbits*/
-    { SPINAND_CMD_READ_FROM_CACHE, 1, 2, 1, 1, 1 },
-    { SPINAND_CMD_READ_FROM_CACHE_X2, 1, 2, 1, 1, 2 },
-    { SPINAND_CMD_READ_FROM_CACHE_X4, 1, 2, 1, 1, 4 },
-    { SPINAND_CMD_PROG_LOAD, 1, 2, 1, 0, 1 },
-    { SPINAND_CMD_PROG_LOAD_X4, 1, 2, 1, 0, 4 },
-    { SPINAND_CMD_END },
-};
-
 const struct aic_spinand_info umtek_spinand_table[] = {
-    /*devid page_size oob_size block_per_lun pages_per_eraseblock is_die_select*/
+    /*devid page_size oob_size block_per_lun pages_per_eraseblock planes_per_lun
+    is_die_select*/
     /*GSS01GAK1*/
-    { 0xBA, 2048, 64, 1024, 64, 0, "umtek 128MB: 2048+64@64@1024",
-      umtek_cmd_cfg_table },
+    { DEVID(0xBA), PAGESIZE(2048), OOBSIZE(64), BPL(1024), PPB(64), PLANENUM(1),
+      DIE(0), "umtek 128MB: 2048+64@64@1024", cmd_cfg_table },
 };
 
 const struct aic_spinand_info *umtek_spinand_detect(struct aic_spinand *flash)

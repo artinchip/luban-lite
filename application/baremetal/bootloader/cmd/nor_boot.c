@@ -63,11 +63,15 @@ static int do_nor_boot(int argc, char *argv[])
 
     info.dev = (void *)mtd;
     info.bl_len = 1;
+    info.dev_type = DEVICE_SPINOR;
 
-    spl_load_simple_fit(&info, &entry_point);
+    ret = spl_load_simple_fit(&info, &entry_point);
+    if (ret < 0)
+        goto out;
 
     boot_app((void *)entry_point);
 
+out:
     return ret;
 }
 

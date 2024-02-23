@@ -4,6 +4,7 @@
 #include <ctype.h>
 #include <console.h>
 #include <rtconfig.h>
+#include <aic_osal.h>
 
 #ifdef __GNUC__
 #define MAYBE_UNUSED(d) d __attribute__((unused))
@@ -506,6 +507,10 @@ static int _console_loop(struct tiny_console *cons)
 
                 cons->display_prompt = 0;
             }
+
+#ifdef KERNEL_FREERTOS
+            aicos_msleep(10);
+#endif
 
             c = getchar();
 

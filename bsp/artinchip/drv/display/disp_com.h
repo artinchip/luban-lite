@@ -129,6 +129,7 @@ struct di_funcs {
     int (*attach_panel)(struct aic_panel *panel);
     int (*set_videomode)(const struct display_timing *timings, int enable);
     int (*send_cmd)(u32 dt, u32 vc, const u8 *data, u32 len);
+    int (*read_cmd)(u32 val);
 };
 
 struct platform_driver {

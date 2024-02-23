@@ -102,7 +102,7 @@ static int do_spinand_contread(int argc, char *argv[])
     int8_t err;
     unsigned long offset, size, page;
     uint8_t *data;
-    uint32_t start_us;
+    uint64_t start_us;
 
     if (argc < 3) {
         spinand_help();
@@ -123,7 +123,7 @@ static int do_spinand_contread(int argc, char *argv[])
     start_us = aic_get_time_us();
     err = spinand_continuous_read(g_spinand_flash, page, (uint8_t *)data, size);
     start_us = aic_get_time_us() - start_us;
-    printf("start_us = %ud size = %lu\n", start_us, size);
+    printf("start_us = %lu size = %lu\n", start_us, size);
 
     hexdump((void *)data, size, 1);
 

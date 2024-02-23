@@ -12,6 +12,7 @@
 #define NEC_UNIT        21  /* sample cycles number */
 #define NEC_HEADER_PULSE    342
 #define NEC_HEADER_SPACE    171
+#define NEC_REPEAT_SPACE    86
 #define NEC_BIT_PULSE       NEC_UNIT
 #define NEC_BIT_0_SPACE     NEC_UNIT
 #define NEC_BIT_1_SPACE     64
@@ -43,6 +44,7 @@ static inline uint32_t ir_nec_bytes_to_scancode(uint8_t address,
 int ir_nec_decode(uint8_t * rx_data, uint32_t size, uint32_t *scancode)
 {
     uint8_t previous_level = 0;
+    static uint32_t last_scancode = 0;
     uint32_t i, data = 0, tmp_data = 0, data_count = 0;
     uint8_t address, not_address, command, not_command;
     enum nec_state state = STATE_INACTIVE;
@@ -62,6 +64,9 @@ int ir_nec_decode(uint8_t * rx_data, uint32_t size, uint32_t *scancode)
                 if (cir_check_in_range(tmp_data, NEC_HEADER_SPACE,
                                        NEC_MARGIN_CYCLES))
                     state = STATE_BIT_PULSE;
+                else if (cir_check_in_range(tmp_data, NEC_REPEAT_SPACE,
+                                       NEC_MARGIN_CYCLES))
+                    state = STATE_TRAILER_PULSE;
                 break;
             case STATE_BIT_PULSE:
                 if (cir_check_in_range(tmp_data, NEC_BIT_PULSE,
@@ -110,6 +115,10 @@ int ir_nec_decode(uint8_t * rx_data, uint32_t size, uint32_t *scancode)
 
             *scancode = ir_nec_bytes_to_scancode(address, not_address,
                                                  command, not_command);
+            last_scancode = *scancode;
+            return 0;
+        } else {
+            *scancode = last_scancode;
             return 0;
         }
     }

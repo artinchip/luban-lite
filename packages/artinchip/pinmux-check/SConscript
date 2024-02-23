@@ -1,0 +1,15 @@
+Import('AIC_ROOT')
+Import('PRJ_KERNEL')
+from building import *
+
+cwd = GetCurrentDir()
+CPPPATH = [cwd]
+
+src = []
+
+if GetDepend('AIC_PINMUX_CHECK'):
+    src = Glob('*.c')
+
+group = DefineGroup('pinmux-check', src, depend = [''], CPPPATH = CPPPATH)
+
+Return('group')

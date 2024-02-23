@@ -34,6 +34,7 @@ choice
 
 config AIC_LVDS_LINK_0
     bool "single link 0"
+    depends on AIC_DE_DRV_V10 || AIC_DE_DRV_V11
 
 config AIC_LVDS_LINK_1
     bool "single link 1"
@@ -41,9 +42,11 @@ config AIC_LVDS_LINK_1
 
 config AIC_LVDS_DOUBLE_SCREEN
     bool "double screen"
+    depends on AIC_DE_DRV_V10
 
 config AIC_LVDS_DUAL_LINK
     bool "dual link"
+    depends on AIC_DE_DRV_V10
 endchoice
 
 config AIC_LVDS_LINK_MODE

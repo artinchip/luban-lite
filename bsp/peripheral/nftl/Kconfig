@@ -1,0 +1,9 @@
+
+config AIC_NFTL_SUPPORT
+        bool "Aic NFTL support"
+        default n
+
+    config AIC_NFLT_USED_LIB
+        depends on AIC_NFTL_SUPPORT
+        bool "Aic NFTL use lib"
+        default n

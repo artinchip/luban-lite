@@ -22,6 +22,12 @@
 #include "drv_dma.h"
 #endif
 
+#ifdef LPKG_CHERRYUSB_HOST
+#include <usbh_core.h>
+#include <usbh_hub.h>
+#include <usb_hc.h>
+#endif
+
 #ifdef LPKG_USING_DFS
 #include <dfs.h>
 #include <dfs_fs.h>
@@ -106,23 +112,50 @@ int main(void)
         pr_err("Failed to mount romfs\n");
 #endif
 
-#ifdef AIC_SDMC_DRV
+#ifdef AIC_USING_SDMC0
+    mmc_init(0);
+#endif
+#ifdef AIC_USING_SDMC1
     mmc_init(1);
     sdcard_hotplug_init();
 #endif
 
+#if defined(LPKG_USING_DFS_ELMFAT) && defined(AIC_USING_SDMC0)
+    if (dfs_mount("mmc0p2", "/rodata", "elm", 0, DEVICE_TYPE_SDMC_DISK) < 0)
+        pr_err("Failed to mount mmc0p2 with FatFS\n");
+    else
+        printf("mount mmc0p2 ok\n");
+    if (dfs_mount("mmc0p3", "/data", "elm", 0, DEVICE_TYPE_SDMC_DISK) < 0)
+        pr_err("Failed to mount mmc0p3 with FatFS\n");
+    else
+        printf("mount mmc0p3 ok\n");
+#endif
+
 #if defined(LPKG_USING_DFS_ELMFAT) && defined(AIC_SDMC_DRV)
-    if (dfs_mount("sdmc", "/sdcard", "elm", 0, (const void *)SDMC_DISK) < 0)
+    if (dfs_mount("sd1", "/sdcard", "elm", 0, DEVICE_TYPE_SDMC_DISK) < 0)
         pr_err("Failed to mount sdmc with FatFS\n");
 #endif
 
-#ifdef AIC_SPINAND_DRV
+#if defined(AIC_SPINAND_DRV) || defined(AIC_SPINOR_DRV)
     mtd_probe();
 #endif
 
-#if defined(LPKG_USING_DFS_ELMFAT) && defined(AIC_SPINAND_DRV)
-    if (dfs_mount("rodata", "/rodata", "elm", 0,(const void *)SPINAND_DISK) < 0)
+#if defined(LPKG_USING_DFS_ELMFAT) && defined(AIC_USING_FS_IMAGE_TYPE_FATFS_FOR_0)
+#if defined(AIC_SPINAND_DRV)
+    if (dfs_mount("rodata", "/rodata", "elm", 0, DEVICE_TYPE_SPINAND_DISK) < 0)
         pr_err("Failed to mount spinand with FatFS\n");
+#endif
+#if defined(AIC_SPINOR_DRV)
+    if (dfs_mount("rodata", "/rodata", "elm", 0, DEVICE_TYPE_SPINOR_DISK) < 0)
+        pr_err("Failed to mount spinor with FatFS\n");
+#endif
+#endif
+
+#if defined(LPKG_USING_DFS_ELMFAT) && defined(AIC_USING_FS_IMAGE_TYPE_FATFS_FOR_1)
+#if defined(AIC_SPINAND_DRV)
+    if (dfs_mount("data", "/data", "elm", 0, DEVICE_TYPE_SPINAND_DISK) < 0)
+        pr_err("Failed to mount spinand with FatFS\n");
+#endif
 #endif
 
 #ifdef AIC_DISPLAY_DRV
@@ -138,6 +171,22 @@ int main(void)
     aic_get_reboot_reason();
     aic_show_startup_time();
 #endif
+
+#ifdef LPKG_CHERRYUSB_DEVICE
+#ifdef LPKG_CHERRYUSB_DEVICE_MSC_TEMPLATE
+    extern void msc_ram_init(void);
+    msc_ram_init();
+#endif
+#endif
+
+#ifdef LPKG_CHERRYUSB_HOST
+    usbh_init();
+    while(1)
+    {
+        usbh_hub_poll();
+    }
+#endif
+
 #ifdef LPKG_LWIP_EXAMPLES
     /* LwIP test loop */
     lwip_test_example_main_loop(NULL);
@@ -149,26 +198,28 @@ int main(void)
 #endif /* LV_USE_LOG */
     lv_init();
     lv_port_disp_init();
+    int end_flag = 0;
+#ifdef AIC_LVGL_GIF_DEMO
+    void gif_ui_init(int *end_flag);
+    gif_ui_init(&end_flag);
+#else
     lv_user_gui_init();
-
-    while(1)
+#endif
+    while(!end_flag)
     {
         lv_task_handler();
+        aicos_mdelay(1);
     }
 #endif /* AIC_LVGL_DEMO */
-    #ifdef AIC_VE_TEST
+
+#ifdef AIC_VE_TEST
     extern int  do_pic_dec_test(int argc, char **argv);
     /* Main loop */
     aicos_mdelay(2000);
     while (1) {
         do_pic_dec_test(0,NULL);
-        //break;
     }
-    #else
-    while (1) {
-        break;
-    }
-    #endif
+#endif
 
 #ifdef AIC_CONSOLE_BARE_DRV
     /* Console shell loop */

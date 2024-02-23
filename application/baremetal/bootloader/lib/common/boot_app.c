@@ -41,5 +41,6 @@ void boot_app(void *app)
     boot_time_show();
     dev = aic_get_boot_device();
     aicos_dcache_clean();
+    aicos_icache_invalid();
     ep(dev);
 }

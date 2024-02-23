@@ -57,7 +57,7 @@ Default_IRQHandler:
     la      sp, g_top_irqstack
 
     /* ipush */
-    addi    sp, sp, -(18 * FREGBYTES)
+    addi    sp, sp, -(18 * REGBYTES)
     STORE   x1, 1 * REGBYTES(sp)    // ra
     csrr    x1, mepc
     STORE   x1, 0 * REGBYTES(sp)    // mepc
@@ -138,6 +138,14 @@ Default_IRQHandler:
     la      t0, g_irqdata
     add     t0, t0, t1
     LOAD    a1, (t0)
+    /* g_irqcnt[irq_num]++ */
+    la      t0, g_irqcnt
+    srli    t1, t1, 1
+    add     a3, t0, t1
+    lw      t0, (a3)
+    addi    t0, t0, 1
+    sw      t0, (a3)
+
     /* call irq_handler_func(irq_num, irq_data) */
     jalr    t2
 
@@ -205,7 +213,7 @@ Default_IRQHandler:
     LOAD    x30, 16 * REGBYTES(sp)  // t5
     LOAD    x31, 17 * REGBYTES(sp)  // t6
 
-    addi    sp, sp, (18 * FREGBYTES)
+    addi    sp, sp, (18 * REGBYTES)
 
     /* Restore sp to normal stack */
     csrr    sp, mscratch
@@ -262,7 +270,8 @@ trap:
     mv      a0, t0
     mv      sp, a0
 
-    jal     trap_c
+    la      a5, trap_c
+    jalr    a5
 
     .align  6
     .weak   Default_Handler

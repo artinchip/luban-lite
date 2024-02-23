@@ -2,5 +2,6 @@ menu "ArtInChip packages options"
 
 source "packages/artinchip/mpp/Kconfig"
 source "packages/artinchip/env/Kconfig"
+source "packages/artinchip/pinmux-check/Kconfig"
 
 endmenu

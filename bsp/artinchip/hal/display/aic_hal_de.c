@@ -167,6 +167,9 @@ u32 de_set_te_pinmux(const char *name)
 #elif defined(AIC_DE_DRV_V11) || defined(AIC_DE_V11)
     char *pins[] = { "PA.1", "PC.6" };
     unsigned int func[] = { 8, 6 };
+#elif defined(AIC_DE_DRV_V12) || defined(AIC_DE_V12)
+char *pins[] = { "PA.1", "PC.6" };
+unsigned int func[] = { 8, 6 };
 #endif
     unsigned int g, p, i;
     long pin = 0;

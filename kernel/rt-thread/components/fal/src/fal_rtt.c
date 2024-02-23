@@ -17,11 +17,14 @@
 #include <string.h>
 
 /* ========================== block device ======================== */
-struct fal_blk_device
-{
+struct fal_blk_device {
     struct rt_device                parent;
     struct rt_device_blk_geometry   geometry;
     const struct fal_partition     *fal_part;
+#ifdef AIC_FATFS_ENABLE_WRITE_IN_SPINOR
+    rt_uint32_t length;
+    rt_uint8_t *buf;
+#endif
 };
 
 /* RT-Thread device interface */
@@ -47,11 +50,12 @@ static rt_err_t blk_dev_control(rt_device_t dev, rt_uint8_t cmd, void *args)
 
         memcpy(geometry, &part->geometry, sizeof(struct rt_device_blk_geometry));
     }
-#ifndef FAL_BLK_DEVICE_RDONLY
     else if (cmd == RT_DEVICE_CTRL_BLK_ERASE)
     {
         rt_uint32_t *addrs = (rt_uint32_t *) args, start_addr = addrs[0], end_addr = addrs[1], phy_start_addr;
         rt_size_t phy_size;
+
+        log_d("start_addr = %d end_addr = %d.\n", start_addr, end_addr);
 
         if (addrs == RT_NULL || start_addr > end_addr)
         {
@@ -71,7 +75,6 @@ static rt_err_t blk_dev_control(rt_device_t dev, rt_uint8_t cmd, void *args)
             return -RT_ERROR;
         }
     }
-#endif
 
     return RT_EOK;
 }
@@ -99,33 +102,55 @@ static rt_size_t blk_dev_read(rt_device_t dev, rt_off_t pos, void* buffer, rt_si
 
 static rt_size_t blk_dev_write(rt_device_t dev, rt_off_t pos, const void* buffer, rt_size_t size)
 {
+#ifndef AIC_FATFS_ENABLE_WRITE_IN_SPINOR
+    log_e("This config only supports read!\n");
+    return size;
+#else
     int ret = 0;
     struct fal_blk_device *part;
-    rt_off_t phy_pos;
-    rt_size_t phy_size;
+    rt_off_t phy_pos, buf_pos;
+    rt_size_t phy_size, buf_size;
+    rt_uint32_t align_sector = 0;
+    rt_uint8_t align_cnt = 0;
 
     part = (struct fal_blk_device*) dev;
     assert(part != RT_NULL);
 
-    /* change the block device's logic address to physical address */
-    phy_pos = pos * part->geometry.bytes_per_sector;
-    phy_size = size * part->geometry.bytes_per_sector;
+    align_sector = pos - pos % 8;
+    align_cnt = pos % 8 + size;
+    align_cnt = (align_cnt + 7) / 8 * 8;
 
-    if (dev->flag & RT_DEVICE_FLAG_RDONLY) {
-        log_e("The block device read only.\n");
-        return size;
-    }
+    log_d("pos = %ld size = %d!\n", pos, size);
+    log_d("align_sector = %ld align_cnt = %d!\n", align_sector, align_cnt);
 
-    ret = fal_partition_erase(part->fal_part, phy_pos, phy_size);
+    phy_pos = align_sector * part->geometry.bytes_per_sector;
+    phy_size = align_cnt * part->geometry.bytes_per_sector;
+    buf_pos = pos % 8 * part->geometry.bytes_per_sector;
+    buf_size = size * part->geometry.bytes_per_sector;
 
-    if (ret == (int) phy_size)
-    {
-        ret = fal_partition_write(part->fal_part, phy_pos, buffer, phy_size);
-    }
+    memset(part->buf, 0xFF, part->length);
 
+    ret = fal_partition_read(part->fal_part, phy_pos, part->buf, phy_size);
     if (ret != (int) phy_size)
     {
-        ret = 0;
+        log_e("fal partition read data size failed!\n");
+        return 0;
+    }
+
+    rt_memcpy(part->buf + buf_pos, buffer, buf_size);
+
+    ret = fal_partition_erase(part->fal_part, phy_pos, phy_size);
+    if (ret != (int) phy_size)
+    {
+        log_e("fal partition erase data size failed!\n");
+        return 0;
+    }
+
+    ret = fal_partition_write(part->fal_part, phy_pos, part->buf, phy_size);
+    if (ret != (int) phy_size)
+    {
+        log_e("fal partition write data size failed!\n");
+        return 0;
     }
     else
     {
@@ -133,11 +158,12 @@ static rt_size_t blk_dev_write(rt_device_t dev, rt_off_t pos, const void* buffer
     }
 
     return ret;
+
+#endif
 }
 
 #ifdef RT_USING_DEVICE_OPS
-const static struct rt_device_ops blk_dev_ops =
-{
+static const struct rt_device_ops blk_dev_ops = {
     RT_NULL,
     RT_NULL,
     RT_NULL,
@@ -177,20 +203,23 @@ struct rt_device *fal_blk_device_create(const char *parition_name)
     blk_dev = (struct fal_blk_device*) rt_malloc(sizeof(struct fal_blk_device));
     if (blk_dev)
     {
+#ifdef AIC_FATFS_ENABLE_WRITE_IN_SPINOR
+        blk_dev->length = AIC_USING_FS_IMAGE_TYPE_FATFS_CLUSTER_SIZE * 512 * 2;
+        blk_dev->buf = (uint8_t *)rt_malloc(blk_dev->length);
+        if (!blk_dev->buf) {
+            log_e("Error: no memory for create SPI NOR block buf");
+            return NULL;
+        }
+#endif
+
         blk_dev->fal_part = fal_part;
 
-#ifdef FAL_BLK_DEVICE_RDONLY
         /*To solve the problem of space waste when the sector is set to 4096*/
         /*bytes_per_sector and block_size must set to 512,
           the fatfs partition info can be recognized normally*/
         blk_dev->geometry.bytes_per_sector = 512;
         blk_dev->geometry.block_size = blk_dev->geometry.bytes_per_sector;
         blk_dev->geometry.sector_count = fal_part->len / blk_dev->geometry.bytes_per_sector;
-#else
-        blk_dev->geometry.bytes_per_sector = fal_flash->blk_size;
-        blk_dev->geometry.block_size = fal_flash->blk_size;
-        blk_dev->geometry.sector_count = fal_part->len / fal_flash->blk_size;
-#endif
 
         /* register device */
         blk_dev->parent.type = RT_Device_Class_Block;
@@ -211,11 +240,8 @@ struct rt_device *fal_blk_device_create(const char *parition_name)
 
         rt_sprintf(str, "blk_%s", fal_part->name);
         log_d("The FAL block device (%s) created successfully", str);
-#ifdef FAL_BLK_DEVICE_RDONLY
-        rt_device_register(RT_DEVICE(blk_dev), str, RT_DEVICE_FLAG_RDONLY | RT_DEVICE_FLAG_STANDALONE);
-#else
+
         rt_device_register(RT_DEVICE(blk_dev), str, RT_DEVICE_FLAG_RDWR | RT_DEVICE_FLAG_STANDALONE);
-#endif
     }
     else
     {
@@ -409,8 +435,7 @@ static rt_size_t char_dev_write(rt_device_t dev, rt_off_t pos, const void *buffe
 }
 
 #ifdef RT_USING_DEVICE_OPS
-const static struct rt_device_ops char_dev_ops =
-{
+static const struct rt_device_ops char_dev_ops = {
     RT_NULL,
     RT_NULL,
     RT_NULL,
@@ -952,7 +977,7 @@ static void fal(uint8_t argc, char **argv) {
         }
     }
 }
-MSH_CMD_EXPORT(fal, FAL (Flash Abstraction Layer) operate.);
+MSH_CMD_EXPORT(fal, FAL (Flash Abstraction Layer) operate);
 
 #endif /* defined(RT_USING_FINSH) && defined(FINSH_USING_MSH) */
 #endif /* RT_VER_NUM */

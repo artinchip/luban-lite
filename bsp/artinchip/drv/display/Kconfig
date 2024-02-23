@@ -26,24 +26,28 @@ config AIC_DISP_MIPI_DSI_DRV
 
 choice
     prompt "select Display interface"
-    default AIC_DISP_LVDS
+    default AIC_DISP_RGB
     depends on AIC_DISPLAY_DRV
 
 config AIC_DISP_RGB
     bool "Display RGB interface"
     select AIC_DISP_RGB_DRV
+    depends on AIC_DE_DRV_V10 || AIC_DE_DRV_V11 || AIC_DE_DRV_V12
 
 config AIC_DISP_LVDS
     bool "Display LVDS interface"
     select AIC_DISP_LVDS_DRV
+    depends on AIC_DE_DRV_V10 || AIC_DE_DRV_V11
 
 config AIC_DISP_MIPI_DSI
     bool "Display MIPI-DSI interface"
     select AIC_DISP_MIPI_DSI_DRV
+    depends on AIC_DE_DRV_V10 || AIC_DE_DRV_V11
 
 config AIC_DISP_MIPI_DBI
     bool "Display MIPI-DBI interface"
     select AIC_DISP_MIPI_DBI_DRV
+    depends on AIC_DE_DRV_V10 || AIC_DE_DRV_V11 || AIC_DE_DRV_V12
 endchoice
 
 config AIC_DI_TYPE
@@ -194,3 +198,7 @@ if AIC_PWM_BACKLIGHT
         default 80
         range 0 100
 endif
+
+config AIC_PANEL_SPI_EMULATION
+    bool
+    default n

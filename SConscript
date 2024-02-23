@@ -44,11 +44,7 @@ if os.path.isfile(abs_path):
     objs = objs + SConscript(rel_path)
 
 # app
-if PRJ_KERNEL == 'baremetal':
-    app_os = 'baremetal'
-else:
-    app_os = 'os'
-rel_path = os.path.join('application', app_os, PRJ_APP, 'SConscript')
+rel_path = os.path.join('application', PRJ_KERNEL, PRJ_APP, 'SConscript')
 abs_path = os.path.join(AIC_ROOT, rel_path)
 if os.path.isfile(abs_path):
     objs = objs + SConscript(rel_path)

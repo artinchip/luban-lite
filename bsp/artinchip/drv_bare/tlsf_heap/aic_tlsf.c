@@ -34,12 +34,21 @@ typedef struct {
 } aic_tlsf_heap_t;
 
 static heap_def_t heap_def[MAX_MEM_REGION] = {
+#if !defined(KERNEL_FREERTOS)
     {
         .name = "sys",
         .type = MEM_DEFAULT,
         .start = (size_t)(&__heap_start),
         .end = (size_t)(&__heap_end),
     },
+#else
+    {
+        .name = "null",
+        .type = 0xFFFF,
+        .start = (size_t)(0xFFFFFFFF),
+        .end = (size_t)(0xFFFFFFFF),
+    },
+#endif
 
 #if defined(AIC_CHIP_D21X)
     #ifdef AIC_DRAM_CMA_EN
@@ -125,7 +134,11 @@ static heap_def_t heap_def[MAX_MEM_REGION] = {
 #endif
 };
 static aic_tlsf_heap_t tlsf_heap[MAX_MEM_REGION];
+
+#define USING_HEAP_IN_ISR
+#ifndef USING_HEAP_IN_ISR
 static aicos_mutex_s heap_mutex;
+#endif
 
 #ifdef CONFIG_AICTLSF_USE_HOOK
 static void (*tlsf_malloc_hook)(void *ptr, u32 size);
@@ -184,7 +197,12 @@ void aic_tlsf_heap_test(void)
     u32 len[10] = {13, 1000, 64, 300, 5000, 20000, 14, 5, 451, 1000};
 
     pr_debug("\n\nMem heap info:\n\n");
-    for (i=0; i < MAX_MEM_REGION; i++) {
+#if !defined(KERNEL_FREERTOS)
+    i = 0;
+#else
+    i = 1;
+#endif
+    for (; i < MAX_MEM_REGION; i++) {
         aic_tlsf_mem_info(i, &total_m, &used_m, &max_used, &free_m, &max_free);
         pr_debug("%s: heap region %d total=%d, used=%d, max_used=%d, free=%d, max_free=%d.\n",
                 __func__, i, total_m, used_m, max_used, free_m, max_free);
@@ -212,7 +230,11 @@ void aic_tlsf_heap_test(void)
 void aic_tlsf_heap_init(void)
 {
     tlsf_t heap = NULL;
+#if !defined(KERNEL_FREERTOS)
     u32 i = 0;
+#else
+    u32 i = 1;
+#endif
     size_t m_end;
     size_t m_start;
 
@@ -236,7 +258,9 @@ void aic_tlsf_heap_init(void)
         INIT_LIST_HEAD(&tlsf_heap[i].pool_list.list);
     }
 
+#ifndef USING_HEAP_IN_ISR
      aicos_mutex_init(&heap_mutex);
+#endif
 }
 
 void *aic_tlsf_malloc(u32 mem_type, u32 nbytes)
@@ -257,12 +281,21 @@ void *aic_tlsf_malloc(u32 mem_type, u32 nbytes)
 
     heap = tlsf_heap[i].heap;
     if (heap) {
+        #ifndef USING_HEAP_IN_ISR
         aicos_mutex_take(&heap_mutex, AICOS_WAIT_FOREVER);
+        #else
+        unsigned long state = 0;
+        aicos_local_irq_save(&state);
+        #endif
 
         ptr = tlsf_malloc(heap, nbytes);
         TLSF_HOOK_CALL(tlsf_malloc_hook, ((void *)ptr, nbytes));
 
+        #ifndef USING_HEAP_IN_ISR
         aicos_mutex_give(&heap_mutex);
+        #else
+        aicos_local_irq_restore(state);
+        #endif
     }
     return ptr;
 }
@@ -284,12 +317,21 @@ void aic_tlsf_free(u32 mem_type, void *ptr)
 
     heap = tlsf_heap[i].heap;
     if (heap) {
+        #ifndef USING_HEAP_IN_ISR
         aicos_mutex_take(&heap_mutex, AICOS_WAIT_FOREVER);
+        #else
+        unsigned long state = 0;
+        aicos_local_irq_save(&state);
+        #endif
 
         tlsf_free(heap, ptr);
         TLSF_HOOK_CALL(tlsf_free_hook, (ptr));
 
+        #ifndef USING_HEAP_IN_ISR
         aicos_mutex_give(&heap_mutex);
+        #else
+        aicos_local_irq_restore(state);
+        #endif
     }
 }
 
@@ -310,11 +352,20 @@ void *aic_tlsf_realloc(u32 mem_type, void *ptr, u32 nbytes)
 
     heap = tlsf_heap[i].heap;
     if (heap) {
+        #ifndef USING_HEAP_IN_ISR
         aicos_mutex_take(&heap_mutex, AICOS_WAIT_FOREVER);
+        #else
+        unsigned long state = 0;
+        aicos_local_irq_save(&state);
+        #endif
 
         ptr = tlsf_realloc(heap, ptr, nbytes);
 
+        #ifndef USING_HEAP_IN_ISR
         aicos_mutex_give(&heap_mutex);
+        #else
+        aicos_local_irq_restore(state);
+        #endif
     }
     return ptr;
 }
@@ -357,9 +408,20 @@ void *aic_tlsf_malloc_align(u32 mem_type, u32 size, u32 align)
 
     heap = tlsf_heap[i].heap;
     if (heap) {
+        #ifndef USING_HEAP_IN_ISR
         aicos_mutex_take(&heap_mutex, AICOS_WAIT_FOREVER);
+        #else
+        unsigned long state = 0;
+        aicos_local_irq_save(&state);
+        #endif
+
         ptr = tlsf_memalign(heap, align, size);
+
+        #ifndef USING_HEAP_IN_ISR
         aicos_mutex_give(&heap_mutex);
+        #else
+        aicos_local_irq_restore(state);
+        #endif
     }
     return ptr;
 }

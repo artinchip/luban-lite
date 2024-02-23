@@ -117,6 +117,11 @@ static rt_err_t rt_inputcapture_control(struct rt_device *dev, int cmd, void *ar
     case INPUTCAPTURE_CMD_SET_WATERMARK:
         inputcapture->watermark = *(rt_size_t *)args;
         break;
+#if defined (AIC_INPUTCAP_DRV) && defined (AIC_DMA_DRV)
+    case INPUTCAPTURE_CMD_SET_DATA_BUF:
+        result = inputcapture->ops->set_buf(inputcapture, (struct rt_inputcapture_fifo_buf *)args);
+        break;
+#endif
     default:
         result = -RT_ENOSYS;
         break;

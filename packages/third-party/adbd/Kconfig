@@ -1,0 +1,145 @@
+
+# Kconfig file for package adbd
+menuconfig LPKG_USING_ADBD
+    bool "ADBD: Android Debug Bridge daemon implementation in RT-Thread"
+    select RT_USING_DFS      if RT_VER_NUM < 0x40100
+    select RT_USING_LIBC     if RT_VER_NUM < 0x40100
+    select RT_USING_POSIX    if RT_VER_NUM < 0x40100
+    select RT_USING_POSIX_FS if RT_VER_NUM >= 0x40100
+    select RT_USING_POSIX_DEVIO if RT_VER_NUM >= 0x40100
+    select RT_USING_POSIX_POLL if RT_VER_NUM >= 0x40100
+    default n
+
+if LPKG_USING_ADBD
+    config LPKG_ADB_TR_TCPIP_ENABLE
+        bool "Using TCPIP transfer"
+        select RT_USING_SAL             if RT_VER_NUM < 0x40100
+        select SAL_USING_POSIX          if RT_VER_NUM < 0x40100
+        select RT_USING_POSIX_SOCKET    if RT_VER_NUM >= 0x40100
+        default n
+        depends on LPKG_USING_LWIP
+
+    if LPKG_CHERRYUSB_DEVICE
+        choice
+            prompt "Select USB transfer mode"
+            default LPKG_ADB_TR_CHERRYUSB_ENABLE
+            config LPKG_ADB_TR_CHERRYUSB_ENABLE
+                bool "Using Cherry USB transfer"
+            config LPKG_ADB_TR_USB_ENABLE
+                bool "Using RTT USB transfer"
+        endchoice
+    endif
+
+    config LPKG_ADB_TR_STACK_SIZE
+        int "Set transfer thread stack size"
+        default 2048
+
+    config LPKG_ADB_SERVICE_SHELL_ENABLE
+        bool "Enable Shell service"
+        default n
+        select RT_USING_POSIX_STDIO
+
+    config LPKG_ADB_SERVICE_FILE_ENABLE
+        bool "Enable File service"
+        default n
+
+    if LPKG_ADB_SERVICE_FILE_ENABLE
+        config LPKG_ADB_FILESYNC_STACK_SIZE
+            int "Set file service thread stack size"
+            default 3072
+
+        config LPKG_ADB_FILESYNC_RECV_TIMEOUT
+            int "Set file service receive timeout(ms)"
+            default 2000
+    endif
+
+    config LPKG_ADB_EXTERNAL_MOD_ENABLE
+            bool "Enable external MOD"
+            default n
+
+    if LPKG_ADB_EXTERNAL_MOD_ENABLE
+        config LPKG_ADB_FILESYNC_MOD_ENABLE
+            bool "Enable File SYNC Mod"
+            select LPKG_ADB_SERVICE_FILE_ENABLE
+            select LPKG_USING_CJSON
+            select LPKG_USING_TINYCRYPT
+            select TINY_CRYPT_MD5
+            default n
+
+        menuconfig LPKG_ADB_FILELIST_MOD_ENABLE
+            bool "Enable File LIST Mod"
+            select LPKG_ADB_SERVICE_FILE_ENABLE
+            select LPKG_USING_CJSON
+            default n
+
+        if LPKG_ADB_FILELIST_MOD_ENABLE
+            config LPKG_ADB_FILELIST_FULL_PATH
+                bool "Using full path"
+                default n
+
+            config LPKG_ADB_FILELIST_SUP_MD5
+                bool "Enable file MD5"
+                select LPKG_USING_TINYCRYPT
+                select TINY_CRYPT_MD5
+                default n
+
+            config LPKG_ADB_FILELIST_SUP_DEV
+                bool "Enable Device ID"
+                default n
+
+            config LPKG_ADB_FILELIST_SUP_INO
+                bool "Enable node info"
+                default n
+
+            config LPKG_ADB_FILELIST_SUP_MODE
+                bool "Enable file type"
+                default y
+
+            config LPKG_ADB_FILELIST_SUP_NLINK
+                bool "Enable link num"
+                default n
+
+            config LPKG_ADB_FILELIST_SUP_UID
+                bool "Enable user ID"
+                default n
+
+            config LPKG_ADB_FILELIST_SUP_GID
+                bool "Enable group ID"
+                default n
+
+            config LPKG_ADB_FILELIST_SUP_RDEV
+                bool "Enable device type"
+                default n
+
+            config LPKG_ADB_FILELIST_SUP_SIZE
+                bool "Enable file size"
+                default y
+
+            config LPKG_ADB_FILELIST_SUP_BLKSIZE
+                bool "Enable block size"
+                default n
+
+            config LPKG_ADB_FILELIST_SUP_BLOCKS
+                bool "Enable block num"
+                default n
+
+            config LPKG_ADB_FILELIST_SUP_ATIME
+                bool "Enable access time"
+                default n
+
+            config LPKG_ADB_FILELIST_SUP_MTIME
+                bool "Enable modify time"
+                default n
+
+            config LPKG_ADB_FILELIST_SUP_CTIME
+                bool "Enable change time"
+                default n
+        endif
+    endif
+
+    config LPKG_ADB_USING_SSDP
+        bool "Enable ADB service discovery"
+        select LPKG_USING_LSSDP
+        default n
+endif
+

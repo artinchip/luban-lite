@@ -100,6 +100,7 @@ static int aic_rgb_enable(void)
             reg_set_bit(comp->regs + RGB_LCD_CTL,
                     RGB_LCD_CTL_SRGB_MODE);
         aic_rgb_swap();
+        break;
     default:
         pr_err("Invalid mode %d\n", rgb->mode);
         break;
@@ -131,16 +132,16 @@ static int aic_rgb_attach_panel(struct aic_panel *panel)
     comp->panel = panel;
 
     if (rgb->mode == PRGB)
-#ifdef AIC_DISP_RGB_DRV_V11
-        comp->sclk_rate = pixclk * 2;
-#else
+#ifdef AIC_DISP_RGB_DRV_V10
         comp->sclk_rate = pixclk * 4;
+#else
+        comp->sclk_rate = pixclk * 2;
 #endif
     else if (rgb->mode == SRGB)
-#ifdef AIC_DISP_RGB_DRV_V11
-        comp->sclk_rate = pixclk * 6;
-#else
+#ifdef AIC_DISP_RGB_DRV_V10
         comp->sclk_rate = pixclk * 12;
+#else
+        comp->sclk_rate = pixclk * 6;
 #endif
 
     pll_disp_rate = comp->sclk_rate;

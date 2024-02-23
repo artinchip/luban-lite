@@ -13,8 +13,6 @@
 
 #include "hal_cap.h"
 
-#define AIC_CAP_CH_NUM          AIC_HRTIMER_CH_NUM
-
 /* Register definition of PWMCS Controller */
 
 #define CAP_BASE(n)             (PWMCS_BASE + 0x1000 + 0x100 * (n))
@@ -40,7 +38,7 @@
 #define GLB_CLK_CTL             (GLB_BASE + 0x00)
 #define GLB_CLK_CTL_CAP_EN(n)   (BIT(16) << (n))
 #endif
-#ifdef AIC_HRTIMER_DRV_V11
+#if defined (AIC_HRTIMER_DRV_V11) || defined (AIC_CAP_DRV_V11)
 #define GLB_CLK_CTL             (GLB_BASE + 0x24)
 #define GLB_CLK_CTL_CAP_EN(n)   BIT(n)
 #endif
@@ -49,11 +47,19 @@
 
 #define GLB_CAP_INT_STS_MASK(n) (1 << (n))
 
+#define CAP_REG_LD_EN           BIT(8)
+#define CAP_EVENT3_POL          BIT(6)
+#define CAP_EVENT2_POL          BIT(4)
+#define CAP_EVENT1_POL          BIT(2)
+#define CAP_EVENT0_RST          BIT(1)
+#define CAP_EVENT0_POL          BIT(0)
+
 #define CAP_CONF2_PWM_MODE      BIT(9)
 #define CAP_CONF2_CNT_EN        BIT(4)
 
 #define CAP_INT_EN_CNT_CMP      BIT(7)
 #define CAP_INT_EN_CNT_PRD      BIT(6)
+#define CAP_EVENT3_INT_EN       BIT(4)
 
 #define CAP_FLG_CLR_CMP         BIT(7)
 #define CAP_FLG_CLR_PRD         BIT(6)
@@ -157,6 +163,56 @@ u32 hal_cap_is_pending(u32 ch)
     return pending;
 }
 
+int hal_cap_in_config(u32 ch)
+{
+    struct aic_cap_arg *arg = &g_cap_args[ch];
+
+    if (!arg->available) {
+        hal_log_err("ch%d is unavailable\n", ch);
+        return -EINVAL;
+    }
+
+    _cap_reg_enable(GLB_CLK_CTL, GLB_CLK_CTL_CAP_EN(ch), 1);
+
+    /* action configuration */
+    _cap_reg_enable(CAP_CONF1(ch), CAP_REG_LD_EN, 1);
+    _cap_reg_enable(CAP_CONF1(ch), CAP_EVENT3_POL, 1);
+    _cap_reg_enable(CAP_CONF1(ch), CAP_EVENT2_POL, 0);
+    _cap_reg_enable(CAP_CONF1(ch), CAP_EVENT1_POL, 1);
+    _cap_reg_enable(CAP_CONF1(ch), CAP_EVENT0_POL, 0);
+    _cap_reg_enable(CAP_CONF1(ch), CAP_EVENT0_RST, 1);
+
+    /* interrupt configuration*/
+    _cap_reg_enable(CAP_INT_EN(ch), CAP_EVENT3_INT_EN, 1);
+
+    return 0;
+}
+
+u32 hal_cap_reg0(u32 ch)
+{
+    return readl(CAP_CNT_PRDV(ch));
+}
+
+u32 hal_cap_reg1(u32 ch)
+{
+    return readl(CAP_CNT_CMPV(ch));
+}
+
+u32 hal_cap_reg2(u32 ch)
+{
+    return readl(CAP_CNT_PRDV_SH(ch));
+}
+
+u32 hal_cap_int_flg(u32 ch)
+{
+    return readl(CAP_FLG(ch));
+}
+
+void hal_cap_clr_flg(u32 ch, u32 stat)
+{
+    writel(stat, CAP_FLG_CLR(ch));
+}
+
 int hal_cap_enable(u32 ch)
 {
     struct aic_cap_arg *arg = &g_cap_args[ch];
@@ -250,7 +306,7 @@ int hal_cap_init(void)
 #ifdef AIC_HRTIMER_DRV_V10
     clk_id = CLK_PWMCS;
 #endif
-#ifdef AIC_HRTIMER_DRV_V11
+#if defined (AIC_HRTIMER_DRV_V11) || defined (AIC_CAP_DRV_V11)
     clk_id = CLK_PWMCS_SDFM;
 #endif
     ret = hal_clk_set_freq(clk_id, PWMCS_CLK_RATE);

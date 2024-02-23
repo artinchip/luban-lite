@@ -45,10 +45,13 @@ irq_nested_level:
     .weak   Default_IRQHandler
     .type   Default_IRQHandler, %function
 Default_IRQHandler:
+#ifdef __riscv_xthead
     ipush
+#else
+    .long   0x0040000b
+#endif
 
 #ifdef ARCH_RISCV_FPU
-
     addi    sp, sp, -(20 * FREGBYTES)
 
     FSTORE  ft0,   0 * FREGBYTES(sp)
@@ -95,6 +98,13 @@ Default_IRQHandler:
     la      t0, g_irqdata
     add     t0, t0, t1
     lw      a1, (t0)
+    /* g_irqcnt[irq_num]++ */
+    la      t0, g_irqcnt
+    add     a3, t0, t1
+    lw      t0, (a3)
+    addi    t0, t0, 1
+    sw      t0, (a3)
+
     /* call irq_handler_func(irq_num, irq_data) */
     jalr    t2
 
@@ -132,8 +142,11 @@ Default_IRQHandler:
 
     addi    sp, sp, (20 * FREGBYTES)
 #endif
+#ifdef __riscv_xthead
     ipop
-
+#else
+    .long   0x0050000b
+#endif
 
 /******************************************************************************
  * Functions:
@@ -196,7 +209,8 @@ trap:
     mv      sp, a0
     sw      t0, 16(sp)
 
-    jal     trap_c
+    la      a5, trap_c
+    jalr    a5
 
 
 .Lirq:

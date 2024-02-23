@@ -1,10 +1,5 @@
 menu "Board options"
 
-#============================================
-# Peripheral Devices
-#============================================
-comment "Peripheral Devices:"
-
 #---------------------------
 # cmu device global option
 #---------------------------
@@ -267,17 +262,6 @@ source "bsp/artinchip/drv/sdmc/Kconfig"
 comment "Analog Related: "
 
 #---------------------------
-# RTP device global option
-#---------------------------
-
-config AIC_USING_RTP
-    bool "Using RTP"
-    default n
-    select AIC_RTP_DRV
-
-source "bsp/artinchip/drv/rtp/Kconfig"
-
-#---------------------------
 # TSEN device global option
 #---------------------------
 
@@ -289,6 +273,14 @@ config AIC_USING_TSEN
 #---------------------------
 # GPAI device global option
 #---------------------------
+
+config AIC_USING_GPAI
+    bool "Using GPAI"
+    default n
+    select AIC_GPAI_DRV
+
+menu "GPAI options"
+    depends on AIC_USING_GPAI
 
 config AIC_USING_GPAI0
     bool "Using GPAI0"
@@ -329,6 +321,9 @@ config AIC_USING_GPAI7
     bool "Using GPAI7"
     default n
     select AIC_GPAI_DRV
+
+source "bsp/artinchip/drv/gpai/Kconfig.dev"
+endmenu
 
 #================================================
 # MutiMedia Class
@@ -386,6 +381,15 @@ config AIC_USING_DVP
 menu "Camera Support"
 source "bsp/peripheral/camera/Kconfig"
 endmenu
+
+#---------------------------
+# I2S global option
+#---------------------------
+
+config AIC_USING_I2S0
+    bool "Using I2S0"
+    default n
+    select AIC_I2S_DRV
 
 #---------------------------
 # AUDIO device global option
@@ -644,6 +648,17 @@ config AIC_USING_CLK_OUT3
     default n
 
 endmenu
+
+#---------------------------
+# PM options
+#---------------------------
+
+config AIC_USING_PM
+    bool "Using Power Management"
+    default n
+    select AIC_PM_DRV
+
+source "bsp/artinchip/drv/pm/Kconfig"
 
 #================================================
 # Security Class

@@ -37,7 +37,7 @@ static unsigned int dst_global_alpha = 0;
 
 static void usage_alpha(char *app)
 {
-    printf("Usage: %s [Options], built on %s %s\n\n", app, __DATE__, __TIME__);
+    printf("Usage: %s [Options]: \n", app);
     printf(
     "\t-s, --src_alpha_mode,   Select src_alpha_mode (default 0), "
     "0: pixel alpha mode, 1: global alpha mode, 2: mixded alpha mode"
@@ -212,9 +212,9 @@ static int ge_alpha_blending_test(int argc, char **argv)
     int ret = -1;
     int i = 0;
 
-    int bg_fd = 0;
-    int src_fd = 0;
-    int dst_fd = 0;
+    int bg_fd = -1;
+    int src_fd = -1;
+    int dst_fd = -1;
     enum mpp_pixel_format bg_fmt = 0;
     enum mpp_pixel_format src_fmt = 0;
     enum mpp_pixel_format dst_fmt = 0;
@@ -245,36 +245,36 @@ static int ge_alpha_blending_test(int argc, char **argv)
             src_alpha_mode = str2int(optarg);
             if ((src_alpha_mode > 3) || (src_alpha_mode < 0)) {
                 printf("src_alpha_mode invalid, please input against\n");
-                goto EXIT;
+                return 0;
             }
             break;
         case 'd':
             dst_alpha_mode = str2int(optarg);
             if ((dst_alpha_mode > 3) || (dst_alpha_mode < 0)) {
                 printf("dst_alpha_mode invalid, please input against\n");
-                goto EXIT;
+                return 0;
             }
             break;
         case 'g':
             src_global_alpha = str2int(optarg);
             if ((src_global_alpha > 255) || (src_global_alpha < 0)) {
                 printf("src_global_alpha invalid, please input against\n");
-                goto EXIT;
+                return 0;
             }
             break;
         case 'p':
             dst_global_alpha = str2int(optarg);
             if ((dst_global_alpha > 255) || (dst_global_alpha < 0)) {
                 printf("dst_global_alpha invalid, please input against\n");
-                goto EXIT;
+                return 0;
             }
             break;
         case 'u':
             usage_alpha(argv[0]);
-            goto EXIT;
+            return 0;
         default:
             LOGE("Invalid parameter: %#x\n", ret);
-            goto EXIT;
+            return 0;
         }
     }
 
@@ -288,19 +288,19 @@ static int ge_alpha_blending_test(int argc, char **argv)
 
     bg_fd = bmp_open(ALPHA_BACK_GROUND_IMAGE, &bg_head);
     if (bg_fd < 0) {
-        LOGE("open bmp ALPHA_BACK_GROUND_IMAGE error\n");
+        LOGE("open bmp error, path = %s\n", ALPHA_BACK_GROUND_IMAGE);
         goto EXIT;
     }
 
     src_fd = bmp_open(ALPHA_SRC_IMAGE, &src_head);
     if (src_fd < 0) {
-        LOGE("open bmp ALPHA_SRC_IMAGE error\n");
+        LOGE("open bmp error, path = %s\n", ALPHA_SRC_IMAGE);
         goto EXIT;
     }
 
     dst_fd = bmp_open(ALPHA_DST_IMAGE, &dst_head);
     if (dst_fd < 0) {
-        LOGE("open bmp ALPHA_DST_IMAGE error\n");
+        LOGE("open bmp error, path = %s\n", ALPHA_DST_IMAGE);
         goto EXIT;
     }
 
@@ -378,28 +378,28 @@ static int ge_alpha_blending_test(int argc, char **argv)
         }
     }
 EXIT:
-    if (!bg_fd)
+    if (bg_fd > 0)
         bmp_close(bg_fd);
-    if (!src_fd)
+    if (src_fd > 0)
         bmp_close(src_fd);
-    if (!dst_fd)
+    if (dst_fd > 0)
         bmp_close(dst_fd);
 
-    if (!ge)
+    if (ge)
         mpp_ge_close(ge);
 
-    if (!fb_info)
+    if (fb_info)
         fb_close(fb_info);
 
-    if (!bg_buffer)
+    if (bg_buffer)
         ge_buf_free(bg_buffer);
-    if (!src_buffer)
+    if (src_buffer)
         ge_buf_free(src_buffer);
-    if (!dst_buffer)
+    if (dst_buffer)
         ge_buf_free(dst_buffer);
-    if (!dst_copy_buffer)
+    if (dst_copy_buffer)
         ge_buf_free(dst_copy_buffer);
 
     return 0;
 }
-MSH_CMD_EXPORT_ALIAS(ge_alpha_blending_test, ge_alpha_blending, ge alpha test)
+MSH_CMD_EXPORT_ALIAS(ge_alpha_blending_test, ge_alpha_blending, ge alpha test);

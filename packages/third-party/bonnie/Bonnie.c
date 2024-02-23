@@ -246,7 +246,8 @@ loop_again:
 
   /* Fill up a file, writing it a char at a time with the stdio putc() call */
   fprintf(stderr, "Writing with putc()...");
-  newfile(name, &fd, &stream, 1);
+  if (newfile(name, &fd, &stream, 1))
+    io_error("open file");
   timestamp();
   for (words = 0; words < size; words++)
     if (putc(words & 0x7f, stream) == EOF)
@@ -263,7 +264,8 @@ loop_again:
           (int)(delta[Putc][Elapsed] * 1000) % 1000);
 
   /* Now read & rewrite it using block I/O.  Dirty one word in each block */
-  newfile(name, &fd, &stream, 0);
+  if (newfile(name, &fd, &stream, 0))
+    io_error("open file");
   if (lseek(fd, (off_t) 0, 0) == (off_t) -1)
     io_error("lseek(2) before rewrite");
   fprintf(stderr, "Rewriting one dirty char in each block...");
@@ -290,7 +292,8 @@ loop_again:
           (int)(delta[ReWrite][Elapsed] * 1000) % 1000);
 
   /* Write the whole file from scratch, again, with block I/O */
-  newfile(name, &fd, &stream, 1);
+  if (newfile(name, &fd, &stream, 1))
+    io_error("open file");
   fprintf(stderr, "Writing with block(%d)...", Chunk);
   tmp = (char *)buf;
   for (words = 0; words < Chunk; words++)
@@ -311,7 +314,8 @@ loop_again:
           (int)(delta[FastWrite][Elapsed] * 1000) % 1000);
 
   /* read them all back with getc() */
-  newfile(name, &fd, &stream, 0);
+  if (newfile(name, &fd, &stream, 0))
+    io_error("open file");
   for (words = 0; words < 256; words++)
     chars[words] = 0;
   fprintf(stderr, "Reading with getc()...");
@@ -335,7 +339,8 @@ loop_again:
     sprintf((char *) buf, "%d", chars[words]);
 
   /* Now suck it in, Chunk at a time, as fast as we can */
-  newfile(name, &fd, &stream, 0);
+  if (newfile(name, &fd, &stream, 0))
+    io_error("open file");
   if (lseek(fd, (off_t) 0, 0) == -1)
     io_error("lseek before read");
   fprintf(stderr, "Reading with block(%d)...", Chunk);
@@ -393,7 +398,8 @@ loop_again:
       /* set up and wait for the go-ahead */
       close(seek_feedback[0]);
       close(seek_control[1]);
-      newfile(name, &fd, &stream, 0);
+      if (newfile(name, &fd, &stream, 0))
+        io_error("open file");
 #if defined(SysV)
       srandom(getpid());
 #endif
@@ -542,7 +548,8 @@ block_readwrite_test(
   int    bufindex = 0;
 
   /* Write the whole file from scratch, again, with block I/O */
-  newfile(name, &fd, &stream, 1);
+  if (newfile(name, &fd, &stream, 1) < 0)
+    io_error("open file");
   tmp = (char *)buf;
   for (words = 0; words < chunk_size; words++)
     tmp[words] = words & 0x7f;
@@ -564,7 +571,8 @@ block_readwrite_test(
     sprintf((char *) buf, "%d", chars[words]);
 
   /* Now suck it in, Chunk at a time, as fast as we can */
-  newfile(name, &fd, &stream, 0);
+  if (newfile(name, &fd, &stream, 0) < 0)
+    io_error("open file");
   if (lseek(fd, (off_t) 0, 0) == -1)
     io_error("lseek before read");
   timestamp();

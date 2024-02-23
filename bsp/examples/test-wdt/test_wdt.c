@@ -46,7 +46,7 @@ static void usage(char * program)
 void test_wdt(int argc, char **argv)
 {
     int opt;
-    int status;
+    __unused int status;
     int timeout = 0;
     rt_device_t wdt_dev = RT_NULL;
 

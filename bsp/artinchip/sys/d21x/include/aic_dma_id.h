@@ -28,4 +28,6 @@
 #define DMA_ID_UART6        22
 #define DMA_ID_UART7        23
 
+#define AIC_DMA_PORTS       24
+
 #endif

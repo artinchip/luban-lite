@@ -88,6 +88,11 @@ struct aic_ge_data {
 };
 
 static struct aic_ge_data *g_data;
+static int ge_clk_enable(struct aic_ge_data *data);
+
+#ifdef CTRL_GE_CLK_IN_FRAME
+static int ge_clk_disable(struct aic_ge_data *data);
+#endif
 
 atomic_t atomic_inc(atomic_t *target)
 {
@@ -125,12 +130,21 @@ static int ge_clk_enable(struct aic_ge_data *data)
     return 0;
 }
 
+#ifndef CTRL_GE_CLK_IN_FRAME
 static void ge_power_on(struct aic_ge_data *data)
 {
     aicos_mutex_take(data->lock, AICOS_WAIT_FOREVER);
     ge_clk_enable(data);
     aicos_mutex_give(data->lock);
 }
+#else
+static int ge_clk_disable(struct aic_ge_data *data)
+{
+    hal_clk_disable(CLK_GE);
+    hal_reset_assert(RESET_GE);
+    return 0;
+}
+#endif
 
 static int ge_wait_empty_buffer(struct aic_ge_data *data, int req_size)
 {
@@ -210,6 +224,10 @@ static void run_hw(struct aic_ge_data *data)
                   struct aic_ge_batch, list);
 
     list_del(&batch->list);
+
+#ifdef CTRL_GE_CLK_IN_FRAME
+    ge_clk_enable(data);
+#endif
 
     /* config cmd queue ring buffer */
     writel(data->cmd_phys, GE_BASE + CMD_BUF_START_ADDR);
@@ -300,6 +318,10 @@ static irqreturn_t aic_ge_handler(int flag, void *ctx)
 
     data->cur_batch = NULL;
 
+#ifdef CTRL_GE_CLK_IN_FRAME
+    ge_clk_disable(data);
+#endif
+
     if (!list_empty(&data->ready)) {
         run_hw(data);
     } else {
@@ -364,7 +386,7 @@ int hal_ge_init(void)
         data->empty_size = data->total_size;
     }
 #ifdef AIC_GE_DITHER
-    int dither_line_len = ALIGN_128B(((MAX_WIDTH * 4) + 127));
+    int dither_line_len = (MAX_WIDTH * 4) + 128 + CACHE_LINE_SIZE;
     data->dither_line_ptr = (u8 *)aicos_malloc(GE_CMA,  dither_line_len);
     if (!data->dither_line_ptr) {
         hal_log_err("failed to malloc dither line buffer\n");
@@ -372,7 +394,8 @@ int hal_ge_init(void)
     }
     data->dither_line_phys = ALIGN_128B((uintptr_t)data->dither_line_ptr);
 
-    aicos_dcache_clean_invalid_range((unsigned long *)(data->dither_line_phys), (MAX_WIDTH * 4));
+    int dither_line_size_align = ALIGN_UP((MAX_WIDTH * 4), CACHE_LINE_SIZE);
+    aicos_dcache_clean_invalid_range((unsigned long *)(data->dither_line_phys), dither_line_size_align);
 
     hal_log_info("dither line phys :0X0%08x\n", data->dither_line_phys);
 #endif
@@ -380,7 +403,9 @@ int hal_ge_init(void)
     data->lock = aicos_mutex_create();
     g_data = data;
 
+#ifndef CTRL_GE_CLK_IN_FRAME
     ge_power_on(data);
+#endif
 
     hal_log_info("%s() end\n", __func__);
 

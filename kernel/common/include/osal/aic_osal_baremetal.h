@@ -11,6 +11,8 @@
  extern "C" {
 #endif
 
+#include <string.h>
+#include <csi_core.h>
 #include <aic_errno.h>
 #include <aic_tlsf.h>
 #include <aic_time.h>
@@ -87,10 +89,10 @@ static inline void aicos_sem_delete(aicos_sem_t sem)
 static inline int aicos_sem_take(aicos_sem_t sem, uint32_t msec)
 {
     osal_semaphore_t sem_hdl = (osal_semaphore_t)sem;
-    unsigned int s_us = 0;
-    unsigned int e_us = 0;
+    u64 s_us = 0;
+    u64 e_us = 0;
 
-    if (sem_hdl->count > 0){
+    if (sem_hdl->count > 0) {
         sem_hdl->count--;
         return 0;
     }
@@ -108,7 +110,7 @@ static inline int aicos_sem_take(aicos_sem_t sem, uint32_t msec)
         }
     }
 
-    if (sem_hdl->count > 0){
+    if (sem_hdl->count > 0) {
         sem_hdl->count--;
         return 0;
     }
@@ -187,8 +189,8 @@ static inline void aicos_event_delete(aicos_event_t event)
 static inline int aicos_event_recv(aicos_event_t event, uint32_t set, uint32_t *recved, uint32_t msec)
 {
     osal_event_t event_hdl = (osal_event_t)event;
-    unsigned int s_us = 0;
-    unsigned int e_us = 0;
+    u64 s_us = 0;
+    u64 e_us = 0;
 
     if (set == 0)
         return -EINVAL;
@@ -236,24 +238,132 @@ static inline int aicos_event_send(aicos_event_t event, uint32_t set)
 //--------------------------------------------------------------------+
 // Queue API
 //--------------------------------------------------------------------+
-static inline aicos_queue_t aicos_queue_create(uint32_t item_size, uint32_t queue_size) {return NULL;}
-static inline void aicos_queue_delete(aicos_queue_t queue) {}
-static inline int aicos_queue_send(aicos_queue_t queue, void const *buff) {return -1;}
-static inline int aicos_queue_receive(aicos_queue_t queue, void *buff, uint32_t msec) {return -1;}
-static inline int aicos_queue_empty(aicos_queue_t queue) {return 0;}
+
+typedef struct
+{
+    unsigned short depth;               /* max items */
+    unsigned short item_size;           /* size of each item */
+    volatile unsigned short wr_idx;     /* write pointer */
+    volatile unsigned short rd_idx;     /* read pointer */
+    unsigned char buffer[0];            /* data buffer */
+}osal_queue_def_t;
+
+typedef osal_queue_def_t* osal_queue_t;
+
+/* ringbuffer */
+#define RB_DATA_COUNT(w, r, max) (((w)>=(r)) ? ((w)-(r)) : ((max)-(r)+(w)))
+#define RB_IS_FULL(w, r, max)    (RB_DATA_COUNT(w,r,max) >= ((max)-1))
+#define RB_INC_POINTER(p, max)        p = ((p)+1)%(max)
+
+static inline aicos_queue_t aicos_queue_create(uint32_t item_size, uint32_t queue_size)
+{
+    osal_queue_t q;
+
+    q = aicos_malloc(0, sizeof(osal_queue_def_t) + item_size*queue_size);
+    if (NULL == q)
+        return NULL;
+
+    q->item_size = item_size;
+    q->depth = queue_size;
+    q->rd_idx = 0;
+    q->wr_idx = 0;
+
+    return (aicos_queue_t)q;
+}
+
+static inline void aicos_queue_delete(aicos_queue_t queue)
+{
+    aicos_free(0, queue);
+}
+
+static inline int aicos_queue_send(aicos_queue_t queue, void const *buff)
+{
+    osal_queue_t q = (aicos_queue_t)queue;
+
+    if (!buff)
+        return -EINVAL;
+
+    if (RB_IS_FULL(q->wr_idx, q->rd_idx, q->depth))
+        return -EAGAIN;
+
+    memcpy(q->buffer + q->wr_idx*q->item_size, buff, q->item_size);
+
+    RB_INC_POINTER(q->wr_idx, q->depth);
+
+    return 0;
+}
+
+static inline int aicos_queue_receive(aicos_queue_t queue, void *buff, uint32_t msec)
+{
+    osal_queue_t q = (aicos_queue_t)queue;
+    u64 s_us = 0;
+    u64 e_us = 0;
+
+    if (!buff)
+        return -EINVAL;
+
+    if (RB_DATA_COUNT(q->wr_idx, q->rd_idx, q->depth)) {
+        memcpy(buff, q->buffer + q->rd_idx*q->item_size, q->item_size);
+        RB_INC_POINTER(q->rd_idx, q->depth);
+        return 0;
+    }
+
+    if (msec == 0) {
+        return -EAGAIN;
+    } else if (msec == AICOS_WAIT_FOREVER) {
+        while (!RB_DATA_COUNT(q->wr_idx, q->rd_idx, q->depth)) { }
+    } else {
+        s_us = aic_get_time_us();
+        while (!RB_DATA_COUNT(q->wr_idx, q->rd_idx, q->depth)) {
+            e_us = aic_get_time_us();
+            if (((e_us-s_us) / 1000) >= msec)
+                return -ETIME;
+        }
+    }
+
+    if (RB_DATA_COUNT(q->wr_idx, q->rd_idx, q->depth)) {
+        memcpy(buff, q->buffer + q->rd_idx*q->item_size, q->item_size);
+        RB_INC_POINTER(q->rd_idx, q->depth);
+        return 0;
+    }
+
+    return -EINVAL;
+}
+
+static inline int aicos_queue_empty(aicos_queue_t queue)
+{
+    osal_queue_t q = (aicos_queue_t)queue;
+
+    return !RB_DATA_COUNT(q->wr_idx, q->rd_idx, q->depth);
+}
 
 //--------------------------------------------------------------------+
 // Critical API
 //--------------------------------------------------------------------+
-static inline size_t aicos_enter_critical_section(void) {return -1;}
-static inline void aicos_leave_critical_section(size_t flag) {}
+static inline size_t aicos_enter_critical_section(void)
+{
+    return (size_t)csi_irq_save();;
+}
+static inline void aicos_leave_critical_section(size_t flag)
+{
+    csi_irq_restore(flag);
+}
 
 //--------------------------------------------------------------------+
 // Sleep API
 //--------------------------------------------------------------------+
-static inline void aicos_msleep(uint32_t delay) {}
+static inline void aicos_msleep(uint32_t delay)
+{
+    u64 s_us = 0;
+    u64 e_us = 0;
 
-
+    s_us = aic_get_time_us();
+    while (1) {
+        e_us = aic_get_time_us();
+        if (((e_us-s_us) / 1000) >= delay)
+            return;
+    }
+}
 
 #ifdef __cplusplus
  }

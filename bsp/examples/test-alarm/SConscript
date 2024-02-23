@@ -5,7 +5,7 @@ from building import *
 cwd = GetCurrentDir()
 CPPPATH = []
 src = []
-if GetDepend('AIC_RTC_DRV_TEST') and GetDepend('RT_USING_FINSH'):
+if GetDepend('AIC_RTC_DRV_TEST') and GetDepend('RT_USING_FINSH') and GetDepend('RT_USING_ALARM'):
     src = Glob('*.c')
 
 group = DefineGroup('test-alarm', src, depend = [''], CPPPATH = CPPPATH)

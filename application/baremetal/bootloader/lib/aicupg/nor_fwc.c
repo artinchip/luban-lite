@@ -142,12 +142,12 @@ s32 nor_fwc_data_write(struct fwc_info *fwc, u8 *buf, s32 len)
         /* erase 1 sector when offset+len more than erased address */
         erase_offset = priv->erase_offset[i];
         while ((offset + len) > erase_offset) {
-            ret = mtd_erase(mtd, erase_offset, mtd->erasesize);
+            ret = mtd_erase(mtd, erase_offset, ROUNDUP(len, mtd->erasesize));
             if (ret) {
                 pr_err("MTD erase sector failed!\n");
                 return 0;
             }
-            priv->erase_offset[i] = erase_offset + mtd->erasesize;
+            priv->erase_offset[i] = erase_offset + ROUNDUP(len, mtd->erasesize);
             erase_offset = priv->erase_offset[i];
         }
 

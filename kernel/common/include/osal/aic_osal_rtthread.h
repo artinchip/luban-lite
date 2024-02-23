@@ -246,20 +246,18 @@ static inline void aicos_free(unsigned int mem_type, void *mem)
 
 static inline void *aicos_malloc_align(uint32_t mem_type, size_t size, size_t align)
 {
-    /* Only support MEM_DEFAULT type by now */
-    if (mem_type != MEM_DEFAULT)
-        return NULL;
-
-    return rt_malloc_align(size, align);
+    if (mem_type == MEM_DEFAULT)
+        return rt_malloc_align(size, align);
+    else
+        return _aicos_malloc_align_(size, align, mem_type, (void *)aic_memheap_malloc);
 }
 
 static inline void aicos_free_align(uint32_t mem_type, void *mem)
 {
-    /* Only support MEM_DEFAULT type by now */
-    if (mem_type != MEM_DEFAULT)
-        return;
-
-    rt_free_align(mem);
+    if (mem_type == MEM_DEFAULT)
+        rt_free_align(mem);
+    else
+        _aicos_free_align_(mem, mem_type, (void *)aic_memheap_free);
 }
 
 #ifdef __cplusplus

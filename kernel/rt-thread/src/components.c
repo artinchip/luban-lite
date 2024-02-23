@@ -112,8 +112,8 @@ void rt_components_init(void)
 #if RT_DEBUG_INIT
     int result;
     const struct rt_init_desc *desc;
-    uint32_t s_time = 0;
-    uint32_t e_time = 0;
+    uint64_t s_time = 0;
+    uint64_t e_time = 0;
 
     rt_kprintf("do components initialization.\n");
     for (desc = &__rt_init_desc_rti_board_end; desc < &__rt_init_desc_rti_end; desc ++)

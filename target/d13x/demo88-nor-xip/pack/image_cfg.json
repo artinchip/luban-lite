@@ -3,9 +3,9 @@
         "size": "16m", // Size of SPI NAND
         "partitions": {
             "spl":        { "size": "256k" },
-            "os":         { "size": "1m" },
+            "os":         { "size": "2m" },
             "rodata":     { "size": "6m" },
-            "data":       { "size": "6m" }
+            "data":       { "size": "5m" }
         },
     },
     "image": {
@@ -37,7 +37,7 @@
                 "part": ["os"]
             },
             "rodata": {
-                "file": "data.fatfs",
+                "file": "rodata.fatfs",
                 "attr": ["mtd", "optional"],
                 "part": ["rodata"]
             },
@@ -56,7 +56,10 @@
                     "file": "bootloader.bin",
                     "load address": "0x30100000",
                     "entry point":  "0x30100100",
-                    "run in dram": "false",
+                },
+                "resource": {
+                    "private": "pbp_cfg.bin",
+                    "pbp": "d13x.pbp",
                 },
             },
         },

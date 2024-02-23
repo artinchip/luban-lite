@@ -1,0 +1,285 @@
+Import('AIC_ROOT')
+Import('PRJ_OUT_DIR')
+from building import *
+import rtconfig
+import os
+import fnmatch
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+def absolute_path_to_relative_path(absolute_path):
+    cwd = GetCurrentDir()
+    awtk_cwd = cwd + '/'
+    relative_path = absolute_path.replace(awtk_cwd, '')
+    return relative_path
+
+def search_files(directory, pattern, path_mode = True, Glob_use = True):
+    file_list = []
+    for file in os.listdir(directory):
+        if os.path.isfile(os.path.join(directory, file)) and fnmatch.fnmatch(file, pattern):
+            if path_mode == True:
+                file_path = absolute_path_to_relative_path(os.path.join(directory, file))
+            else:
+                file_path = os.path.join(directory, file)
+            if Glob_use == True:
+                file_list += (Glob(file_path))
+            else:
+                file_list += file_path
+    return file_list
+
+def find_sources(path):
+    c_sources = search_files(path, "*.c")
+    cpp_sources = search_files(path, "*.cpp")
+    sources =  c_sources + cpp_sources
+    return sources
+
+def check_flage(string, flag):
+    if string.find(flag) != -1:
+        return True
+    return False
+
+src = []
+inc = []
+cc_flages = ''
+group = []
+
+cwd = GetCurrentDir() # get current dir path
+src = Glob('env_support/rt-thread/*.c') # add rtt src
+inc = [cwd + '/env_support/rt-thread/']
+
+awtk_cwd = cwd + '/'
+awtk_src_cwd = awtk_cwd + 'awtk/'
+awtk_port_cwd = awtk_cwd + 'awtk-rtos/awtk-port/'
+
+cc_flages += ' -DWITH_VGCANVAS -DHAS_STDIO -DSTBTT_STATIC '
+cc_flages += ' -DWITH_ASSET_LOADER -DHAS_GET_TIME_US64 '
+cc_flages += ' -DWITH_NANOVG_AGGE '
+cc_flages += ' -DUSE_GUI_MAIN -DHAS_STD_MALLOC'
+
+# add port g2d
+awtk_port_g2d_cwd = awtk_port_cwd + 'aic_g2d/'
+src += find_sources(awtk_port_g2d_cwd)
+inc += [awtk_port_g2d_cwd]
+
+# add port lcd
+awtk_port_lcd_cwd = awtk_port_cwd + 'lcd_rtos/'
+src += find_sources(awtk_port_lcd_cwd)
+inc += [awtk_port_lcd_cwd]
+
+# add port input
+src += Glob(absolute_path_to_relative_path(awtk_port_cwd + 'input_thread/touch_thread.c'))
+src += Glob(absolute_path_to_relative_path(awtk_port_cwd + 'input_thread/input_dispatcher.c'))
+inc = inc + [awtk_port_cwd + 'input_thread']
+inc = inc + ['../../../kernel/rt-thread/components/drivers/include/drivers']
+
+# add platform rtt
+src += Glob(absolute_path_to_relative_path(awtk_port_cwd + 'platform/platform.c'))
+
+# # add rtt interface
+awtk_platforms_rtt_cwd = awtk_src_cwd + 'src/platforms/rtt/'
+src += find_sources(awtk_platforms_rtt_cwd)
+
+# add port run
+src += Glob(absolute_path_to_relative_path(awtk_port_cwd + 'tk_run.c'))
+
+# add port system times
+src += Glob(absolute_path_to_relative_path(awtk_port_cwd + 'platform/date_time.c'))
+
+# add platform files,aic supports standard C library standard interfaces
+if GetDepend('WITH_FS_RES'):
+    src += Glob(absolute_path_to_relative_path(awtk_port_cwd + 'platform/fs_os.c'))
+else:
+    src += Glob(absolute_path_to_relative_path(awtk_src_cwd + 'src/platforms/raw/fs_os.c'))
+
+############# The following is the AWTK source code #############
+# add agge
+if check_flage(cc_flages, "WITH_NANOVG_AGGE") == True:
+    awtk_agge_cwd = awtk_src_cwd + '3rd/agge/agge/'
+    src += find_sources(awtk_agge_cwd)
+# add nanovg
+    awtk_agge_cwd = awtk_src_cwd + '3rd/nanovg/base/'
+    src += find_sources(awtk_agge_cwd)
+    src += Glob(absolute_path_to_relative_path(awtk_src_cwd + '3rd/nanovg/agge/nanovg_agge.cpp'))
+    src += Glob(absolute_path_to_relative_path(awtk_src_cwd + '3rd/nanovg/agge/nanovg_vertex.cpp'))
+    src += Glob(absolute_path_to_relative_path(awtk_src_cwd + 'src/vgcanvas/vgcanvas_nanovg_soft.c'))
+
+# add lcd
+awtk_lcd_cwd = awtk_src_cwd + 'src/lcd/'
+src += search_files(awtk_lcd_cwd, 'lcd_mem_*.c')
+src += [awtk_lcd_cwd + 'lcd_mono.c']
+
+# add input method
+if GetDepend('WITH_IME_PINYIN') or GetDepend('WITH_IME_NULL'):
+    src += Glob(absolute_path_to_relative_path(awtk_src_cwd + "src/input_methods/input_method_creator.c"))
+
+if GetDepend('WITH_IME_PINYIN'):
+    awtk_pinyin_cwd = awtk_src_cwd + '3rd/gpinyin/src/'
+    src += find_sources(awtk_pinyin_cwd)
+    src += Glob(absolute_path_to_relative_path(awtk_src_cwd + "src/input_engines/input_engine_pinyin.cpp"))
+
+# Supports soft keyboard without enabing input method
+if GetDepend('WITH_IME_NULL'):
+    src += Glob(absolute_path_to_relative_path(awtk_src_cwd + "src/input_engines/input_engine_null.c"))
+
+# Don't supports enabing input method
+if GetDepend('WITH_NULL_IM'):
+    cc_flages += ' -DWITHOUT_INPUT_METHOD '
+
+# add linebreak
+if GetDepend('WITH_UNICODE_BREAK'):
+    awtk_linebreak_cwd = awtk_src_cwd + '3rd/libunibreak/'
+    src += find_sources(awtk_linebreak_cwd)
+
+# add stb
+if GetDepend('WITH_STB_IMAGE'):
+    awtk_stb_cwd = awtk_src_cwd + '3rd/stb/'
+    src += find_sources(awtk_stb_cwd)
+
+# add fribidi
+if GetDepend('WITH_TEXT_BIDI'):
+    awtk_fribidi_cwd = awtk_src_cwd + '3rd/fribidi/'
+    src += find_sources(awtk_fribidi_cwd)
+
+# add compressors
+# awtk_compressors_cwd = awtk_src_cwd + 'src/compressors/'
+# src += find_sources(awtk_compressors_cwd)
+
+# add miniz
+# awtk_miniz_cwd = awtk_src_cwd + '3rd/miniz/'
+# src += find_sources(awtk_miniz_cwd)
+
+# add csv
+# awtk_csv_cwd = awtk_src_cwd + 'src/csv/'
+# src += find_sources(awtk_csv_cwd)
+
+# add ubjson
+# awtk_ubjson_cwd = awtk_src_cwd + 'src/ubjson/'
+# src += find_sources(awtk_ubjson_cwd)
+
+# add cjson
+# awtk_cjson_cwd = awtk_src_cwd + '3rd/cjson/'
+# src += find_sources(awtk_cjson_cwd)
+
+# add conf_io
+# awtk_conf_io_cwd = awtk_src_cwd + 'src/conf_io/'
+# src += find_sources(awtk_conf_io_cwd)
+
+# add hal, Do not specify an operating system
+awtk_hal_cwd = awtk_src_cwd + 'src/hal/'
+src += find_sources(awtk_hal_cwd)
+
+# add debugger
+awtk_debugger_cwd = awtk_src_cwd + 'src/debugger/'
+src += find_sources(awtk_debugger_cwd)
+
+# add charset
+awtk_charset_cwd = awtk_src_cwd + 'src/charset/'
+src += find_sources(awtk_charset_cwd)
+
+# add awtk core
+awtk_core_cwd = awtk_src_cwd + 'src/'
+src += find_sources(awtk_core_cwd + 'layouters/')
+src += find_sources(awtk_core_cwd + 'base/')
+src += find_sources(awtk_core_cwd + 'ui_loader/')
+src += find_sources(awtk_core_cwd + 'xml/')
+src += find_sources(awtk_core_cwd + 'svg/')
+src += find_sources(awtk_core_cwd + 'font_loader/')
+src += find_sources(awtk_core_cwd + 'blend/')
+src += find_sources(awtk_core_cwd + 'image_loader/')
+src += find_sources(awtk_core_cwd + 'misc/')
+src += find_sources(awtk_core_cwd + 'widgets/')
+src += find_sources(awtk_core_cwd + 'tkc/')
+src += find_sources(awtk_core_cwd + 'clip_board/')
+src += find_sources(awtk_core_cwd + 'window_animators/')
+src += find_sources(awtk_core_cwd + 'widget_animators/')
+src += find_sources(awtk_core_cwd + 'dialog_highlighters/')
+
+src += find_sources(awtk_core_cwd + 'ext_widgets/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/canvas_widget/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/color_picker/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/combo_box_ex/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/features/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/file_browser/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/gauge/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/gif_image/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/image_animation/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/image_value/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/mledit/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/mutable_image/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/progress_circle/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/rich_text/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/scroll_label/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/scroll_view/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/serial_widget/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/slide_menu/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/slide_view/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/svg_image/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/switch/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/text_selector/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/time_clock/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/timer_widget/')
+src += find_sources(awtk_core_cwd + 'ext_widgets/vpage/')
+
+if GetDepend('WITH_IME_PINYIN') or GetDepend('WITH_IME_NULL'):
+    src += find_sources(awtk_core_cwd + 'ext_widgets/keyboard/')
+
+src += Glob(absolute_path_to_relative_path(awtk_core_cwd + 'awtk_global.c'))
+src += Glob(absolute_path_to_relative_path(awtk_core_cwd + 'window_manager/window_manager_default.c'))
+src += Glob(absolute_path_to_relative_path(awtk_core_cwd + 'graphic_buffer/graphic_buffer_default.c'))
+src += Glob(absolute_path_to_relative_path(awtk_core_cwd + 'native_window/native_window_raw.c'))
+
+# add main loop
+src += Glob(absolute_path_to_relative_path(awtk_core_cwd + 'main_loop/main_loop_simple.c'))
+
+inc += [awtk_src_cwd + 'src']
+inc += [awtk_src_cwd + '3rd']
+inc += [awtk_src_cwd + 'src/ext_widgets']
+# inc += [awtk_src_cwd + '3rd/pixman']
+inc += [awtk_src_cwd + '3rd/agge']
+# inc += [awtk_src_cwd + '3rd/cjson']
+inc += [awtk_src_cwd + '3rd/nanovg']
+inc += [awtk_src_cwd + '3rd/nanovg/base']
+inc += [awtk_src_cwd + '3rd/nanovg/agge']
+inc += [awtk_src_cwd + '3rd/agge/src']
+inc += [awtk_src_cwd + '3rd/agge/include']
+inc += [awtk_src_cwd + '3rd/nativefiledialog/src']
+inc += [awtk_src_cwd + '3rd/nativefiledialog/src/include']
+inc += [awtk_src_cwd + '3rd/stb']
+inc += [awtk_src_cwd + 'tools']
+inc += [awtk_src_cwd + 'src/native_window']
+
+if GetDepend('WITH_IME_PINYIN'):
+    inc += [awtk_src_cwd + '3rd/gpinyin/include']
+if GetDepend('WITH_UNICODE_BREAK'):
+    inc += [awtk_src_cwd + '3rd/libunibreak']
+if GetDepend('WITH_TEXT_BIDI'):
+    inc += [awtk_src_cwd + '3rd/fribidi']
+
+if GetDepend('LPKG_AWTK_USING_DEMOS_CHART'):
+    awtk_demo_cwd = cwd + '/user_apps/'
+    # add user 3rd
+    src += find_sources(awtk_demo_cwd + 'awtk-demo-chart/3rd/awtk-widget-chart-view/src/')
+    src += find_sources(awtk_demo_cwd + 'awtk-demo-chart/3rd/awtk-widget-chart-view/src/base/')
+    src += find_sources(awtk_demo_cwd + 'awtk-demo-chart/3rd/awtk-widget-chart-view/src/chart_view/')
+    src += find_sources(awtk_demo_cwd + 'awtk-demo-chart/3rd/awtk-widget-chart-view/src/pie_slice/')
+
+    # add user src
+    src += find_sources(awtk_demo_cwd + 'awtk-demo-chart/src/')
+    src += find_sources(awtk_demo_cwd + 'awtk-demo-chart/src/pages/')
+    src += find_sources(awtk_demo_cwd + 'awtk-demo-chart/src/common/')
+
+    # install needed res
+    if GetDepend('WITH_FS_RES'):
+        Mkdir(awtk_demo_cwd + 'awtk-demo-chart/rtos_res/res/assets/default/')
+        Install(awtk_demo_cwd + 'awtk-demo-chart/rtos_res/res/assets/default/', awtk_demo_cwd + 'awtk-demo-chart/res/assets/default/raw')
+
+if GetDepend('LPKG_AWTK_USING_OFFICIAL_DEMO'):
+    awtk_demo_cwd = awtk_src_cwd + 'demos/'
+    # add user src
+    src += Glob(absolute_path_to_relative_path(awtk_demo_cwd + 'demo_ui_app.c'))
+    src += Glob(absolute_path_to_relative_path(awtk_demo_cwd + 'assets.c'))
+
+group = DefineGroup('AWTK_lib', src, depend = ['LPKG_USING_AWTK'], CPPPATH = inc, LOCAL_CFLAGS = cc_flages)
+src = []
+Return('group')

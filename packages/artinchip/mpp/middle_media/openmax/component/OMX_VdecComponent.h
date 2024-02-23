@@ -12,7 +12,7 @@
 #include "OMX_Core.h"
 #include "OMX_CoreExt1.h"
 #include "OMX_Component.h"
-
+#include <inttypes.h>
 
 #include <pthread.h>
 #include <malloc.h>
@@ -119,6 +119,9 @@ typedef struct VDEC_DATA_TYPE {
     struct mpp_list sOutReadyFrame;
     struct mpp_list sOutProcessingFrame;
     pthread_mutex_t sOutFrameLock;
+
+    OMX_S8 nWaitForReadyPkt;
+    OMX_S8 nWaitForEmptyFrame;
 
 }VDEC_DATA_TYPE;
 

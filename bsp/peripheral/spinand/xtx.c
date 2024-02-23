@@ -9,37 +9,52 @@
 #include "inc/spinand.h"
 #include "inc/manufacturer.h"
 
-#define SPINAND_MFR_XTX		0x0B
-//#define SPINAND_MFR_XTX		0x2C
+#define SPINAND_MFR_XTX 0x0B
+
 #define XTX_CFG_QUAD_ENABLE BIT(0)
 
-struct spi_nand_cmd_cfg xtx_cmd_cfg_table[] = {
-    /*opcode    opcode_bits addr_bytes	addr_bits	dummy_bytes	data_nbits*/
-    { SPINAND_CMD_READ_FROM_CACHE, 1, 2, 1, 1, 1 },
-    { SPINAND_CMD_READ_FROM_CACHE_X2, 1, 2, 1, 1, 2 },
-    { SPINAND_CMD_READ_FROM_CACHE_X4, 1, 2, 1, 1, 4 },
-    { SPINAND_CMD_PROG_LOAD, 1, 2, 1, 0, 1 },
-    { SPINAND_CMD_PROG_LOAD_X4, 1, 2, 1, 0, 4 },
-    { SPINAND_CMD_END },
-};
+#define XT26G01C_STATUS_ECC_MASK        (0xF << 4)
+#define XT26G01C_STATUS_ECC_NO_BITFLIPS (0 << 4)
+#define XT26G01C_STATUS_ECC_UNCOR_ERROR (0xF << 4)
+
+int xt26g01c_ecc_get_status(struct aic_spinand *flash, u8 status)
+{
+    switch (status & XT26G01C_STATUS_ECC_MASK) {
+        case XT26G01C_STATUS_ECC_NO_BITFLIPS:
+            return 0;
+        case XT26G01C_STATUS_ECC_UNCOR_ERROR:
+            return -SPINAND_ERR_ECC;
+        default:
+            break;
+    }
+
+    return status & XT26G01C_STATUS_ECC_MASK;
+}
 
 const struct aic_spinand_info xtx_spinand_table[] = {
-    /*devid page_size oob_size block_per_lun pages_per_eraseblock is_die_select*/
+    /*devid page_size oob_size block_per_lun pages_per_eraseblock planes_per_lun
+    is_die_select*/
     /*XT26G11C device*/
-    { 0x15, 2048, 128, 1024, 64, 0, "XTX 128MB: 2048+128@64@1024",
-      xtx_cmd_cfg_table },
+    { DEVID(0x15), PAGESIZE(2048), OOBSIZE(128), BPL(1024), PPB(64),
+      PLANENUM(1), DIE(0), "XTX 128MB: 2048+128@64@1024", cmd_cfg_table },
     /*XT26G02C device*/
-    { 0x12, 2048, 128, 2048, 64, 0, "XTX 256MB: 2048+128@64@2048",
-      xtx_cmd_cfg_table },
+    { DEVID(0x12), PAGESIZE(2048), OOBSIZE(128), BPL(2048), PPB(64),
+      PLANENUM(1), DIE(0), "XTX 256MB: 2048+128@64@2048", cmd_cfg_table },
     /*XT26G01C device*/
-    { 0x11, 2048, 128, 1024, 64, 0, "XTX 128MB: 2048+128@64@1024",
-      xtx_cmd_cfg_table },
+    { DEVID(0x11), PAGESIZE(2048), OOBSIZE(128), BPL(1024), PPB(64),
+      PLANENUM(1), DIE(0), "XTX 128MB: 2048+128@64@1024", cmd_cfg_table,
+      xt26g01c_ecc_get_status },
+    /*XT26G01D device*/
+    { DEVID(0x31), PAGESIZE(2048), OOBSIZE(128), BPL(1024), PPB(64),
+      PLANENUM(1), DIE(0), "XTX 128MB: 2048+128@64@1024", cmd_cfg_table,
+      xt26g01c_ecc_get_status },
     /*XT26G01B device*/
-    { 0xF1, 2048, 64, 1024, 64, 0, "XTX 128MB: 2048+64@64@1024",
-      xtx_cmd_cfg_table },
-    /*XT26G02E device
-    { 0x24, 2048, 128, 2048, 64, 1, "XTX 256MB: 2048+128@64@2048",
-      xtx_cmd_cfg_table },*/
+    { DEVID(0xF1), PAGESIZE(2048), OOBSIZE(64), BPL(1024), PPB(64), PLANENUM(1),
+      DIE(0), "XTX 128MB: 2048+64@64@1024", cmd_cfg_table },
+    /*XT26G04D device
+    { DEVID(0x33), PAGESIZE(4096), OOBSIZE(256), BPL(2048), PPB(64), PLANENUM(1),
+      DIE(0), "XTX 512MB: 4096+256@64@2048", cmd_cfg_table, xt26g01c_ecc_get_status},
+      */
 };
 
 const struct aic_spinand_info *xtx_spinand_detect(struct aic_spinand *flash)

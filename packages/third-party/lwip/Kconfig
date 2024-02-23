@@ -42,15 +42,15 @@ if LPKG_USING_LWIP
             #select NETDEV_IPV6_SCOPES if LPKG_USING_LWIP213
     endif
 
-    menuconfig LPKG_LWIP_EXAMPLES
+    config LPKG_LWIP_EXAMPLES
         bool "LwIP Examples"
         default n
 
-    if LPKG_LWIP_EXAMPLES
-        config LPKG_LWIP_EXAMPLES_TEST
-            bool "example test"
-            default n
-    endif
+#    if LPKG_LWIP_EXAMPLES
+#        config LPKG_LWIP_EXAMPLES_TEST
+#            bool "example test"
+#            default n
+#    endif
 
     config LPKG_LWIP_IGMP
         bool "IGMP protocol"
@@ -183,7 +183,6 @@ if LPKG_USING_LWIP
         menuconfig LPKG_LWIP_USING_PING
             bool "Enable ping features"
             default n
-            select NETDEV_USING_PING
             select LPKG_LWIP_ICMP
             select LPKG_LWIP_RAW
 
@@ -207,7 +206,6 @@ if LPKG_USING_LWIP
         config LPKG_LWIP_USING_PING
             bool "Enable ping features"
             default n
-            select NETDEV_USING_PING
             select LPKG_LWIP_ICMP
             select LPKG_LWIP_RAW
     endif

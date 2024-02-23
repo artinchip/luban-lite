@@ -74,8 +74,8 @@ interrupt stack after the scheduler has started. */
 	the ISR stack. */
 	#define portISR_STACK_FILL_BYTE	0xee
 #else
-	extern const uint32_t __freertos_irq_stack_top[];
-	const StackType_t xISRStackTop = ( StackType_t ) __freertos_irq_stack_top;
+	extern const uint32_t g_top_irqstack[];
+	const StackType_t xISRStackTop = ( StackType_t ) g_top_irqstack;
 #endif
 
 /*
@@ -87,12 +87,14 @@ void vPortSetupTimerInterrupt( void ) __attribute__(( weak ));
 
 /*-----------------------------------------------------------*/
 
+#if 0
 /* Used to program the machine timer compare register. */
 uint64_t ullNextTime = 0ULL;
 const uint64_t *pullNextTime = &ullNextTime;
 const size_t uxTimerIncrementsForOneTick = ( size_t ) ( ( configCPU_CLOCK_HZ ) / ( configTICK_RATE_HZ ) ); /* Assumes increment won't go over 32-bits. */
 uint32_t const ullMachineTimerCompareRegisterBase = configMTIMECMP_BASE_ADDRESS;
 volatile uint64_t * pullMachineTimerCompareRegister = NULL;
+#endif
 
 /* Set configCHECK_FOR_STACK_OVERFLOW to 3 to add ISR stack checking to task
 stack checking.  A problem in the ISR stack will trigger an assert, not call the
@@ -114,9 +116,18 @@ task stack, not the ISR stack). */
 	#define portCHECK_ISR_STACK()
 #endif /* configCHECK_FOR_STACK_OVERFLOW > 2 */
 
+/* Used to keep track of the number of nested calls to taskENTER_CRITICAL().  This
+will be set to 0 prior to the first task being started. */
+portLONG ulCriticalNesting = 0x9999UL;
+
+/* Used to record one tack want to swtich task after enter critical area, we need know it
+ * and implement task switch after exit critical area */
+portLONG pendsvflag = 0;
+
 /*-----------------------------------------------------------*/
 
-#if( configMTIME_BASE_ADDRESS != 0 ) && ( configMTIMECMP_BASE_ADDRESS != 0 )
+#if 0
+//#if( configMTIME_BASE_ADDRESS != 0 ) && ( configMTIMECMP_BASE_ADDRESS != 0 )
 
 	void vPortSetupTimerInterrupt( void )
 	{
@@ -151,6 +162,8 @@ BaseType_t xPortStartScheduler( void )
 {
 extern void xPortStartFirstTask( void );
 
+	ulCriticalNesting = 0UL;
+
 	#if( configASSERT_DEFINED == 1 )
 	{
 		volatile uint32_t mtvec = 0;
@@ -173,6 +186,7 @@ extern void xPortStartFirstTask( void );
 	}
 	#endif /* configASSERT_DEFINED */
 
+#if 0
 	/* If there is a CLINT then it is ok to use the default implementation
 	in this file, otherwise vPortSetupTimerInterrupt() must be implemented to
 	configure whichever clock is to be used to generate the tick interrupt. */
@@ -191,6 +205,7 @@ extern void xPortStartFirstTask( void );
 		__asm volatile( "csrs mie, %0" :: "r"(0x800) );
 	}
 	#endif /* ( configMTIME_BASE_ADDRESS != 0 ) && ( configMTIMECMP_BASE_ADDRESS != 0 ) */
+#endif
 
 	xPortStartFirstTask();
 
@@ -206,7 +221,64 @@ void vPortEndScheduler( void )
 	for( ;; );
 }
 
+void vTaskEnterCritical( void )
+{
+	portDISABLE_INTERRUPTS();
+	ulCriticalNesting ++;
+}
 
+void vTaskExitCritical( void )
+{
+	if (ulCriticalNesting == 0) {
+		while(1);
+	}
 
+	ulCriticalNesting --;
+	if (ulCriticalNesting == 0)
+	{
+		portENABLE_INTERRUPTS();
 
+		if (pendsvflag)
+		{
+			pendsvflag = 0;
+			portYIELD();
+		}
+	}
+}
+
+#if configUSE_PREEMPTION == 0
+void xPortSysTickHandler( void )
+{
+	portLONG ulDummy;
+
+	ulDummy = portSET_INTERRUPT_MASK_FROM_ISR();
+	xTaskIncrementTick();
+	portCLEAR_INTERRUPT_MASK_FROM_ISR( ulDummy );
+}
+
+#else
+void xPortSysTickHandler( void )
+{
+	portLONG ulDummy;
+
+	ulDummy = portSET_INTERRUPT_MASK_FROM_ISR();
+	{
+		if (xTaskIncrementTick() != pdFALSE)
+		{
+			portYIELD_FROM_ISR(pdTRUE);
+		}
+	}
+	portCLEAR_INTERRUPT_MASK_FROM_ISR( ulDummy );
+}
+#endif
+
+__attribute__((weak)) void vApplicationStackOverflowHook( TaskHandle_t xTask, char *pcTaskName )
+{
+    for(;;);
+}
+
+__attribute__((weak)) void vApplicationMallocFailedHook( void )
+{
+    for(;;);
+}
 

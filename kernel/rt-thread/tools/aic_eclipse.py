@@ -249,9 +249,10 @@ def TargetEclipse(env, sdk=False, prj_name=None):
                 except:
                     pass
                 for f in glob.iglob(src_d + '/*'):
-                    des_f = os.path.basename(f)
-                    des_f = os.path.join(des_d, des_f)
-                    shutil.copy(f, des_f)
+                    if f.endswith(".a"):
+                        des_f = os.path.basename(f)
+                        des_f = os.path.join(des_d, des_f)
+                        shutil.copy(f, des_f)
             else:
                 d = '"' + "${ProjDirPath}\..\..\..\\" + rel_d + '"'
             SubElement(l_path, 'listOptionValue', builtIn="false", value=d)
@@ -327,6 +328,13 @@ def TargetEclipse(env, sdk=False, prj_name=None):
                 shutil.copytree(src_d, des_d)
             elif platform.system() == 'Windows':
                 shutil.copytree('\\\\?\\' + src_d, '\\\\?\\' + des_d)
+        # copy post_build.bat
+        print('Copy post_build bat file...')
+        src_d = os.path.join(prj_out_dir, 'post_build.bat')
+        des_d = os.path.join(prj_eclipse_dir, 'tools')
+        src_d = os.path.normpath(src_d)
+        des_d = os.path.normpath(des_d)
+        shutil.copy(src_d, des_d)
         # copy toolchain
         print('Copy toolchain file...')
         src_d = os.path.join(aic_root, 'toolchain')
@@ -431,6 +439,55 @@ def TargetEclipse(env, sdk=False, prj_name=None):
         template_prefs_str = template_prefs_str.replace(r'tools\\env\\tools\\bin', r'tools\\bin')
     with open(des_f, 'w') as f:
         f.write(template_prefs_str)
+
+    # (2.3) write to 'post_build.bat'
+    prj_chip = os.environ["PRJ_CHIP"]
+    if sdk:
+        src = os.path.join(prj_eclipse_dir, './tools/post_build.bat')
+    else:
+        src = os.path.join(prj_out_dir, './post_build.bat')
+    if os.path.exists(src):
+        post_build = None
+        with open(src, 'r') as f:
+            post_build = f.read()
+        if sdk and post_build:
+            post_build = post_build.replace(r';', '\n')
+            des = prj_eclipse_dir + '/Debug/' + prj_chip
+            post_build = post_build.replace(r'${ProjDirPath}/Debug/${ProjName}', des)
+            des = prj_eclipse_dir + '/toolchain/bin/riscv64-unknown-elf-'
+            post_build = post_build.replace(r'riscv64-unknown-elf-', des)
+            des = prj_eclipse_dir + '/toolchain/riscv64-unknown-elf/bin/objcopy.exe'
+            post_build = post_build.replace(r'${cross_prefix}${cross_objcopy}${cross_suffix}', des)
+            des = prj_eclipse_dir + '/Debug/' + prj_chip
+            post_build = post_build.replace(r'${ProjName}', des)
+            des = prj_eclipse_dir
+            post_build = post_build.replace(r'${ProjDirPath}', des)
+        elif post_build:
+            post_build = post_build.replace(r';', '\n')
+            des = aic_root + '/toolchain/riscv64-unknown-elf/bin/objcopy.exe'
+            post_build = post_build.replace(r'${cross_prefix}${cross_objcopy}${cross_suffix}', des)
+            des = aic_root + '/tools/env/tools/Python39'
+            post_build = post_build.replace(r'${ProjDirPath}/tools/Python39', des)
+            des = aic_root + '/tools/env/tools/bin'
+            post_build = post_build.replace(r'${ProjDirPath}/tools/bin', des)
+            des = aic_root + '/' + prj_out_dir + prj_chip + '.elf'
+            post_build = post_build.replace(r'${ProjDirPath}/Debug/${ProjName}.elf', des)
+            des = aic_root + '/' + prj_out_dir
+            post_build = post_build.replace(r'${ProjDirPath}/Debug/', des)
+            des = aic_root + '/toolchain/bin/riscv64-unknown-elf-'
+            post_build = post_build.replace(r'riscv64-unknown-elf-', des)
+            post_build = post_build.replace(r'${ProjDirPath}', aic_root)
+            des = aic_root + '/' + prj_out_dir + prj_chip + '.elf'
+            post_build = post_build.replace(r'${ProjName}.elf', des)
+            des = aic_root + '/' + prj_out_dir + prj_chip + '.bin'
+            post_build = post_build.replace(r'${ProjName}.bin', des)
+        with open(src, 'w') as f:
+            if post_build:
+                f.write(post_build)
+            else:
+                print("post_build.bat is invaild")
+    else:
+        print("post_build.bat is invaild")
 
     print('done!')
     exit(0)
